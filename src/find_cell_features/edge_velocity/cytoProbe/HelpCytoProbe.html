@@ -1,0 +1,58 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=iso-8859-1">
+	<TITLE></TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 1.1.0  (Linux)">
+	<META NAME="CREATED" CONTENT="20040928;15415600">
+	<META NAME="CHANGED" CONTENT="20050502;10150700">
+	<STYLE>
+	<!--
+		@page { size: 21.59cm 27.94cm; margin: 2cm }
+		P { margin-bottom: 0.21cm }
+		PRE.western { font-family: "Nimbus Roman No9 L" }
+	-->
+	</STYLE>
+</HEAD>
+<BODY LANG="en-US" DIR="LTR">
+<PRE CLASS="western" STYLE="margin-bottom: 0.5cm"><FONT FACE="Coolvetica"><FONT SIZE=4 STYLE="font-size: 16pt">CytoProbe</FONT></FONT></PRE>
+<HR>
+<PRE CLASS="western"><FONT FACE="Coolvetica">CytoProbe</FONT> is a tool to generate and analyse FRET images. 
+Images can be multiplied, divided, scaled and much more. 
+The operators work always on the entire image stack in 
+the specified directory. 
+
+The following operations are available</PRE>
+<UL>
+	<LI><PRE CLASS="western">Image 1 * Image 2 
+Can be used to mask image 1. For that Image 2 has to be a 
+BW image of the same size as image 1.</PRE>
+	<LI><PRE CLASS="western">Image 1 / Image 2
+Ratio between image 1 and image 2, for example to calculate
+the FRET image</PRE>
+	<LI><PRE CLASS="western">Image 1 * Vector
+The vector must contain the same number of elements as 
+images 1. The vector can be obtained from:</PRE>
+	<LI><PRE CLASS="western">Bleach coefficient vector from image 1
+The coefficients are obtained from a second order polynomial
+approximation of the average intensities of images 1</PRE>
+</UL>
+<PRE CLASS="western" STYLE="margin-bottom: 0.5cm">            vector(frame) = a frame^2 + b frame +c</PRE>
+<UL>
+	<LI><PRE CLASS="western">(Image 1 -factor Image 2) / Image 2
+FRET calculation for Rac1</PRE>
+	<LI><PRE CLASS="western">Activity (Img 1) &ndash; dist. Edge plot (img 2: mask)
+Extracts the activity as a function of the distance from
+the cell edge. For that the activity is average across the entire
+cell edge.</PRE>
+</UL>
+<PRE CLASS="western">
+
+<B>Cdc42 FRET:</B>
+Get the bleaching calibration curve from the ISO image.
+Get the Cdc42 activity from the ISO/EGFP ratio.
+
+<B>Rho1 FRET:</B>
+Corrected Fret:            FRET_C = (FRET- Bleedthrough_coefficient * CFP)<BR>Normalized Fret:         FRET_N = FRET_C / CFP<BR>where  Bleedthrough_coefficient = 0.371</PRE>
+</BODY>
+</HTML>

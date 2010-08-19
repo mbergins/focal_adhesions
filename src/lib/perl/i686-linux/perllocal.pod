@@ -1,0 +1,550 @@
+=head2 Fri Jun 15 11:53:22 2007: C<Module> L<Pod::Escapes|Pod::Escapes>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.04>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 12:00:21 2007: C<Module> L<Inline|Inline>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.44>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 12:01:43 2007: C<Module> L<Pod::Simple|Pod::Simple>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 3.05>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 12:01:46 2007: C<Module> L<Test::Pod|Test::Pod>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.26>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 12:02:28 2007: C<Module> L<Devel::Symdump|Devel::Symdump>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.07>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 12:02:31 2007: C<Module> L<Pod::Coverage|Pod::Coverage>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.18>
+
+=item *
+
+C<EXE_FILES: bin/pod_cover>
+
+=back
+
+=head2 Fri Jun 15 12:02:34 2007: C<Module> L<Test::Pod::Coverage|Test::Pod::Coverage>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.08>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 12:02:39 2007: C<Module> L<Affix::Infix2Postfix|Affix::Infix2Postfix>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.03>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 12:03:01 2007: C<Module> L<Image::Math::Constrain|Image::Math::Constrain>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.01>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 12:08:59 2007: C<Module> L<Imager|Imager>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.58>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 12:14:10 2007: C<Module> L<Imager|Imager>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.58>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 14:15:32 2007: C<Module> L<Imager|Imager>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.58>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 14:31:19 2007: C<Module> L<Imager|Imager>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.59>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun 15 14:32:04 2007: C<Module> L<Imager|Imager>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.59>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jul  2 11:54:09 2008: C<Module> L<Image::ExifTool|Image::ExifTool>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 7.30>
+
+=item *
+
+C<EXE_FILES: exiftool>
+
+=back
+
+=head2 Wed Jul  2 11:55:52 2008: C<Module> L<Math-Matlab|Math-Matlab>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.08>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jul  2 11:56:39 2008: C<Module> L<Config::General|Config::General>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.4>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Jul  5 15:36:15 2008: C<Module> L<IPC::Run|IPC::Run>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.80>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Sat Jul  5 16:01:26 2008: C<Module> L<LSF|LSF>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.9>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Jul  7 10:16:36 2008: C<Module> L<Text::CSV|Text::CSV>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.06>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Jul  7 10:18:46 2008: C<Module> L<File::Slurp|File::Slurp>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 9999.13>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Jul  7 10:18:48 2008: C<Module> L<Text::CSV::Simple|Text::CSV::Simple>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.00>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Jul  7 10:19:27 2008: C<Module> L<Class::Trigger|Class::Trigger>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.13>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Jul  7 10:20:00 2008: C<Module> L<Text::CSV_XS|Text::CSV_XS>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.52>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Jul  7 10:23:09 2008: C<Module> L<Math::Matrix|Math::Matrix>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: >
+
+=item *
+
+C<VERSION: 0.5>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+

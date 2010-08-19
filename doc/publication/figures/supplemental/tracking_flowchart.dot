@@ -1,0 +1,12 @@
+digraph flow {
+    margin = 0
+    fontname="Bitstream Vera Sans"
+
+    init [label = "Initialize Lineages", shape = box]
+    track [label = "Track Live Adhesions", shape = box]
+    mdevents [label = "Detect Merge/Death Events", shape = box]
+    birth [label = "Start New Lineages/Birth", shape = box]
+    analysis [label = "Lineage Analysis", shape = box] 
+
+    init->track->mdevents->birth->{track analysis}
+}

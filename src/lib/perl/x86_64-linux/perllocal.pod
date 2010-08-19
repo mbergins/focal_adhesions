@@ -1,0 +1,198 @@
+=head2 Wed Jul  9 14:10:52 2008: C<Module> L<Imager|Imager>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.65>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jul  9 14:11:02 2008: C<Module> L<Statistics::Descriptive|Statistics::Descriptive>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.6>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jul  9 14:11:18 2008: C<Module> L<Statistics::Distributions|Statistics::Distributions>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.02>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jul  9 14:12:34 2008: C<Module> L<File::Temp|File::Temp>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.20>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jul  9 14:12:44 2008: C<Module> L<File::Path|File::Path>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.04>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Jul  9 14:13:04 2008: C<Module> L<Cwd|Cwd>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 3.2701>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jul 18 15:56:30 2008: C<Module> L<Storable|Storable>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.18>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Sep 21 17:19:54 2009: C<Module> L<Storable|Storable>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.21>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Sep 23 11:40:14 2009: C<Module> L<Storable|Storable>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.21>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
