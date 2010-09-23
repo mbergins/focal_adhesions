@@ -196,3 +196,223 @@ C<EXE_FILES: >
 
 =back
 
+=head2 Wed Dec  2 15:16:50 2009: C<Module> L<Number::Compare|Number::Compare>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.01>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Dec  2 15:16:51 2009: C<Module> L<Text::Glob|Text::Glob>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.08>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Dec  2 15:16:53 2009: C<Module> L<File::Find::Rule|File::Find::Rule>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.32>
+
+=item *
+
+C<EXE_FILES: findrule>
+
+=back
+
+=head2 Mon Jun 21 16:32:52 2010: C<Module> L<Test::Simple|Test::Simple>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.94>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Jun 21 16:33:28 2010: C<Module> L<ExtUtils::MakeMaker|ExtUtils::MakeMaker>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 6.56>
+
+=item *
+
+C<EXE_FILES: bin/instmodsh>
+
+=back
+
+=head2 Mon Jun 21 16:33:30 2010: C<Module> L<Probe::Perl|Probe::Perl>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.01>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Jun 21 16:33:33 2010: C<Module> L<IPC::Run3|IPC::Run3>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.043>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Jun 21 16:33:34 2010: C<Module> L<Test::Script|Test::Script>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.07>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Mon Jun 21 16:33:35 2010: C<Module> L<File::Which|File::Which>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.09>
+
+=item *
+
+C<EXE_FILES: script/pwhich>
+
+=back
+
+=head2 Thu Aug  5 11:52:47 2010: C<Module> L<Math::Combinatorics|Math::Combinatorics>
+
+=over 4
+
+=item *
+
+C<installed into: /afs/isis.unc.edu/home/m/b/mbergins/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.09>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
