@@ -702,9 +702,9 @@ gather_exp_win_residuals <- function(resid, window) {
 
 boxplot_with_points <- function(data,
     colors=c('darkgreen','red','yellow','blue','pink','cyan','gray','orange','brown','purple'),
-    notch=F, names, range=1.5, inc.n.counts = TRUE, inc.points = TRUE, pch=20, na.omit = TRUE,
-    point_cex=0.5, return_output = FALSE, with.median.props = TRUE, 
-    median.props.pos = c(0.5,0.9), median.props.color = 'blue', ...) {
+    notch=F, names, range=1.5, inc.n.counts = TRUE, inc.points = TRUE, pch=20,
+    na.omit = TRUE, point_cex=0.5, return_output = FALSE, with.p.vals = TRUE, 
+    p.vals.pos = c(0.5,0.9), p.vals.color = 'blue', ...) {
 	
     if (any(is.null(data))) {
         print(paste("The data in position", which(is.null(data)), "is null"))
@@ -721,6 +721,7 @@ boxplot_with_points <- function(data,
 	}
 	
 	box.data = boxplot(data,notch = notch,names = names,varwidth=T,range = range,pch=19,cex=0.25,...)
+
     plot_dims = par("usr");
 	if (inc.points) {
 		for (i in 1:length(data)) {
@@ -730,20 +731,28 @@ boxplot_with_points <- function(data,
                    temp_data,col=colors[[i]], pch=pch, cex=point_cex, )
 		}
 	}
-    if (with.median.props) {
-        p_vals = determine_median_p_value(data[[1]], data[[2]]);
-        median_ratio_low = sprintf('%.0f', 100*p_vals$ratio_conf[1]);
-        median_ratio_high = sprintf('%.0f', 100*p_vals$ratio_conf[2]);
+    if (with.p.vals) {
+        data_set_lengths = lapply(data,length);
+        if (any(data_set_lengths > 20000)) {
+            conf_data = wilcox.test(data[[1]], data[[2]], correct=FALSE);
+        } else {
+            conf_data = determine_median_p_value(data[[1]], data[[2]]);
+        }
+
+        x_pos = (plot_dims[2] - plot_dims[1])*p.vals.pos[1] + plot_dims[1]
+        y_pos = (plot_dims[4] - plot_dims[3])*p.vals.pos[2] + plot_dims[3]
         
-        median_ratio_average = (p_vals$median_vals[2] - p_vals$median_vals[1])/p_vals$median_vals[1];
-        median_ratio_average = sprintf('%.0f', 100*median_ratio_average);
+        if (length(conf_data$p.value) > 1) {
+            p_val_text = paste(conf_data$p.value[1],'<p<',conf_data$p.value[2], sep='');
+        } else {
+            if (conf_data$p.value == 0) {
+                p_val_text = 'p<2.2e-16';
+            } else {
+                p_val_text = paste('p=',conf_data$p.value, sep='');
+            }
+        }
 
-        x_pos = (plot_dims[2] - plot_dims[1])*median.props.pos[1] + plot_dims[1]
-        y_pos = (plot_dims[4] - plot_dims[3])*median.props.pos[2] + plot_dims[3]
-
-        text(x_pos,y_pos,
-             paste('p<',p_vals$p_val, sep=''), 
-             col=median.props.color);
+        text(x_pos,y_pos, p_val_text, col=p.vals.color);
     }
     if (return_output) {
         return(box.data);
@@ -1094,8 +1103,8 @@ determine_mean_p_value <- function(data_1,data_2, bootstrap.rep = 10000) {
 	boot_samp_1 = boot(data_1, function(data_1,indexes) mean(data_1[indexes],na.rm=T), bootstrap.rep);
 	boot_samp_2 = boot(data_2, function(data_1,indexes) mean(data_1[indexes],na.rm=T), bootstrap.rep);
 		
-    conf_int_one = boot.ci(boot_samp_1, type="perc", conf=0.95)
-    conf_int_two = boot.ci(boot_samp_2, type="perc", conf=0.95)
+    conf_int_one = boot.ci(boot_samp_1, type="perc", conf=0.99)
+    conf_int_two = boot.ci(boot_samp_2, type="perc", conf=0.99)
 
     results = list();
 
@@ -1119,7 +1128,7 @@ determine_median_p_value <- function(data_1,data_2, bootstrap.rep = 10000) {
 	
     boot_samp_1 = boot(data_1, function(values,indexes) median(values[indexes],na.rm=T), bootstrap.rep);
 	boot_samp_2 = boot(data_2, function(values,indexes) median(values[indexes],na.rm=T), bootstrap.rep);
-	results$p_val = find_p_val_from_bootstrap(boot_samp_1, boot_samp_2);
+	results$p.value = find_p_val_from_bootstrap(boot_samp_1, boot_samp_2);
 	results$median_vals = c(boot_samp_1$t0, boot_samp_2$t0);
 
 	return(results);
@@ -1217,34 +1226,29 @@ gather_stage_lengths <- function(results_1, results_2, bootstrap.rep = 50000, de
 }
 
 find_p_val_from_bootstrap <- function(boot_one, boot_two, 
-	p_vals_to_test = c(seq(0.9,0.11,by=-0.01),0.1,0.05,1E-2,1E-3,1E-4,1E-5)) {
+	p_vals_to_test = c(seq(0.98,0.01,by=-0.01),1E-2,1E-3,1E-4,1E-5)) {
 	
 	stopifnot(class(boot_one) == "boot")
 	stopifnot(class(boot_two) == "boot")
 	
-	overlap_region = c()
-	for (this_val in p_vals_to_test) {
-		if (any(overlap_region)) {
-			next;
-		}
+	correct_p_vals = c(1,0.99);
+    for (this_val in p_vals_to_test) {
 		conf_int_one = boot.ci(boot_one, type="perc", conf=(1-this_val))
 		conf_int_two = boot.ci(boot_two, type="perc", conf=(1-this_val))
 				
 		if (ranges_overlap(conf_int_one$perc[4:5], conf_int_two$perc[4:5])) {
-			overlap_region = c(overlap_region, TRUE)
-		} else {
-			overlap_region = c(overlap_region, FALSE)
+            break;
+        } else {
+            correct_p_vals = c(correct_p_vals,this_val);
 		}
 	}
-	
-	overlap_indexes = which(overlap_region)
-	if (length(overlap_indexes) == 0) {
-		return(p_vals_to_test[length(p_vals_to_test)])
-	} else if (overlap_indexes[1] == 1) {
-		return(overlap_indexes[1]);
-	} else {
-		return(p_vals_to_test[overlap_indexes[1] - 1])
-	}	
+
+    # if (length(correct_p_vals) 
+
+    correct_p_vals = correct_p_vals[(length(correct_p_vals)-1):length(correct_p_vals)];
+	stopifnot(length(correct_p_vals) == 2)
+
+	return(correct_p_vals)
 }
 
 ranges_overlap <- function(range_1, range_2) {
@@ -1394,6 +1398,9 @@ load_data_files <- function(dirs, files, headers = FALSE, inc_exp_names = TRUE, 
 		print(all_files_present_dirs)
         print('');
 	}
+
+    stopifnot(length(all_files_present_dirs) != 0)
+        
 	
 	for (i in 1:length(files)) {
 		results[[i]] = list()

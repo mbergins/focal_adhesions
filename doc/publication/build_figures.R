@@ -46,7 +46,7 @@ dynamic_props = list();
 static_props = list();
 for (exp_type in names(raw_data)) {
     for (property in names(raw_data[[exp_type]])) {
-        if (property == "static_props") {
+        if (property != "intensity") {
             next;
         }
         if (debug) {
@@ -196,7 +196,7 @@ boxplot_with_points(list(processed$only_signif$wild_type$intensity$assembly$slop
                          processed$only_signif$wild_type$intensity$disassembly$slope),
 		    names=c('Assembly', 'Disassembly'), boxwex=0.6, 
 		    ylab=expression(paste('Rate (',min^-1,')',sep='')), 
-            point_cex=0.6, with.median.props=FALSE)
+            point_cex=0.6, with.p.vals=FALSE)
 #95% confidence intervals on the mean from Webb 2004
 #segments(1.4,0.04,1.4,0.2,lwd=2)
 #segments(1.35,0.12,1.45,0.12,lwd=2)
@@ -459,18 +459,19 @@ par(bty='n', mar=c(2,4,0,0))
 max_area = max(c(static_props$wild_type$Area, static_props$S178A$Area));
 
 # boxplot_with_points(list(static_props$wild_type$Area, static_props$S178A$Area), 
-#     names=c('Wild-type','S178A'), inc.points=FALSE, with.median.props=FALSE, 
+#     names=c('Wild-type','S178A'), inc.points=FALSE, with.p.vals=FALSE, 
 #     ylim=c(0,max_area*1.1), ylab='Area (\u03BCm\u00B2)')
-boxplot(list(static_props$wild_type$Area, static_props$S178A$Area), 
-    names=c('Wild-type','S178A'), ylab='FA Area (\u03BCm\u00B2)', range=0)
+boxplot_with_points(list(static_props$wild_type$Area, static_props$S178A$Area), 
+    names=c('Wild-type','S178A'), ylab='FA Area (\u03BCm\u00B2)', range=0, inc.points=FALSE,
+    inc.n.counts=FALSE)
 
-(mean(static_props$wild_type$Area) - mean(static_props$S178A$Area))/mean(static_props$wild_type$Area)
-
-plot_dims = par("usr");
-x_pos = (plot_dims[2] - plot_dims[1])*0.5 + plot_dims[1]
-y_pos = (plot_dims[4] - plot_dims[3])*0.9 + plot_dims[3]
-
-text(x_pos,y_pos, 'p<1e-05', col="blue");
+# (mean(static_props$wild_type$Area) - mean(static_props$S178A$Area))/mean(static_props$wild_type$Area)
+# 
+# plot_dims = par("usr");
+# x_pos = (plot_dims[2] - plot_dims[1])*0.5 + plot_dims[1]
+# y_pos = (plot_dims[4] - plot_dims[3])*0.9 + plot_dims[3]
+# 
+# text(x_pos,y_pos, 'p<1e-05', col="blue");
 
 # bar_length = max_area*0.05;
 # sep_from_data = max_area*0.025;
@@ -483,16 +484,19 @@ mtext('A',adj=-.25,side=3,line=-1.5,cex=1.5)
 max_axial = max(c(static_props$wild_type$ax, static_props$S178A$ax));
 # max_axial = 8;
 
-boxplot(list(static_props$wild_type$ax, static_props$S178A$ax), 
-    names=c('Wild-type','S178A'), ylab='Axial Ratio', range = 0, ylim = c(0, max_axial))
+# boxplot(list(static_props$wild_type$ax, static_props$S178A$ax), 
+#     names=c('Wild-type','S178A'), ylab='Axial Ratio', range = 0, ylim = c(0, max_axial))
+boxplot_with_points(list(static_props$wild_type$ax, static_props$S178A$ax), 
+    names=c('Wild-type','S178A'), ylab='Axial Ratio', range=0, inc.points=FALSE,
+    inc.n.counts=FALSE)
 
-(mean(static_props$wild_type$ax) - mean(static_props$S178A$ax))/mean(static_props$wild_type$ax)
-
-plot_dims = par("usr");
-x_pos = (plot_dims[2] - plot_dims[1])*0.5 + plot_dims[1]
-y_pos = (plot_dims[4] - plot_dims[3])*0.9 + plot_dims[3]
-
-text(x_pos,y_pos, 'p<1e-05', col="blue");
+# (mean(static_props$wild_type$ax) - mean(static_props$S178A$ax))/mean(static_props$wild_type$ax)
+# 
+# plot_dims = par("usr");
+# x_pos = (plot_dims[2] - plot_dims[1])*0.5 + plot_dims[1]
+# y_pos = (plot_dims[4] - plot_dims[3])*0.9 + plot_dims[3]
+# 
+# text(x_pos,y_pos, 'p<1e-05', col="blue");
 # bar_length = max_axial*0.05;
 # sep_from_data = max_axial*0.025;
 # 
@@ -577,7 +581,7 @@ boxplot_with_points(list(wt_only_signif$as$slope,S178A_only_signif$as$slope),
     ylim = c(0,max_rate),
     ylab=expression(paste('Assembly Rate (',min^-1,')',sep='')),
     inc.points=FALSE,
-    median.props.pos = c(0.5,0.9)
+    p.vals.pos = c(0.5,0.9)
 )
 mtext('A',adj=-.25,side=3,line=-1.5,cex=1.5)	    
 
@@ -588,7 +592,7 @@ boxplot_with_points(list(wt_only_signif$dis$slope,S178A_only_signif$dis$slope),
     ylim = c(0,max_rate),
     ylab=expression(paste('Disassembly Rate (',min^-1,')',sep='')),
     inc.points = FALSE,
-    median.props.pos = c(0.5,0.9)
+    p.vals.pos = c(0.5,0.9)
 )
 mtext('B',adj=-.25,side=3,line=-1.5,cex=1.5)
 
@@ -602,7 +606,7 @@ boxplot_with_points(list(wt_only_signif$as$edge_dist,S178A_only_signif$as$edge_d
     colors=c('orange','blue'),
     ylab='Distance from Edge at Birth (\u03BCm)',
     inc.points = FALSE,
-    median.props.pos = c(0.5,0.9)
+    p.vals.pos = c(0.5,0.9)
 )
 mtext('C',adj=-.25,side=3,line=-1.5,cex=1.5)
 
@@ -613,7 +617,7 @@ boxplot_with_points(list(wt_only_signif$dis$edge_dist,S178A_only_signif$dis$edge
     colors=c('orange','blue'),
     ylab='Distance from Edge at Death (\u03BCm)', 
     inc.points = FALSE,
-    median.props.pos = c(0.5,0.9)
+    p.vals.pos = c(0.5,0.9)
 )
 mtext('D',adj=-.25,side=3,line=-1.5,cex=1.5)	    
 
@@ -649,7 +653,7 @@ boxplot_with_points(list(wt_only_signif$as$slope,S178A_only_signif$as$slope),
     ylim = c(0,max_rate*1.1),
     ylab=expression(paste('Assembly Rate (',min^-1,')',sep='')),
     inc.points=FALSE,
-    with.median.props=FALSE
+    with.p.vals=FALSE
 )
 
 bar_length = max_rate*0.05;
@@ -669,7 +673,7 @@ boxplot_with_points(list(wt_only_signif$dis$slope,S178A_only_signif$dis$slope),
     ylim = c(0,max_rate*1.1),
     ylab=expression(paste('Disassembly Rate (',min^-1,')',sep='')),
     inc.points = FALSE,
-    with.median.props=FALSE
+    with.p.vals=FALSE
 )
 
 bar_length = max_rate*0.05;
@@ -692,7 +696,7 @@ boxplot_with_points(list(wt_only_signif$as$edge_dist,S178A_only_signif$as$edge_d
     colors=c('orange','blue'),
     ylab='Distance from Edge at Birth (\u03BCm)',
     inc.points = FALSE,
-    with.median.props=FALSE
+    with.p.vals=FALSE
 )
 
 bar_length = max_dist*0.05;
@@ -712,7 +716,7 @@ boxplot_with_points(list(wt_only_signif$dis$edge_dist,S178A_only_signif$dis$edge
     colors=c('orange','blue'),
     ylab='Distance from Edge at Death (\u03BCm)', 
     inc.points = FALSE,
-    with.median.props=FALSE
+    with.p.vals=FALSE
 )
 mtext('D',adj=-.25,side=3,line=-1.5,cex=1.5)	    
 
@@ -727,27 +731,27 @@ print('Done with S178A Comparisons')
 #Dynamics
 ########################################
 
-dir.create(file.path(out_folder,'FAK'), recursive=TRUE, showWarnings=FALSE);
-svg(file.path(out_folder,'FAK','FAK_vs_wild-type.svg'))
-layout(rbind(c(1,2),c(3,4)))
-par(bty='n', mar=c(2,4.2,1,0))
-
-boxplot(list(static_props$wild_type$Area, static_props$FAK$Area), 
-    names=c('Wild-type','FAK'), ylab='FA Area (\u03BCm\u00B2)', range=0)
-mtext('A',adj=-.25,side=3,line=-1.5,cex=1.5)	    
-
-(mean(static_props$wild_type$Area) - mean(static_props$FAK$Area))/mean(static_props$wild_type$Area)
-
-boxplot(list(static_props$wild_type$ax, static_props$FAK$ax), 
-    names=c('Wild-type','FAK'), ylab='Axial Ratio', range = 0 )
-mtext('B',adj=-.25,side=3,line=-1.5,cex=1.5)	    
-
-(mean(static_props$wild_type$ax) - mean(static_props$FAK$ax))/mean(static_props$wild_type$ax)
-
 # dir.create(file.path(out_folder,'FAK'), recursive=TRUE, showWarnings=FALSE);
-# svg(file.path(out_folder,'FAK','FAK_vs_wild-type_dynamics.svg'), height=3.5, width=8)
-# layout(cbind(1,2))
+# svg(file.path(out_folder,'FAK','FAK_vs_wild-type.svg'))
+# layout(rbind(c(1,2),c(3,4)))
 # par(bty='n', mar=c(2,4.2,1,0))
+# 
+# boxplot(list(static_props$wild_type$Area, static_props$FAK$Area), 
+#     names=c('Wild-type','FAK'), ylab='FA Area (\u03BCm\u00B2)', range=0)
+# mtext('A',adj=-.25,side=3,line=-1.5,cex=1.5)	    
+# 
+# (mean(static_props$wild_type$Area) - mean(static_props$FAK$Area))/mean(static_props$wild_type$Area)
+# 
+# boxplot(list(static_props$wild_type$ax, static_props$FAK$ax), 
+#     names=c('Wild-type','FAK'), ylab='Axial Ratio', range = 0 )
+# mtext('B',adj=-.25,side=3,line=-1.5,cex=1.5)	    
+# 
+# (mean(static_props$wild_type$ax) - mean(static_props$FAK$ax))/mean(static_props$wild_type$ax)
+
+dir.create(file.path(out_folder,'FAK'), recursive=TRUE, showWarnings=FALSE);
+svg(file.path(out_folder,'FAK','FAK_vs_wild-type_dynamics.svg'), height=3.5, width=8)
+layout(cbind(1,2))
+par(bty='n', mar=c(2,4.2,0.2,0))
 
 wt_only_signif = processed$only_signif$wild_type$intensity;
 FAK_only_signif = processed$only_signif$FAK$intensity;
@@ -756,26 +760,27 @@ max_rate = max(c(wt_only_signif$as$slope,FAK_only_signif$as$slope,
                  wt_only_signif$dis$slope,FAK_only_signif$dis$slope));
 
 #Panel Assembly Rates
+par(bty='n', mar=c(2,4.2,0.2,-1))
 boxplot_with_points(list(wt_only_signif$as$slope,FAK_only_signif$as$slope), 
-    names=c('Wild-type','FAK'), 
+    names=c('Paxillin','FAK'), 
     colors=c('orange','blue'),
     ylim = c(0,max_rate),
     ylab=expression(paste('Assembly Rate (',min^-1,')',sep='')),
     inc.points=FALSE,
-    median.props.pos = c(0.5,0.9)
+    p.vals.pos = c(0.5,0.9)
 )
-mtext('C',adj=-.25,side=3,line=-1.5,cex=1.5)	    
+mtext('A',adj=-.25,side=3,line=-1.5,cex=1.5)	    
 
 #Panel Disassembly Rates
 boxplot_with_points(list(wt_only_signif$dis$slope,FAK_only_signif$dis$slope), 
-    names=c('Wild-type','FAK'), 
+    names=c('Paxillin','FAK'), 
     colors=c('orange','blue'),
     ylim = c(0,max_rate),
     ylab=expression(paste('Disassembly Rate (',min^-1,')',sep='')),
     inc.points = FALSE,
-    median.props.pos = c(0.5,0.9)
+    p.vals.pos = c(0.5,0.9)
 )
-mtext('D',adj=-.25,side=3,line=-1.5,cex=1.5)
+mtext('B',adj=-.25,side=3,line=-1.5,cex=1.5)
 
 graphics.off()
 print('Done with FAK Comparisons')
