@@ -211,6 +211,7 @@ for i = 1:max_image_num
     if (exist(fullfile(I_folder,padded_i_num,edge_filename),'file'))
         cell_edge = bwperim(imread(fullfile(I_folder,padded_i_num,edge_filename)));
         edge_image_ad = create_highlighted_image(edge_image_ad,cell_edge,'color_map',edge_cmap(i_seen,:));
+        highlighted_all = create_highlighted_image(highlighted_all,cell_edge,'color_map',edge_cmap(i_seen,:));
     end
     edge_image_ad = create_highlighted_image(edge_image_ad,im2bw(ad_label_perim,0),'color_map',edge_cmap(i_seen,:));
     
