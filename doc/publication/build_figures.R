@@ -458,51 +458,14 @@ par(bty='n', mar=c(2,4,0,0))
 
 max_area = max(c(static_props$wild_type$Area, static_props$S178A$Area));
 
-# boxplot_with_points(list(static_props$wild_type$Area, static_props$S178A$Area), 
-#     names=c('Wild-type','S178A'), inc.points=FALSE, with.p.vals=FALSE, 
-#     ylim=c(0,max_area*1.1), ylab='Area (\u03BCm\u00B2)')
 boxplot_with_points(list(static_props$wild_type$Area, static_props$S178A$Area), 
     names=c('Wild-type','S178A'), ylab='FA Area (\u03BCm\u00B2)', range=0, inc.points=FALSE,
     inc.n.counts=FALSE)
-
-# (mean(static_props$wild_type$Area) - mean(static_props$S178A$Area))/mean(static_props$wild_type$Area)
-# 
-# plot_dims = par("usr");
-# x_pos = (plot_dims[2] - plot_dims[1])*0.5 + plot_dims[1]
-# y_pos = (plot_dims[4] - plot_dims[3])*0.9 + plot_dims[3]
-# 
-# text(x_pos,y_pos, 'p<1e-05', col="blue");
-
-# bar_length = max_area*0.05;
-# sep_from_data = max_area*0.025;
-# 
-# upper_left = c(1, max_area + sep_from_data + bar_length);
-# lower_right = c(2, max_area + sep_from_data);
-# plot_signif_bracket(upper_left, lower_right,over_text='*');
 mtext('A',adj=-.25,side=3,line=-1.5,cex=1.5)	    
 
-max_axial = max(c(static_props$wild_type$ax, static_props$S178A$ax));
-# max_axial = 8;
-
-# boxplot(list(static_props$wild_type$ax, static_props$S178A$ax), 
-#     names=c('Wild-type','S178A'), ylab='Axial Ratio', range = 0, ylim = c(0, max_axial))
 boxplot_with_points(list(static_props$wild_type$ax, static_props$S178A$ax), 
     names=c('Wild-type','S178A'), ylab='Axial Ratio', range=0, inc.points=FALSE,
     inc.n.counts=FALSE)
-
-# (mean(static_props$wild_type$ax) - mean(static_props$S178A$ax))/mean(static_props$wild_type$ax)
-# 
-# plot_dims = par("usr");
-# x_pos = (plot_dims[2] - plot_dims[1])*0.5 + plot_dims[1]
-# y_pos = (plot_dims[4] - plot_dims[3])*0.9 + plot_dims[3]
-# 
-# text(x_pos,y_pos, 'p<1e-05', col="blue");
-# bar_length = max_axial*0.05;
-# sep_from_data = max_axial*0.025;
-# 
-# upper_left = c(1, max_axial + sep_from_data + bar_length);
-# lower_right = c(2, max_axial + sep_from_data);
-# plot_signif_bracket(upper_left, lower_right,over_text='*');
 mtext('B',adj=-.25,side=3,line=-1.5,cex=1.5)	    
 graphics.off()
 
