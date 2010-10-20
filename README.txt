@@ -12,13 +12,38 @@ should see three folders:
 	statistical analysis is in this folder
 
 In addition to the programs in the src folder, I also expect that you have
-working installations of MATLAB and R.
+working installations of MATLAB and R. There are also several needed perl
+libraries, all of which can be installed from CPAN:
 
-There is a master control script that should be used to process your image,
+	-Benchmark
+	-Config::General
+	-Cwd
+	-Data::Dumper
+	-File::Basename
+	-File::Copy
+	-File::Find
+	-File::Find::Rule
+	-File::Path
+	-File::Spec::Functions
+	-File::Temp
+	-Getopt::Long
+	-IO::File
+	-IO::Handle
+	-Image::ExifTool
+	-Math::Matlab::Local
+	-Math::Matrix
+	-Math::Trig
+	-POSIX
+	-Statistics::Descriptive
+	-Statistics::Distributions
+	-Storable
+	-Text::CSV::Simple
+
+There is a master control script that should be used to process your images,
 located at 'src/scripts/build_all_images.pl'. It expects a single command line
-parameter, namely a config file. In order to get started a sample data set has
-been provided. This zip file should be unzipped into the data directory.
-Working from the 'src/scripts' directory, exclude the command:
+parameter, a config file. In order to get started a sample data set has been
+provided. This zip file should be unzipped into the data directory.  Working
+from the 'src/scripts' directory, exclude the command:
 
 	./build_all_results.pl -cfg ../../data/config/FA_default.cfg
 
@@ -48,4 +73,5 @@ might be interested in are:
 	rates filtered to only include the significant and positive rates, you can
 	see the unfiltered rates in the with a similar name in the same folder. If
 	you are interested in seeing a specific adhesion from the experiment, cross
-	reference the "lineage_num" with the images in 'visulizations/single_ad'
+	reference the "lineage_num" column with the images in
+	'visulizations/single_ad'
