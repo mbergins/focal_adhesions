@@ -1,3 +1,5 @@
+Introduction:
+
 Congradulations, you have downloaded the focal adhesion analysis suite. You
 should see three folders:
 
@@ -11,9 +13,17 @@ should see three folders:
 	-src: all the source code that processes the images and conducts the
 	statistical analysis is in this folder
 
+
+Pre-requisites:
+
 In addition to the programs in the src folder, I also expect that you have
-working installations of MATLAB and R. There are also several needed perl
-libraries, all of which can be installed from CPAN:
+working installations of MATLAB and R. You will also need to download and put in
+your MATLAB path a set of freely available scripts used to find curve extremas:
+
+	-http://www.mathworks.com/matlabcentral/fileexchange/12275-extrema-m-extrema2-m
+
+There are also several needed perl libraries, all of which can be installed from
+CPAN:
 
 	-Benchmark
 	-Config::General
@@ -38,6 +48,9 @@ libraries, all of which can be installed from CPAN:
 	-Statistics::Distributions
 	-Storable
 	-Text::CSV::Simple
+
+
+Sample Experiment and Results:
 
 There is a master control script that should be used to process your images,
 located at 'src/scripts/build_all_images.pl'. It expects a single command line
