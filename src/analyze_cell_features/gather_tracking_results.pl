@@ -277,6 +277,11 @@ sub gather_and_output_lineage_properties {
     $props{ad_sig} = &gather_average_value($props{Average_adhesion_signal});
     undef $props{Average_adhesion_signal};
     
+	$props{MajorAxisLength} = &gather_prop_seq("MajorAxisLength");
+    $props{MinorAxisLength} = &gather_prop_seq("MinorAxisLength");
+	$props{axial_ratio} = &gather_prop_ratio($props{"MajorAxisLength"},$props{"MinorAxisLength"});
+	$props{mean_axial_ratio} = &gather_average_value($props{axial_ratio});
+	
     $props{Centroid_x} = &gather_prop_seq("Centroid_x");
     $props{start_x} = &gather_first_entry($props{Centroid_x});
     $props{end_x} = &gather_last_entry($props{Centroid_x});
@@ -309,6 +314,7 @@ sub gather_and_output_lineage_properties {
         $props{Centroid_dist_from_center} = &gather_prop_seq("Centroid_dist_from_center");
         &output_prop_time_series($props{Centroid_dist_from_center}, "Centroid_dist_from_center");
         $props{starting_center_dist} = &gather_first_entry($props{Centroid_dist_from_center});
+        $props{mean_center_dist}   = &gather_average_value($props{Centroid_dist_from_center});
         $props{ending_center_dist}   = &gather_last_entry($props{Centroid_dist_from_center});
         undef $props{Centroid_dist_from_center};
     }
@@ -317,6 +323,7 @@ sub gather_and_output_lineage_properties {
         $props{Centroid_dist_from_edge} = &gather_prop_seq("Centroid_dist_from_edge");
         &output_prop_time_series($props{Centroid_dist_from_edge}, "Centroid_dist_from_edge");
         $props{starting_edge_dist} = &gather_first_entry($props{Centroid_dist_from_edge});
+        $props{mean_edge_dist} = &gather_average_value($props{Centroid_dist_from_edge});
         $props{ending_edge_dist}   = &gather_last_entry($props{Centroid_dist_from_edge});
         undef $props{Centroid_dist_from_edge};
     }
@@ -633,6 +640,24 @@ sub gather_average_value {
     return \@pax_sig;
 }
 
+sub gather_prop_ratio {
+    my @signal_1 = @{ $_[0] };
+    my @signal_2 = @{ $_[1] };
+
+    print "\r", " " x 80, "\rGathering Ratio Values" if $opt{debug};
+    my @ratios;
+    for my $i (0 .. $#signal_1) {
+        for my $j (0 .. $#{ $signal_1[$i] }) {
+            if ($signal_1[$i][$j] ne "NaN" && $signal_2[$i][$j] ne "NaN") {
+				push @{$ratios[$i]}, $signal_1[$i][$j]/$signal_2[$i][$j];
+			} else {
+				push @{$ratios[$i]}, "NaN";
+			}
+        }
+    }
+    return \@ratios;
+}
+
 sub gather_adhesion_speeds {
     my @speed;
     my @velocity;
@@ -746,9 +771,10 @@ sub gather_split_birth_status {
 sub gather_lineage_summary_data {
     my %props          = %{ $_[0] };
 	my @possible_props = qw(longevity largest_area mean_area starting_edge_dist
-		ending_edge_dist starting_center_dist ending_center_dist merge_count
-		death_status split_birth_status average_speeds max_speeds ad_sig birth_i_num
-		start_x start_y death_i_num end_x end_y);
+	mean_edge_dist ending_edge_dist starting_center_dist mean_center_dist
+	ending_center_dist merge_count death_status split_birth_status
+	average_speeds max_speeds ad_sig birth_i_num start_x start_y death_i_num
+	end_x end_y mean_axial_ratio); 
 	
     my @lin_summary_data;
     for (@possible_props) {
