@@ -1,0 +1,59 @@
+\documentclass[letterpaper,12pt]{article}
+
+\usepackage[pdftex]{color,graphicx}
+
+\usepackage{caption}
+
+\pdfpagewidth=\paperwidth
+\pdfpageheight=\paperheight
+
+\usepackage{times}
+\usepackage{setspace}
+\usepackage{datetime}
+\usepackage{placeins}
+
+\usepackage{anysize}
+\marginsize{1in}{1in}{0.45in}{0.45in}
+
+\newcommand{\insertfigure}[2][1.0]{
+	\begin{center}
+	\begin{figure}[htbp]
+	\includegraphics[width=#1\textwidth]{#2}
+	\caption{}
+	\end{figure}
+	\end{center}
+}
+
+\begin{document}
+
+\section*{FA Paper Figures}
+
+\insertfigure[0.9]{../../figures/FA_workflow/graphic_workflow.png}
+\insertfigure{../../figures/statics/statics}
+\insertfigure[0.8]{../../figures/kinetics/kinetics}
+\insertfigure{../../figures/spatial/spatial}
+\insertfigure{../../figures/FAK/FAK_vs_Paxillin_dynamics}
+\insertfigure{../../figures/S178A/statics_comparisons}
+\insertfigure{../../figures/S178A/S178A_vs_wild-type}
+\insertfigure{../../figures/lifetimes/adhesion_phase_lifetimes_alt}
+\insertfigure{../../figures/S178A/sample_timecourse_no_legend}
+
+\FloatBarrier
+\section*{Supplemental Figures}
+\renewcommand{\figurename}{Figure S}
+\setcounter{figure}{0}
+
+\insertfigure{../../figures/supplemental/R_squared}
+\insertfigure{../../figures/FAK/FAK_vs_Paxillin_statics}
+\insertfigure[0.8]{../../figures/supplemental/tracking_flowchart}
+\insertfigure[0.8]{../../figures/parameter_variation/comparison_assembly}
+\insertfigure[0.8]{../../figures/parameter_variation/comparison_disassembly}
+\insertfigure{../../figures/controls/assembly_length_variation}
+\insertfigure{../../figures/controls/disassembly_length_variation}
+\insertfigure{../../figures/parameter_variation/resampled_wt_slopes}
+\insertfigure{../../figures/parameter_variation/resampled_S178A_slopes}
+\insertfigure{../../figures/simulation/stationary_results}
+\insertfigure[0.8]{../../figures/simulation/moving_results}
+\insertfigure{../../figures/simulation/kinetics_results}
+
+\end{document}
