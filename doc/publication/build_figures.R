@@ -35,12 +35,12 @@ raw_data$FAK$intensity = load_results(exp_dirs,file.path('intensity.Rdata'));
 raw_data$FAK$static_props <- load_data_files(exp_dirs, 
     file.path('..','individual_adhesions.csv'), headers=T, debug=FALSE, inc_exp_names=FALSE);
 
-exp_dirs <- Sys.glob('../../results/FAK_cell_edge/*/adhesion_props/models/')
-exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
-
-raw_data$FAK_edge$intensity = load_results(exp_dirs,file.path('intensity.Rdata'));
-raw_data$FAK_edge$static_props <- load_data_files(exp_dirs, 
-    file.path('..','individual_adhesions.csv'), headers=T, debug=FALSE, inc_exp_names=FALSE);
+# exp_dirs <- Sys.glob('../../results/FAK_cell_edge/*/adhesion_props/models/')
+# exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
+# 
+# raw_data$FAK_edge$intensity = load_results(exp_dirs,file.path('intensity.Rdata'));
+# raw_data$FAK_edge$static_props <- load_data_files(exp_dirs, 
+#     file.path('..','individual_adhesions.csv'), headers=T, debug=FALSE, inc_exp_names=FALSE);
 
 print('Done Loading Data')
 
@@ -132,22 +132,21 @@ plot.new()
 mtext('C',adj=-.31,side=3,line=0,cex=1.5)
 
 #Histograms
-par(bty='n', mar=c(4,4.2,0,0.1))
-area_data = static_props$wild_type$Area[static_props$wild_type$Area < 5];
-area_hist = hist(area_data, main="", ylab = "FA Count", 
-	 xlab = 'FA Area (\u03BCm\u00B2)');
+par(bty='n', mar=c(4,4,0,0.1), mgp=c(2.1,1,0))
+area_hist = hist(dynamic_props$wild_type$mean_area, main="", ylab = "FA Count",
+    xlab = 'Mean FA Area (\u03BCm\u00B2)',breaks = seq(0,5.5,by=0.25));
     
 #area_hist_model = lm(log(area_hist$counts) ~area_hist$mids);
 #predictions = exp(predict(area_hist_model))
 #lines(area_hist$mids,predictions, col='red', lwd=2)
 
-mtext('D',adj=-.2,side=3,line=-0.25,cex=1.5)
-hist(static_props$wild_type$ad_sig, main="", ylab = "FA Count", xlab = "Normalized Average Paxillin Intensity")
+mtext('D',adj=-.19,side=3,line=-0.25,cex=1.5)
+hist(dynamic_props$wild_type$ad_sig, main="", ylab = "FA Count", xlab = "Normalized Average Paxillin Intensity")
 
-par(bty='n', mar=c(4,4.2,1.2,0.1))
-hist(static_props$wild_type$ax[static_props$wild_type$ax < 8], main="", ylab = "FA Count",  xlab = "Axial Ratio")
-hist(static_props$wild_type$cent_dist, main="", ylab = "FA Count",  
-	 xlab = expression(paste("Distance from Edge (", symbol("m"), m, ')',sep='')))
+par(bty='n', mar=c(4,4,1.2,0.1), mgp=c(2.1,1,0))
+hist(dynamic_props$wild_type$mean_axial_ratio, main="", ylab = "FA Count",  xlab = "Mean Axial Ratio")
+hist(dynamic_props$wild_type$mean_edge_dist, main="", ylab = "FA Count",  
+	 xlab = expression(paste("Mean Distance from Edge (", symbol("m"), m, ')',sep='')))
 hist(dynamic_props$wild_type$longevity, main="", ylab = "FA Count",  xlab = "Longevity (min)")
 graphics.off()
 
@@ -203,7 +202,7 @@ boxplot_with_points(list(processed$only_signif$wild_type$intensity$assembly$slop
                          processed$only_signif$wild_type$intensity$disassembly$slope),
 		    names=c('Assembly', 'Disassembly'), boxwex=0.6, 
 		    ylab=expression(paste('Rate (',min^-1,')',sep='')), 
-            point_cex=0.6, with.p.vals=FALSE)
+            point_cex=0.6, with.p.values=FALSE)
 #95% confidence intervals on the mean from Webb 2004
 #segments(1.4,0.04,1.4,0.2,lwd=2)
 #segments(1.35,0.12,1.45,0.12,lwd=2)
@@ -463,18 +462,20 @@ svg(file.path(out_folder,'S178A','statics_comparisons.svg'), height=3.5)
 layout(cbind(1,2))
 par(bty='n', mar=c(2,4,0,0))
 
-max_area = max(c(static_props$wild_type$Area, static_props$S178A$Area));
-
-boxplot_with_points(list(static_props$wild_type$Area, static_props$S178A$Area), 
-    names=c('Wild-type','S178A'), ylab='FA Area (\u03BCm\u00B2)', range=0, inc.points=FALSE,
+boxplot_with_points(list(dynamic_props$wild_type$mean_area, dynamic_props$S178A$mean_area), 
+    names=c('Wild-type','S178A'), ylab='Mean FA Area (\u03BCm\u00B2)', inc.points=FALSE,
     inc.n.counts=FALSE)
 mtext('A',adj=-.25,side=3,line=-1.5,cex=1.5)	    
 
-boxplot_with_points(list(static_props$wild_type$ax, static_props$S178A$ax), 
-    names=c('Wild-type','S178A'), ylab='Axial Ratio', range=0, inc.points=FALSE,
+boxplot_with_points(list(dynamic_props$wild_type$mean_axial_ratio, dynamic_props$S178A$mean_axial_ratio), 
+    names=c('Wild-type','S178A'), ylab='Mean Axial Ratio', inc.points=FALSE,
     inc.n.counts=FALSE)
 mtext('B',adj=-.25,side=3,line=-1.5,cex=1.5)	    
 graphics.off()
+
+#mean change percentages
+(mean(dynamic_props$wild_type$mean_area) - mean(dynamic_props$S178A$mean_area))/mean(dynamic_props$wild_type$mean_area)
+(mean(dynamic_props$wild_type$mean_axial_ratio) - mean(dynamic_props$S178A$mean_axial_ratio))/mean(dynamic_props$wild_type$mean_axial_ratio)
 
 ########################################
 #Lifetime Phases
@@ -698,40 +699,44 @@ print('Done with S178A Comparisons')
 #############################################################
 
 ########################################
-# Statics/Spacial
+# Statics
 ########################################
 dir.create(file.path(out_folder,'FAK'), recursive=TRUE, showWarnings=FALSE);
-svg(file.path(out_folder,'FAK','FAK_vs_Paxillin_statics_spatial.svg'), height=7, width=7)
-layout(rbind(c(1,2),c(3,4)))
+svg(file.path(out_folder,'FAK','FAK_vs_Paxillin_statics.svg'), height=3.5, width=7)
+layout(rbind(c(1,2)))
 par(bty='n', mar=c(2,4.2,0.2,0))
 
-boxplot_with_points(list(static_props$wild_type$Area, static_props$FAK$Area), 
-    names=c('Paxillin','FAK'), ylab='FA Area (\u03BCm\u00B2)', range=0, inc.points=F, inc.n.counts=F, 
+boxplot_with_points(list(dynamic_props$wild_type$mean_area, dynamic_props$FAK$mean_area), 
+    names=c('Paxillin','FAK'), ylab='Mean FA Area (\u03BCm\u00B2)', inc.points=F, inc.n.counts=F, 
     with.p.values=T)
-mtext('A',adj=-.25,side=3,line=-1.5,cex=1.5)	    
+mtext('A',adj=-.25,side=3,line=-1.5,cex=1.5)
 
-(mean(static_props$wild_type$Area) - mean(static_props$FAK$Area))/mean(static_props$wild_type$Area)
 
-boxplot_with_points(list(static_props$wild_type$ax, static_props$FAK$ax), 
-    names=c('Paxillin','FAK'), ylab='Axial Ratio', range = 0, inc.points=F, inc.n.counts=F,
+boxplot_with_points(list(dynamic_props$wild_type$mean_axial_ratio, dynamic_props$FAK$mean_axial_ratio), 
+    names=c('Paxillin','FAK'), ylab='Mean Axial Ratio', inc.points=F, inc.n.counts=F,
     with.p.values=T)
 mtext('B',adj=-.25,side=3,line=-1.5,cex=1.5)	    
 
-(mean(static_props$wild_type$ax) - mean(static_props$FAK$ax))/mean(static_props$wild_type$ax)
+graphics.off()
 
-boxplot_with_points(list(processed$no_filt$FAK_edge$intensity$assembly$edge_dist, 
-                         processed$no_filt$wild_type$intensity$assembly$edge_dist),
-       names=c('FAK','WT'), 
-       ylab='Distance from Edge at Birth (\u03BCm)',
-       with.p.values=T)
-mtext('C',adj=-.25,side=3,line=-1.5,cex=1.5)	    
+#mean change percentages
+(mean(dynamic_props$wild_type$mean_area) - mean(dynamic_props$FAK$mean_area))/mean(dynamic_props$wild_type$mean_area)
+(mean(dynamic_props$wild_type$mean_axial_ratio) - mean(dynamic_props$FAK$mean_axial_ratio))/mean(dynamic_props$wild_type$mean_axial_ratio)
 
-boxplot_with_points(list(processed$no_filt$FAK_edge$intensity$disassembly$edge_dist, 
-                         processed$no_filt$wild_type$intensity$disassembly$edge_dist),
-       names=c('FAK','WT'), 
-       ylab='Distance from Edge at Death (\u03BCm)',
-       with.p.values=T)
-mtext('D',adj=-.25,side=3,line=-1.5,cex=1.5)	    
+
+# boxplot_with_points(list(processed$no_filt$FAK_edge$intensity$assembly$edge_dist, 
+#                          processed$no_filt$wild_type$intensity$assembly$edge_dist),
+#        names=c('FAK','WT'), 
+#        ylab='Distance from Edge at Birth (\u03BCm)',
+#        with.p.values=T)
+# mtext('C',adj=-.25,side=3,line=-1.5,cex=1.5)	    
+# 
+# boxplot_with_points(list(processed$no_filt$FAK_edge$intensity$disassembly$edge_dist, 
+#                          processed$no_filt$wild_type$intensity$disassembly$edge_dist),
+#        names=c('FAK','WT'), 
+#        ylab='Distance from Edge at Death (\u03BCm)',
+#        with.p.values=T)
+# mtext('D',adj=-.25,side=3,line=-1.5,cex=1.5)	    
 graphics.off()
 
 ########################################
@@ -740,7 +745,7 @@ graphics.off()
 dir.create(file.path(out_folder,'FAK'), recursive=TRUE, showWarnings=FALSE);
 svg(file.path(out_folder,'FAK','FAK_vs_Paxillin_dynamics.svg'), height=3.5, width=8)
 layout(cbind(1,2))
-par(bty='n', mar=c(2,4.2,0.2,0))
+par(bty='n', mar=c(2,4.2,0.3,0))
 
 wt_only_signif = processed$only_signif$wild_type$intensity;
 FAK_only_signif = processed$only_signif$FAK$intensity;
@@ -749,7 +754,6 @@ max_rate = max(c(wt_only_signif$as$slope,FAK_only_signif$as$slope,
                  wt_only_signif$dis$slope,FAK_only_signif$dis$slope));
 
 #Panel Assembly Rates
-par(bty='n', mar=c(2,4.2,0.2,-1))
 boxplot_with_points(list(wt_only_signif$as$slope,FAK_only_signif$as$slope), 
     names=c('Paxillin','FAK'), 
     colors=c('orange','blue'),
@@ -772,6 +776,9 @@ boxplot_with_points(list(wt_only_signif$dis$slope,FAK_only_signif$dis$slope),
 mtext('B',adj=-.25,side=3,line=-1.5,cex=1.5)
 
 graphics.off()
+
+FAK_vs_Pax_interval_str = list();
+FAK_vs_Pax_interval_str$assembly = print_ratio_conf_string(wt_only_signif$as$slope,FAK_only_signif$as$slope);
+FAK_vs_Pax_interval_str$disassembly = print_ratio_conf_string(wt_only_signif$dis$slope,FAK_only_signif$dis$slope);
+
 print('Done with FAK Comparisons')
-
-
