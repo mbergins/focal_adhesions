@@ -108,6 +108,11 @@ S178A_exp_average_int = find_mean_from_list(raw_data$S178A$average_cell_intensit
 S178A_exp_average_noad_int = find_mean_from_list(raw_data$S178A$average_noad_intensity);
 S178A_exp_average_ad_int = find_mean_from_list(raw_data$S178A$average_ad_intensity);
 
+#comparing overall average cell intensity, without FAs, and only FAs
+
+##########
+#boxplot_version
+##########
 dir.create(dirname(file.path(out_folder,'per_cell_comparisons','fluor_intensity.svg')), 
     recursive=TRUE, showWarnings=FALSE);
 svg(file.path(out_folder,'per_cell_comparisons','fluor_intensity.svg'), height=7/2, width=7*(3/2));
@@ -123,6 +128,54 @@ boxplot_with_points(list(wt_exp_average_ad_int, S178A_exp_average_ad_int),names=
 
 graphics.off()
 
+##########
+#barplot version
+##########
+wt_all_conf_int = determine_mean_conf_int(wt_exp_average_int);
+wt_noad_conf_int = determine_mean_conf_int(wt_exp_average_noad_int);
+wt_ad_conf_int = determine_mean_conf_int(wt_exp_average_ad_int);
+
+S178A_all_conf_int = determine_mean_conf_int(S178A_exp_average_int);
+S178A_noad_conf_int = determine_mean_conf_int(S178A_exp_average_noad_int);
+S178A_ad_conf_int = determine_mean_conf_int(S178A_exp_average_ad_int);
+
+library(Hmisc)
+
+svg(file.path(out_folder,'per_cell_comparisons','fluor_intensity_barplot.svg'), height=7/2, width=7*(3/2));
+layout(rbind(c(1,2,3)))
+par(bty='n',mar=c(2.2,3,0.81,0),mgp=c(2.1,1,0))
+
+#overall cell means
+positions = barplot(c(mean(wt_exp_average_int), mean(S178A_exp_average_int)),
+    names=c('Wild-type','S178A'),
+    ylab='Average Cellular Fluorescence',ylim=c(0,0.2))
+errbar(positions,c(mean(wt_exp_average_int), mean(S178A_exp_average_int)), #X,Y
+    c(wt_all_conf_int[2],S178A_all_conf_int[2]), #YPlus
+    c(wt_all_conf_int[1],S178A_all_conf_int[1]), #YMinus
+    add=T, cex=0.00001)
+
+par(bty='n',mar=c(2.2,4,0.81,0),mgp=c(2.1,1,0))
+#no adhesion cell means
+positions = barplot(c(mean(wt_exp_average_noad_int), mean(S178A_exp_average_noad_int)),
+    names=c('Wild-type','S178A'),
+    ylab='Average Non-adhesion Cell Fluorescence',ylim=c(0,0.2))
+errbar(positions,c(mean(wt_exp_average_noad_int), mean(S178A_exp_average_noad_int)), #X,Y
+    c(wt_noad_conf_int[2],S178A_noad_conf_int[2]), #YPlus
+    c(wt_noad_conf_int[1],S178A_noad_conf_int[1]), #YMinus
+    add=T, cex=0.00001)
+
+positions = barplot(c(mean(wt_exp_average_ad_int), mean(S178A_exp_average_ad_int)),
+    names=c('Wild-type','S178A'),
+    ylab='Average Adhesion Fluorescence',ylim=c(0,0.43))
+errbar(positions,c(mean(wt_exp_average_ad_int), mean(S178A_exp_average_ad_int)), #X,Y
+    c(wt_ad_conf_int[2],S178A_ad_conf_int[2]), #YPlus
+    c(wt_ad_conf_int[1],S178A_ad_conf_int[1]), #YMinus
+    add=T, cex=0.00001)
+
+graphics.off()
+
+
+#looking at individual cells
 wt_full_cell_mat  = build_column_matrix(raw_data$wild_type$average_cell_intensity)
 S178A_full_cell_mat  = build_column_matrix(raw_data$S178A$average_cell_intensity)
 
