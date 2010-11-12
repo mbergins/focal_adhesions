@@ -1089,7 +1089,7 @@ gather_barplot_properties <- function(data_sets, bootstrap.rep = 50000) {
     return(plot_props);
 }
 
-determine_mean_conf_int <- function(data, bootstrap.rep = 10000) {
+determine_mean_conf_int <- function(data, bootstrap.rep = 50000) {
 	require(boot);
 	boot_samp = boot(data, function(data,indexes) mean(data[indexes],na.rm=T), bootstrap.rep);
 		
