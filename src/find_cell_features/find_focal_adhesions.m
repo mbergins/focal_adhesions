@@ -52,12 +52,12 @@ focal_image  = imread(I_file);
 scale_factor = double(intmax(class(focal_image)));
 focal_image  = double(focal_image)/scale_factor;
 
-if (i_p.Results.scale_filter_thresh) 
+if (i_p.Results.scale_filter_thresh)
     filter_thresh = i_p.Results.filter_thresh * (max(focal_image(:)) - min(focal_image(:)));
 else
     filter_thresh = i_p.Results.filter_thresh;
 end
-    
+
 %Add the folder with all the scripts used in this master program
 addpath('matlab_scripts');
 
@@ -80,6 +80,8 @@ if (i_p.Results.no_ad_splitting)
 else
     ad_zamir = find_ad_zamir(high_passed_image,threshed_image,min_pixel_size,'debug',i_p.Results.debug);
 end
+
+ad_zamir(600:620,370:455) = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Remove adhesions outside mask
@@ -109,7 +111,10 @@ for i = 2:length(ad_nums)
     this_ad(ad_zamir == this_num) = 1;
     filled_ad = imfill(this_ad);
     
-    ad_zamir(logical(filled_ad)) = this_num;    
+    ad_zamir(logical(filled_ad)) = this_num;
+    if (i_p.Results.debug && mod(i,50)==0)
+        disp(['Done filling holes in ',num2str(i), '/', num2str(length(ad_nums))]);
+    end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -149,7 +154,7 @@ highlighted_image = create_highlighted_image(scaled_image, im2bw(ad_zamir_perim,
 if (exist('cell_mask','var'))
     highlighted_image = create_highlighted_image(highlighted_image, bwperim(cell_mask),'color_map',[1,0,0]);
 end
-imwrite(highlighted_image,fullfile(i_p.Results.output_dir, 'highlights.png')); 
+imwrite(highlighted_image,fullfile(i_p.Results.output_dir, 'highlights.png'));
 
 if (nargout > 0)
     varargout{1} = struct('adhesions',im2bw(ad_zamir,0),'ad_zamir',ad_zamir);
