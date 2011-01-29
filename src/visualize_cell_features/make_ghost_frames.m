@@ -229,7 +229,7 @@ for i = 1:max_image_num
         end
     end
     
-    if(i_p.Results.debug), disp(i_seen); end
+    disp(['Done with ', num2str(i_seen), '/',num2str(max_image_num)]);
 end
 
 profile off;
