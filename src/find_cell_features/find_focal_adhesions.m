@@ -80,8 +80,7 @@ if (i_p.Results.no_ad_splitting)
 else
     ad_zamir = find_ad_zamir(high_passed_image,threshed_image,min_pixel_size,'debug',i_p.Results.debug);
 end
-
-ad_zamir(600:620,370:455) = 0;
+disp('Done finding adhesion regions')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Remove adhesions outside mask
@@ -95,7 +94,9 @@ if (exist('cell_mask','var'))
             ad_zamir(ad_zamir == i) = 0;
         end
     end
+    disp('Done removing adhesions outside the cell edge')
 end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Find and fill holes in single adhesions
@@ -116,6 +117,7 @@ for i = 2:length(ad_nums)
         disp(['Done filling holes in ',num2str(i), '/', num2str(length(ad_nums))]);
     end
 end
+disp('Done filling adhesion holes')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Renumber adhesions to be sequential
@@ -136,6 +138,7 @@ for i = 1:max(ad_zamir(:))
     this_ad(ad_zamir == i) = 1;
     ad_zamir_perim(bwperim(this_ad)) = i;
 end
+disp('Done building adhesion perimeters')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Write the output files
