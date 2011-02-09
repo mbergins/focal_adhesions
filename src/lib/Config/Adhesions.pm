@@ -8,6 +8,7 @@ package Config::Adhesions;
 use strict;
 use warnings;
 use File::Spec;
+use File::Basename;
 
 use base qw(Config::General);
 
@@ -42,7 +43,7 @@ sub new {
     my $cfg_ref = \%cfg;
 
     bless $cfg_ref, $class;
-
+	
     $cfg_ref->build_derived_parameters;
     $cfg_ref->split_config_variables;
 
@@ -62,7 +63,7 @@ sub ParseConfig {
     my $cfg_ref = \%cfg;
 
     bless $cfg_ref, "Config::Adhesions";
-
+	
     $cfg_ref->build_derived_parameters;
     $cfg_ref->split_config_variables;
 
@@ -85,6 +86,17 @@ sub split_config_variables {
 
 sub build_derived_parameters {
     my $cfg = $_[0];
+	
+	my %hash_cfg = %{$cfg};
+	
+	if (not defined $cfg->{exp_name}) {
+		if ($cfg->{opt}{cfg} =~ /$cfg->{data_folder}(.*)/) {
+			$cfg->{exp_name} = File::Basename::dirname($1);
+		} else {
+			die "Unable to find or create an experimental folder name from the config file";
+		}
+	}
+
     foreach my $this_key (keys %derived_vars) {
         my $all_present = 1;
         foreach my $var_name (@{ $derived_vars{$this_key} }) {
