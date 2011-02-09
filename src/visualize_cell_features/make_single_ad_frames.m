@@ -145,7 +145,7 @@ for j = 1:max_image_num
         if (corners(4) > bounding_matrix(i,4)), bounding_matrix(i,4) = corners(4); end
     end
 
-    if (i_p.Results.debug && (mod(i_seen,10) == 0 || j == max_image_num))
+    if (mod(i_seen,10) == 0 || j == max_image_num)
         disp(['Bounding image: ',num2str(i_seen)]);
     end
 end
@@ -281,7 +281,7 @@ for j = 1:max_image_num
         end
         
     end
-    if (mod(j,1) == 0 && i_p.Results.debug)
+    if (mod(j,10) == 0)
         disp(['Highlight image: ',num2str(i_seen)]);
     end
 end
