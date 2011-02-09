@@ -70,15 +70,15 @@ foreach (@image_sets) {
     $all_images_empty = 0 if (@image_files);
 
     if ($opt{debug}) {
+        print "For Config Variable: ", $_->[0], "\n";
         if (scalar(@image_files) > 1) {
-            print "Image files found: $image_files[0] - $image_files[$#image_files]\n";
+            print "Image files found: $image_files[0] - $image_files[$#image_files]\n\n";
         } elsif (scalar(@image_files) == 0) {
-            print "No image files found matching $cfg{exp_data_folder}/$folder, moving onto next image set.\n";
+            print "No image files found matching $cfg{exp_data_folder}/$folder, moving onto next image set.\n\n";
             next;
         } else {
-            print "Image file found: $image_files[0]\n";
+            print "Image file found: $image_files[0]\n\n";
         }
-        print "For Config Variable: ", $_->[0], "\n\n";
     } else {
         next if (not @image_files);
     }
