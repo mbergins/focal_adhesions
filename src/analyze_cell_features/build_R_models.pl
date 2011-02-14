@@ -29,7 +29,7 @@ $| = 1;
 
 my %opt;
 $opt{debug} = 0;
-GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l", "model_type=s")
+GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l", "model_file=s")
   or die;
 
 die "Can't find cfg file specified on the command line" if not exists $opt{cfg};
@@ -40,14 +40,14 @@ my %cfg = ParseConfig(\%opt);
 ################################################################################
 # Main Program
 ################################################################################
-my @model_types = qw(average cell_background local_background area box_intensity);
-#push @model_types, "background_correlation_model";
+my @model_files = qw(Average_adhesion_signal.csv Background_corrected_signal.csv
+	Area.csv);
 if ($opt{lsf}) {
     my @commands;
-    foreach (@model_types) {
+    foreach (@model_files) {
         #$0 - the name of the program currently running, used to protect against
         #future file name changes
-        push @commands, "$0 -cfg $opt{cfg} -model_type $_";
+        push @commands, "$0 -cfg $opt{cfg} -model_file $_";
     }
     
     $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'R_models');
@@ -60,7 +60,7 @@ if ($opt{lsf}) {
     exit(0);
 }
 
-my $data_dir = catdir($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, $cfg{lineage_ts_folder});
+my $data_dir = catdir($cfg{exp_results_folder}, $cfg{adhesion_props_folder});
 
 my $output_base = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'R_models');
 if (! -e $output_base) {
@@ -68,17 +68,28 @@ if (! -e $output_base) {
 }
 
 my @R_cmds;
-if (defined($opt{model_type})) {
-	my $output_file = catfile($output_base, 'R_out_' . $opt{model_type} . '.txt');
+if (defined($opt{model_file})) {
+	if (not -e catfile($data_dir,$cfg{model_file})) {
+		warn "Could not find file for $cfg{model_file} (", 
+			catfile($data_dir,$cfg{model_file}), "), skipping";
+		next;
+	}
+	my $output_file = catfile($output_base, 'R_out_' . $opt{model_file} . '.txt');
 	push @R_cmds, "R CMD BATCH --vanilla \"--args data_dir=$data_dir " .
-	  "model_type=$opt{model_type} min_length=$cfg{min_linear_model_length}\" " . 
-	  "FA_analysis_lib.R $output_file";
+	  "model_file=$opt{model_file} min_length=$cfg{min_linear_model_length}\" " . 
+	  "bilinear_modeling.R $output_file";
 } else {
-	for (@model_types) {
+	for (@model_files) {
+		if (not -e catfile($data_dir,$_)) {
+			warn "Could not find file for $_ (", 
+				catfile($data_dir,$_), "), skipping";
+			next;
+		}
+
 		my $output_file = catfile($output_base, 'R_out_' . $_ . '.txt');
 		push @R_cmds, "R CMD BATCH --vanilla \"--args data_dir=$data_dir " .
-		  "model_type=$_ min_length=$cfg{min_linear_model_length}\" " . 
-		  "FA_analysis_lib.R $output_file";
+		  "model_file=$_ min_length=$cfg{min_linear_model_length}\" " . 
+		  "bilinear_modeling.R $output_file";
 	}
 }
 
@@ -112,12 +123,13 @@ build_R_models.pl -cfg FA_config
 
 =head1 Description
 
-The code needed to build and output the R model files is contained in FA_analysis_lib.R. The R program takes three command line options:
+The code needed to build and output the R model files is contained in
+bilinear_modeling.R. The R program takes three command line options:
 
 =over
 
 =item * data_dir - the location of the lineage time series files
-=item * model_type - the type of model that will be built
+=item * model_file - the file with the data that will be used to build the model
 =item * debug - turns on debuging mode (optional)
 
 =back
