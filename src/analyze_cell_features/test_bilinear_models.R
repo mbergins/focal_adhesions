@@ -1,81 +1,82 @@
 rm(list = ls())
-source("/Users/mbergins/Documents/Projects/focal_adhesions/src/analyze_cell_features/FA_analysis_lib.R")
+source("bilinear_modeling.R")
 library(boot)
 
 ################################################################################
 #Basic Testing Code
 ################################################################################
-basic_test_set = c()
-basic_test_set = c(NaN, exp(seq(0.1,1,length=10)), rep(1,length=10), exp(seq(1,0.1,length=10)), NaN)
-basic_test_set = rbind(basic_test_set, c(NaN, NaN, exp(seq(0.1,1,length=10)), rep(1,length=10), exp(seq(1,0.1,length=10))))
-basic_test_set = rbind(basic_test_set, c(exp(seq(0.1,1,length=10)), rep(1,length=10), exp(seq(1,0.1,length=10)),NaN, NaN))
-basic_test_set = rbind(basic_test_set, c(rep(NaN, dim(basic_test_set)[[2]] - 1),1))
 
-basic_test_props = data.frame(split_birth_status = rep(0,dim(basic_test_set)[[1]]), 
-					    	  death_status = rep(1,dim(basic_test_set)[[1]])
-				 	   		 )
+# best_model_results = list();
+# 
+# assembly_phase = exp(seq(log(0.25),log(0.8),length=10));
+# stability_phase = rep(0.8,length=10);
+# disassembly_phase = exp(seq(log(0.8),log(0.25),length=10));
+# 
+# for (i in 1:1000) {
+#     full_exp = c(assembly_phase + rnorm(length(assembly_phase),mean=0,sd=sd(assembly_phase)/3),
+#         stability_phase + rnorm(length(stability_phase),mean=0,sd=sd(assembly_phase)/3),
+#         disassembly_phase + rnorm(length(disassembly_phase),mean=0,sd=sd(disassembly_phase)/3));
+#     
+#     data_set = list(value = full_exp,time=seq(0,along.with=full_exp,by=1));
+#     assembly_model_props = fit_all_possible_log_models(data_set);
+#     assembly_model_props$type = "assembly";
+# 
+#     data_set = list(value = rev(full_exp),time=seq(0,along.with=full_exp,by=1));
+#     disassembly_model_props = fit_all_possible_log_models(data_set);
+#     disassembly_model_props$type = "disassembly";
+#     
+#     best_indexes = find_optimum_model_indexes(assembly_model_props,disassembly_model_props);
+# 
+#     best_assembly = assembly_model_props[best_indexes[1],];
+#     best_disassembly = disassembly_model_props[best_indexes[2],];
+#     
+#     best_model_results = rbind(best_model_results,best_assembly,best_disassembly);
+#     if (i %% 100 == 0) print(i)
+# }
 
-basic_test_results <- gather_bilinear_models(basic_test_set,basic_test_props)
-
-stopifnot(dim(basic_test_results$disassembly)[[1]] == dim(basic_test_set)[[1]])
-stopifnot(dim(basic_test_results$assembly)[[1]] == dim(basic_test_set)[[1]])
-stopifnot(all(is.na(basic_test_results$assembly$R_sq[3:4])))
-stopifnot(all(is.na(basic_test_results$disassembly$R_sq[2]) & is.na(basic_test_results$disassembly$R_sq[4])))
+# data_set = matrix(runif(1000*100),1000,100);
+# exp_props = list(split_birth_status = rep(0,dim(data_set)[1]),
+#     death_status = rep(1,dim(data_set)[1]));
+# no_hits_models = build_bilinear_models(data_set,exp_props);
 
 ################################################################################
 #Realistic Testing Code
 ################################################################################
-test_data <- as.matrix(read.table('../../results/focal_adhesions/time_series_01/adhesion_props/lin_time_series/Average_adhesion_signal.csv', header=FALSE, sep=','));
-filt_data <- test_data[is.nan(test_data[,1]) & is.nan(test_data[, dim(test_data)[[2]] ]), ]
 
-min_max = c()
-for (i in 1:dim(filt_data)[[1]]) {
-	line = na.omit(filt_data[i,])
-	
-	if (is.nan(filt_data[i,1]) & is.nan(filt_data[i,dim(filt_data)[[2]]]) & length(line) > 20) {
-		min_max = rbind(min_max, c(min(line), max(line)))
-	}
-}
-min_max = data.frame(low = min_max[,1], high = min_max[,2])
+rand_data_set = matrix(NA,1000,100);
 
-as_time = 15;
-stable_lifetime = 20;
-error_amounts = seq(0.001,0.008,length=10)
-data_points = list()
-for (i in error_amounts[1:4]) {
-	data_sets = c()
-	for (j in 1:200) {
-		h_l = min_max[sample(1:dim(min_max)[[1]],1),]
-		
-		
-		k = log(h_l$high/h_l$low)/as_time;
-		assembly_phase = h_l$low*exp(k * seq(0, as_time - 1)) + rnorm(as_time,sd=i);
-		
-		data = c(NaN, 
-				 assembly_phase,
-				 rep(h_l$high,stable_lifetime) + rnorm(stable_lifetime,sd=0.01),
-				 exp(seq(h_l$high,h_l$low,length=10))*(h_l$high/exp(h_l$high)), 
-				 NaN)
--		data_sets = rbind(data_sets, data);
-	}
-	data_props = data.frame(split_birth_status = rep(0,dim(data_sets)[[1]]), 
-						    death_status = rep(1,dim(data_sets)[[1]])
-					 	   )
-	these_results = gather_bilinear_models(data_sets, data_props,debug=1)
-#	print(shapiro.test(these_results$assembly$length))
-#	hist(these_results$assembly$length)
-	boot_samp = boot(these_results$assembly$length, function(data,indexes) mean(data[indexes], na.rm=T), 10000)
-	boot_conf = boot.ci(boot_samp,type="perc")
-	data_points$upper = c(data_points$upper, boot_conf$perc[5])
-	data_points$lower = c(data_points$lower, boot_conf$perc[4])
-	data_points$mean = c(data_points$mean, boot_samp$t0)
+for (i in 1:dim(rand_data_set)[1]) {
+    min_val = runif(1,min=0.1,max=0.5);
+    max_val = runif(1,min=0.5,max=0.9);
 
-	boot_samp = boot(these_results$assembly$R_sq, function(data,indexes) mean(data[indexes], na.rm=T),10000)
-	boot_conf = boot.ci(boot_samp,type="perc")
-	data_points$R_upper = c(data_points$R_upper, boot_conf$perc[5])
-	data_points$R_lower = c(data_points$R_lower, boot_conf$perc[4])
-	data_points$R_mean = c(data_points$R_mean, boot_samp$t0)
-	print(paste('Error Level:', i, ' done'))
+    phase_lengths = round(runif(3)*10)+10;
+
+    assembly_phase = exp(seq(log(min_val), log(max_val),length=phase_lengths[1]));
+    stability_phase = rep(max_val,length=phase_lengths[2]);
+    disassembly_phase = exp(seq(log(max_val),log(min_val),length=phase_lengths[3]));
+
+    assembly_phase = assembly_phase + rnorm(length(assembly_phase),mean=0,sd=sd(assembly_phase)/3);
+    stability_phase = stability_phase + rnorm(length(stability_phase),mean=0,sd=sd(assembly_phase)/3);
+    disassembly_phase = disassembly_phase + rnorm(length(disassembly_phase),mean=0,sd=sd(disassembly_phase)/3);
+
+    full_set = c(assembly_phase,stability_phase,disassembly_phase);
+    rand_data_set[i,2:(length(full_set)+1)] = full_set;
 }
 
-library(Hmisc)
+exp_props = list(split_birth_status = rep(0,dim(rand_data_set)[1]),
+    death_status = rep(1,dim(rand_data_set)[1]));
+
+# sample_models = build_bilinear_models(rand_data_set,exp_props,min.phase.length=10,time.spacing=2.5)
+
+# dir = '~/Documents/Projects/focal_adhesions/trunk/results/emma/2xKD/Pax_01/adhesion_props/';
+dir = '~/Documents/Projects/focal_adhesions/trunk/results/focal_adhesions/time_series_04/adhesion_props/';
+
+actual_data_set = as.matrix(read.csv(file.path(dir,'lin_time_series/Average_adhesion_signal.csv'),header=F));
+actual_exp_props = read.csv(file.path(dir,'single_lin.csv'));
+
+actual_models = build_bilinear_models(actual_data_set, actual_exp_props);
+actual_models$exp_props = actual_exp_props
+
+rate_filters = produce_rate_filters(actual_models);
+
+write_assembly_disassembly_periods(actual_models,dir)

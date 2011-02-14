@@ -69,9 +69,9 @@ if (! -e $output_base) {
 
 my @R_cmds;
 if (defined($opt{model_file})) {
-	if (not -e catfile($data_dir,$cfg{model_file})) {
-		warn "Could not find file for $cfg{model_file} (", 
-			catfile($data_dir,$cfg{model_file}), "), skipping";
+	my $this_model_file = catfile($data_dir,'lin_time_series',$cfg{model_file});
+	if (not -e $this_model_file) {
+		warn "Could not find file for $cfg{model_file} ($this_model_file), skipping";
 		next;
 	}
 	my $output_file = catfile($output_base, 'R_out_' . $opt{model_file} . '.txt');
@@ -80,9 +80,10 @@ if (defined($opt{model_file})) {
 	  "bilinear_modeling.R $output_file";
 } else {
 	for (@model_files) {
-		if (not -e catfile($data_dir,$_)) {
-			warn "Could not find file for $_ (", 
-				catfile($data_dir,$_), "), skipping";
+		my $this_model_file = catfile($data_dir,'lin_time_series',$_);
+
+		if (not -e $this_model_file) {
+			warn "Could not find file for $_ ($this_model_file), skipping";
 			next;
 		}
 
