@@ -74,9 +74,17 @@ dir = '~/Documents/Projects/focal_adhesions/trunk/results/focal_adhesions/time_s
 actual_data_set = as.matrix(read.csv(file.path(dir,'lin_time_series/Average_adhesion_signal.csv'),header=F));
 actual_exp_props = read.csv(file.path(dir,'single_lin.csv'));
 
+to_be_examined = ! is.finite(actual_data_set[,1])
+print(length(which(to_be_examined)))
+to_be_examined = to_be_examined & (! actual_exp_props$split_birth_status)
+print(length(which(to_be_examined)))
+to_be_examined = to_be_examined & actual_exp_props$longevity > 8
+print(length(which(to_be_examined)))
+
+
 actual_models = build_bilinear_models(actual_data_set, actual_exp_props);
-actual_models$exp_props = actual_exp_props
-
-rate_filters = produce_rate_filters(actual_models);
-
-write_assembly_disassembly_periods(actual_models,dir)
+# actual_models$exp_props = actual_exp_props
+# 
+# rate_filters = produce_rate_filters(actual_models);
+# 
+# write_assembly_disassembly_periods(actual_models,dir)

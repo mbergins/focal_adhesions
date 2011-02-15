@@ -1,10 +1,12 @@
 build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacing=1) {
     
     #get a blank result to make sure we can add the proper number of blank
-    #entries for adhesions which dont mean analysis criteria
+    #entries for adhesions which dont meet analysis criteria
     sample_model_results = fit_all_possible_log_models(list(values = 1:10,time = 1:10));
     
     models = list()
+    
+    start_elapse = proc.time()[3];
 
     for (i in 1:dim(data)[1]) {
         #assembly rate gathering
@@ -70,8 +72,13 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
         models$disassembly = rbind(models$disassembly, best_disassembly_model);
         
         if (i %% round(dim(data)[1]/10) == 0) {
+            current_elapse = proc.time()[3];
+            elapsed_time = current_elapse - start_elapse;
+            
+            time_left = round(elapsed_time*((dim(data)[1]-i)/i))
+
             print(paste('Done with ', i, '/', dim(data)[1], ' adhesions (', 
-                round(100*(i/dim(data)[1])), '%)',sep=''))
+                round(100*(i/dim(data)[1])), '%) ', time_left, ' seconds left',sep=''))
         }
     }
 
