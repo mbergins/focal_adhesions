@@ -76,7 +76,8 @@ if (defined($opt{model_file})) {
 	}
 	my $output_file = catfile($output_base, 'R_out_' . $opt{model_file} . '.txt');
 	push @R_cmds, "R CMD BATCH --vanilla \"--args data_dir=$data_dir " .
-	  "model_file=$opt{model_file} min_length=$cfg{min_linear_model_length}\" " . 
+	  "model_file=$opt{model_file} time_spacing=$cfg{time_spacing}  " . 
+	  "min_length=$cfg{min_linear_model_length}\" " . 
 	  "bilinear_modeling.R $output_file";
 } else {
 	for (@model_files) {
@@ -89,7 +90,8 @@ if (defined($opt{model_file})) {
 
 		my $output_file = catfile($output_base, 'R_out_' . $_ . '.txt');
 		push @R_cmds, "R CMD BATCH --vanilla \"--args data_dir=$data_dir " .
-		  "model_file=$_ min_length=$cfg{min_linear_model_length}\" " . 
+		  "model_file=$_ time_spacing=$cfg{time_spacing} " .  
+		  "min_length=$cfg{min_linear_model_length}\" " . 
 		  "bilinear_modeling.R $output_file";
 	}
 }

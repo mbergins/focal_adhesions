@@ -5,7 +5,7 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
     sample_model_results = fit_all_possible_log_models(list(values = 1:10,time = 1:10));
     
     models = list()
-
+    
     for (i in 1:dim(data)[1]) {
         #assembly rate gathering
         only.data = na.omit(data[i,]);
@@ -31,7 +31,7 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
         if (! is.finite(data.reverse[1]) && 
             exp_props$death_status[i] && 
             length(only.data.reverse) >= (2*min.phase.length)) {
-
+ 
             disassembly_model_results = fit_all_possible_log_models(time.series.reverse, 
                 min.phase.length=min.phase.length);
         } else {
@@ -70,12 +70,17 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
         models$disassembly = rbind(models$disassembly, best_disassembly_model);
         
         if (i %% round(dim(data)[1]/10) == 0) {
-            print(paste('Done with ', i, '/', dim(data)[1], ' adhesions'))
+            print(paste('Done with ', i, '/', dim(data)[1], ' adhesions (', 
+                round(100*(i/dim(data)[1])), '%)',sep=''))
         }
     }
     
     models$assembly = as.data.frame(models$assembly);
     models$disassembly = as.data.frame(models$disassembly);
+    
+    print(paste('Built ', length(which(!is.na(models$assembly$length))), 
+        ' assembly models, built ', length(which(!is.na(models$disassembly$length))), 
+        ' disassembly models',sep=''))
 
     models
 }
@@ -101,6 +106,10 @@ fit_all_possible_log_models <- function(time.series,min.phase.length=10) {
 
 find_optimum_model_indexes <- function(assembly=NULL,disassembly=NULL) {
     best_fit_indexes = c(NA, NA);
+    
+    if (is.null(disassembly) && is.null(assembly)) {
+        return(best_fit_indexes);
+    }
 
     if (is.null(disassembly)) {
         best_index = min(which(assembly$adj.r.squared == max(assembly$adj.r.squared)))
@@ -221,6 +230,7 @@ args = commandArgs(TRUE);
 if (length(args) != 0) {
     debug = FALSE;
     min_length = 10;
+    time_spacing = 1;
     
 	#split out the arguments from the passed in parameters and assign variables 
 	#in the current scope
@@ -234,22 +244,32 @@ if (length(args) != 0) {
     }
 	
     class(min_length) <- "numeric";
+    class(time_spacing) <- "numeric";
     if (exists('data_dir') & exists('model_file')) {
+        #######################################################################
+        # Reading in data files
+        #######################################################################
         if (file.exists(file.path(data_dir,'lin_time_series',model_file))) {
             data_set = as.matrix(read.csv(file.path(data_dir,'lin_time_series',model_file),header=F));
         } else {
             print(paste('Could not find model data file: ', file.path(data_dir,'lin_time_series',model_file)))
             stop()
         }
+
         if (file.exists(file.path(data_dir,'single_lin.csv'))) {
             exp_props = read.csv(file.path(data_dir,'single_lin.csv'));
         } else {
             print(paste('Could not find exp props file: ', file.path(data_dir,'single_lin.csv')))
             stop()
         }
-        
-        model = build_bilinear_models(data_set,exp_props, min.phase.length = min_length);
+
+        #######################################################################
+        # Model Building and Output
+        #######################################################################
+        model = build_bilinear_models(data_set,exp_props, min.phase.length = min_length, 
+            time.spacing = time_spacing)
         model$exp_props = exp_props
+        model$exp_dir = data_dir
         #regexpr returns -1 when no hit is found
         if (regexpr("Average_adhesion_signal",model_file) != -1) {
             print('Outputing model assembly and disassembly periods')
