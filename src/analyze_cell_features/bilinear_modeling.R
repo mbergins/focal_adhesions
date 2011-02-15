@@ -5,7 +5,7 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
     sample_model_results = fit_all_possible_log_models(list(values = 1:10,time = 1:10));
     
     models = list()
-    
+
     for (i in 1:dim(data)[1]) {
         #assembly rate gathering
         only.data = na.omit(data[i,]);
@@ -74,7 +74,7 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
                 round(100*(i/dim(data)[1])), '%)',sep=''))
         }
     }
-    
+
     models$assembly = as.data.frame(models$assembly);
     models$disassembly = as.data.frame(models$disassembly);
     
@@ -270,6 +270,7 @@ if (length(args) != 0) {
             time.spacing = time_spacing)
         model$exp_props = exp_props
         model$exp_dir = data_dir
+        model$exp_data = data_set
         #regexpr returns -1 when no hit is found
         if (regexpr("Average_adhesion_signal",model_file) != -1) {
             print('Outputing model assembly and disassembly periods')
