@@ -19,7 +19,7 @@ function [varargout] = find_focal_adhesions(I_file,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Setup variables and parse command line
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+tic;
 i_p = inputParser;
 i_p.FunctionName = 'FIND_FOCAL_ADHESIONS';
 
@@ -33,11 +33,14 @@ i_p.addParamValue('pixel_size',0.215051,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
 i_p.addParamValue('filter_thresh',0.1,@isnumeric);
 i_p.addParamValue('scale_filter_thresh',0,@(x)islogical(x) || (isnumeric(x) && (x == 1 || x == 0)));
+
 i_p.addParamValue('output_dir', fileparts(I_file), @(x)exist(x,'dir')==7);
 i_p.addParamValue('output_file', 'adhesions.png', @ischar);
 i_p.addParamValue('output_file_perim', 'adhesions_perim.png', @ischar);
 i_p.addParamValue('output_file_binary', 'adhesions_binary.png', @ischar);
+
 i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
+
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
 i_p.parse(I_file,varargin{:});
@@ -162,3 +165,4 @@ imwrite(highlighted_image,fullfile(i_p.Results.output_dir, 'highlights.png'));
 if (nargout > 0)
     varargout{1} = struct('adhesions',im2bw(ad_zamir,0),'ad_zamir',ad_zamir);
 end
+toc;

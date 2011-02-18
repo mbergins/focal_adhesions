@@ -33,7 +33,6 @@ total_pixels = sum(sum(binary_image));
 for i = 1:length(sorted_pix_vals)
     lin_ind = find(high_passed_image == sorted_pix_vals(i));
     
-    
     for j = 1:length(lin_ind)
         [lin_row, lin_col] = ind2sub(size(high_passed_image), lin_ind(j));
         if (not(binary_image(lin_row, lin_col)))
@@ -45,8 +44,8 @@ for i = 1:length(sorted_pix_vals)
         count = count + 1;
     end
 
-    if (mod(count,100) == 0 && i_p.Results.debug)
-        disp(['Count: ',num2str(count),'/',num2str(total_pixels)])
+    if (mod(count,100) == 0)
+        disp(['Watershed Assigned: ',num2str(count),'/',num2str(total_pixels)])
     end
 end
 
