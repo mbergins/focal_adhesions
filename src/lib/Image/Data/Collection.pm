@@ -54,6 +54,15 @@ sub gather_data_sets {
 
         #Skip further processing on images in the excluded list
         next if grep $i_num == $_, @{ $cfg{exclude_image_nums} };
+		
+		#skip further processing if the an image number is in the options and
+		#the current image number is more than one number away from that image
+		#number, further away properties aren't used, so this is a safe operation
+		if (defined $opt{image_num}) {
+			if (($i_num > ($opt{image_num} + 1)) || ($i_num < ($opt{image_num} - 1))) {
+				next;
+			}
+		}
 
         foreach my $file (@data_files) {
             my @file_matches = <$this_folder/$file.*>;
