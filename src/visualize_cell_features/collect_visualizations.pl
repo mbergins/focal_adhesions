@@ -76,7 +76,7 @@ foreach (@movie_params) {
 		$extra_opt .= ",'no_b_box',$cfg{no_b_box}";
 	}
     push @matlab_code, "make_movie_frames('" . $params{'config_file'} . "'$extra_opt)";
-    push @matlab_code, "make_ghost_frames('" . $params{'config_file'} . "')";
+    # push @matlab_code, "make_ghost_frames('" . $params{'config_file'} . "')";
     if ($params{'tracking_file'} =~ /$cfg{tracking_output_file}/) {
         %single_ad_params = %params;
     }
@@ -192,7 +192,7 @@ sub build_single_ad_commands {
     my $line_count = scalar(@tracking_file);
     close TRACKING_FILE;
     
-    my $ad_per_run = 250;
+    my $ad_per_run = 10000;
     my @commands;
     my $assembly_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 'assembly_rows_lengths.csv');
     if (-e $assembly_file) {
