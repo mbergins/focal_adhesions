@@ -13,7 +13,7 @@ use Data::Dumper;
 ###############################################################################
 # Module Definition
 ###############################################################################
-my %opt = ("queue" => "idle", "output_filename" => "out.txt", 
+my %opt = ("queue" => "week", "output_filename" => "out.txt", 
            "error_filename" => "error.txt", "error_folder" => "./",
            "runtime" => "24",);
 
@@ -65,6 +65,9 @@ sub create_general_LSF_commands {
             $bsub_command .= " -R $_";
         }
     }
+	if (defined $opt{mem}) {
+        $bsub_command .= " -M $opt{mem}";
+	}
     @commands = map { split(/\n/, $_) } @commands;
     @commands = map { "$bsub_command \"$_\""} @commands;
     return @commands;   

@@ -43,7 +43,6 @@ my %cfg = $ad_conf->get_cfg_hash;
 ###############################################################################
 #Main Program
 ###############################################################################
-
 my %data_sets;
 if ($opt{lsf}) {
     my @image_nums = &Image::Data::Collection::gather_sorted_image_numbers(\%cfg);
@@ -56,8 +55,10 @@ if ($opt{lsf}) {
     }
     
     $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'tracking_data');
-    $opt{resource} = "mem32 RH5";
+    $opt{resource} = "blade";
     $opt{queue} = "week";
+	#mem specified in kb
+    $opt{mem} = (1024**2)*4;
     if (defined $cfg{job_group}) {
         $opt{job_group} = $cfg{job_group};
     }
@@ -73,8 +74,8 @@ if ($opt{lsf}) {
     push @data_files, @{$cfg{tracking_files}};
 
     %data_sets = &Image::Data::Collection::gather_data_sets(\%cfg, \%opt, \@data_files);
-
-    print "\n\nMaking Comparison Matrices\n" if $opt{debug};
+    
+	print "\n\nMaking Comparison Matrices\n" if $opt{debug};
     &make_comp_matices;
 }
 
@@ -116,7 +117,7 @@ sub make_comp_matices {
         my @y2 = @{ $data_sets{$key_2}{Centroid_y} };
         @{ $data_sets{$key_1}{Cent_dist} } = &make_dist_mat(\@x1, \@y1, \@x2, \@y2);
         print "Cent_dist Collected - " if $opt{debug};
-
+		
         #Gather the Pixel Similarity matrix
         my @pix_id1 = @{ $data_sets{$key_1}{PixelIdxList} };
         my @pix_id2 = @{ $data_sets{$key_2}{PixelIdxList} };

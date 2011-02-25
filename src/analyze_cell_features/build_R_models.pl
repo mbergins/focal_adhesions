@@ -51,6 +51,7 @@ if ($opt{lsf}) {
     }
     
     $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'R_models');
+    $opt{resource} = 'blade';
     if (defined $cfg{job_group}) {
         $opt{job_group} = $cfg{job_group};
     }
