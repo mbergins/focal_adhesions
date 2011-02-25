@@ -8,6 +8,7 @@ use File::Basename;
 use File::Spec::Functions;
 use Cwd 'abs_path';
 use Getopt::Long;
+use File::Find::Rule;
 
 use lib "../lib";
 use Config::Adhesions qw(ParseConfig);
@@ -40,7 +41,8 @@ my $debug_string = ($opt{debug}) ? "-d" : "";
 my $cfg_suffix = basename($opt{cfg});
 $cfg_suffix =~ s/.*\.(.*)/$1/;
 
-my @config_files = <$cfg{data_folder}/*/*$cfg_suffix>;
+my @config_files = File::Find::Rule->file()->name( "*.$cfg_suffix" )->in( ($cfg{data_folder}) );
+@config_files = sort @config_files;
 if (exists($opt{exp_filter})) {
    @config_files = grep $_ =~ /$opt{exp_filter}/, @config_files;
 }
