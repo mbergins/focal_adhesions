@@ -28,8 +28,8 @@ i_p.addRequired('I_file',@(x)exist(x,'file') == 2);
 i_p.parse(I_file);
 
 i_p.addParamValue('cell_mask',0,@(x)exist(x,'file') == 2);
-i_p.addParamValue('min_size',0.56,@(x)isnumeric(x) && x > 0);
-i_p.addParamValue('pixel_size',0.215051,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('min_independent_size',0.56,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('pixel_size',1,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
 i_p.addParamValue('filter_thresh',0.1,@isnumeric);
 i_p.addParamValue('scale_filter_thresh',0,@(x)islogical(x) || (isnumeric(x) && (x == 1 || x == 0)));
@@ -75,12 +75,12 @@ threshed_image = logical(im2bw(high_passed_image,filter_thresh));
 %identify and remove adhesions on the immediate edge of the image
 threshed_image = remove_edge_adhesions(threshed_image);
 
-min_pixel_size = floor((sqrt(i_p.Results.min_size)/i_p.Results.pixel_size)^2);
 if (i_p.Results.no_ad_splitting)
     %if splitting is off, there is no need to use the fancy watershed based
     %segmentation methods, just identify the connected areas
     ad_zamir = bwlabel(threshed_image,4);
 else
+    min_pixel_size = floor((sqrt(i_p.Results.min_independent_size)/i_p.Results.pixel_size)^2);
     ad_zamir = find_ad_zamir(high_passed_image,threshed_image,min_pixel_size,'debug',i_p.Results.debug);
 end
 disp('Done finding adhesion regions')
@@ -99,7 +99,6 @@ if (exist('cell_mask','var'))
     end
     disp('Done removing adhesions outside the cell edge')
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Find and fill holes in single adhesions
