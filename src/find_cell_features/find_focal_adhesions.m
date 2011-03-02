@@ -28,18 +28,22 @@ i_p.addRequired('I_file',@(x)exist(x,'file') == 2);
 i_p.parse(I_file);
 
 i_p.addParamValue('cell_mask',0,@(x)exist(x,'file') == 2);
-i_p.addParamValue('min_independent_size',0.56,@(x)isnumeric(x) && x > 0);
-i_p.addParamValue('pixel_size',1,@(x)isnumeric(x) && x > 0);
+
+%Adhesion filtering parameters
+i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x) && x > 0);
+
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
 i_p.addParamValue('filter_thresh',0.1,@isnumeric);
 i_p.addParamValue('scale_filter_thresh',0,@(x)islogical(x) || (isnumeric(x) && (x == 1 || x == 0)));
+i_p.addParamValue('min_independent_size',0.56,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('pixel_size',1,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
 
+%output parameters
 i_p.addParamValue('output_dir', fileparts(I_file), @(x)exist(x,'dir')==7);
 i_p.addParamValue('output_file', 'adhesions.png', @ischar);
 i_p.addParamValue('output_file_perim', 'adhesions_perim.png', @ischar);
 i_p.addParamValue('output_file_binary', 'adhesions_binary.png', @ischar);
-
-i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
 
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
@@ -67,6 +71,10 @@ addpath('matlab_scripts');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Apply filter to find adhesion regions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 I_filt = fspecial('disk',i_p.Results.filter_size);
 blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
 high_passed_image = focal_image - blurred_image;
@@ -75,7 +83,28 @@ threshed_image = logical(im2bw(high_passed_image,filter_thresh));
 %identify and remove adhesions on the immediate edge of the image
 threshed_image = remove_edge_adhesions(threshed_image);
 
-if (i_p.Results.no_ad_splitting)
+%filter out small adhesions if requested
+if (i_p.Results.min_adhesion_size > 1)
+    labeled_thresh = bwlabel(threshed_image,4);
+    
+    props = regionprops(labeled_thresh,'Area'); %#ok<MRPBW>
+    labeled_thresh = ismember(labeled_thresh, find([props.Area] >= i_p.Results.min_adhesion_size));
+    
+    threshed_image = labeled_thresh > 0;
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Adhesion Segmentation
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%If adhesion splitting is off ('no_ad_splitting'), then watershed based
+%segmentation isn't needed because all the watershed method adds is the
+%ability to split touching adhesions. Also, we need to know the pixel size
+%in order to select a threshold for having adhesions remain as seperate
+%enties when touching, so we also check for that before using the watershed
+%segmentation
+if (i_p.Results.no_ad_splitting || not(isempty(strmatch('pixel_size', i_p.UsingDefaults))))
     %if splitting is off, there is no need to use the fancy watershed based
     %segmentation methods, just identify the connected areas
     ad_zamir = bwlabel(threshed_image,4);

@@ -85,12 +85,14 @@ sub create_all_matlab_commands {
         if (defined $cfg{no_ad_splitting}) {
             $extra_opt .= ",'no_ad_splitting',$cfg{no_ad_splitting}";
         }
-
-        if (-e $cell_mask) {
-            $matlab_code[0] .= "find_focal_adhesions('$file_name','cell_mask','$cell_mask'$extra_opt)\n";
-        } else {
-            $matlab_code[0] .= "find_focal_adhesions('$file_name'$extra_opt)\n";
+        if (defined $cfg{min_adhesion_size}) {
+            $extra_opt .= ",'min_adhesion_size',$cfg{min_adhesion_size}";
         }
+		if (-e $cell_mask) {
+            $extra_opt .= ",'cell_mask','$cell_mask'";
+		}
+
+		$matlab_code[0] .= "find_focal_adhesions('$file_name'$extra_opt)\n";
     }
 
     return @matlab_code;
