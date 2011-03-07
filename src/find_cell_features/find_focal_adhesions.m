@@ -33,8 +33,7 @@ i_p.addParamValue('cell_mask',0,@(x)exist(x,'file') == 2);
 i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x) && x > 0);
 
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
-i_p.addParamValue('filter_thresh',1000,@isnumeric);
-i_p.addParamValue('scale_filter_thresh',0,@(x)islogical(x) || (isnumeric(x) && (x == 1 || x == 0)));
+i_p.addParamValue('filter_thresh',0.1,@isnumeric);
 i_p.addParamValue('min_independent_size',0.56,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('pixel_size',1,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
@@ -49,24 +48,25 @@ i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
 i_p.parse(I_file,varargin{:});
 
+%Add the folder with all the scripts used in this master program
+addpath('matlab_scripts');
+addpath(genpath('..'));
+
 %read in the cell mask image if defined in parameter set
 if (isempty(strmatch('cell_mask', i_p.UsingDefaults)))
     cell_mask = imread(i_p.Results.cell_mask);
 end
 
+filenames = add_filenames_to_struct(struct());
+
 %read in and normalize the input focal adhesion image
 focal_image  = double(imread(I_file));
-focal_normed = (focal_image - min(focal_image(:)))/(range(focal_image(:)));
 
-if (i_p.Results.scale_filter_thresh)
-    filter_thresh = i_p.Results.filter_thresh * (max(focal_image(:)) - min(focal_image(:)));
-else
-    filter_thresh = i_p.Results.filter_thresh;
-end
+filter_thresh = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
+image_set_min_max = csvread(fullfile(fileparts(I_file),filenames.focal_image_min_max));
+filter_thresh = filter_thresh * range(image_set_min_max);
 
-%Add the folder with all the scripts used in this master program
-addpath('matlab_scripts');
-addpath(genpath('..'));
+focal_normed = (focal_image - image_set_min_max(1))/(range(image_set_min_max));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main Program
@@ -92,7 +92,6 @@ if (i_p.Results.min_adhesion_size > 1)
     
     threshed_image = labeled_thresh > 0;
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Adhesion Segmentation
