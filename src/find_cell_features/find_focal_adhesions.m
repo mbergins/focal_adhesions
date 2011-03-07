@@ -33,7 +33,7 @@ i_p.addParamValue('cell_mask',0,@(x)exist(x,'file') == 2);
 i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x) && x > 0);
 
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
-i_p.addParamValue('filter_thresh',0.1,@isnumeric);
+i_p.addParamValue('filter_thresh',1000,@isnumeric);
 i_p.addParamValue('scale_filter_thresh',0,@(x)islogical(x) || (isnumeric(x) && (x == 1 || x == 0)));
 i_p.addParamValue('min_independent_size',0.56,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('pixel_size',1,@(x)isnumeric(x) && x > 0);
@@ -55,9 +55,8 @@ if (isempty(strmatch('cell_mask', i_p.UsingDefaults)))
 end
 
 %read in and normalize the input focal adhesion image
-focal_image  = imread(I_file);
-scale_factor = double(intmax(class(focal_image)));
-focal_image  = double(focal_image)/scale_factor;
+focal_image  = double(imread(I_file));
+focal_normed = (focal_image - min(focal_image(:)))/(range(focal_image(:)));
 
 if (i_p.Results.scale_filter_thresh)
     filter_thresh = i_p.Results.filter_thresh * (max(focal_image(:)) - min(focal_image(:)));
@@ -67,6 +66,7 @@ end
 
 %Add the folder with all the scripts used in this master program
 addpath('matlab_scripts');
+addpath(genpath('..'));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main Program
@@ -78,7 +78,7 @@ addpath('matlab_scripts');
 I_filt = fspecial('disk',i_p.Results.filter_size);
 blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
 high_passed_image = focal_image - blurred_image;
-threshed_image = logical(im2bw(high_passed_image,filter_thresh));
+threshed_image = high_passed_image > filter_thresh;
 
 %identify and remove adhesions on the immediate edge of the image
 threshed_image = remove_edge_adhesions(threshed_image);
@@ -178,13 +178,7 @@ imwrite(double(ad_zamir)/2^16,fullfile(i_p.Results.output_dir, i_p.Results.outpu
 imwrite(double(ad_zamir_perim)/2^16,fullfile(i_p.Results.output_dir, i_p.Results.output_file_perim),'bitdepth',16);
 imwrite(im2bw(ad_zamir,0),fullfile(i_p.Results.output_dir, i_p.Results.output_file_binary));
 
-addpath(genpath('..'))
-
-scaled_image = focal_image;
-scaled_image = scaled_image - min(focal_image(:));
-scaled_image = scaled_image .* (1/max(scaled_image(:)));
-
-highlighted_image = create_highlighted_image(scaled_image, im2bw(ad_zamir_perim,0));
+highlighted_image = create_highlighted_image(focal_normed, im2bw(ad_zamir_perim,0));
 if (exist('cell_mask','var'))
     highlighted_image = create_highlighted_image(highlighted_image, bwperim(cell_mask),'color_map',[1,0,0]);
 end
