@@ -26,18 +26,16 @@ assert(str2num(image_dirs(3).name) == 1, 'Error: expected the third string to be
 
 image_dirs = image_dirs(3:end);
 
-min_max = [Inf,-Inf];
-
 temp_image = imread(fullfile(base_dir,image_dirs(1).name,filenames.focal_image));
 all_images = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
+all_images_anscomb = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
 
 for i_num = 1:size(image_dirs,1)
     puncta_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
-    if (min(puncta_image(:)) < min_max(1)), min_max(1) = min(puncta_image(:)); end
-    if (min(puncta_image(:)) > min_max(2)), min_max(2) = max(puncta_image(:)); end
-    
     all_images(:,:,i_num) = puncta_image;
+    all_images_anscomb(:,:,i_num) = 2*sqrt(puncta_image + (3/8));
 end
+min_max = [min(all_images(:)),max(all_images(:))];
 
 output_file = fullfile(base_dir,image_dirs(1).name,filenames.focal_image_min_max);
 [output_folder,temp,temp_ext] = fileparts(output_file); %#ok<NASGU>
@@ -47,8 +45,16 @@ end
 
 csvwrite(output_file,min_max);
 
-focal_image_threshold = (2*std(all_images(:)))/range(all_images(:));
+% im_std = std(all_images,1,3);
+% im_mean = mean(all_images,3);
+% im_median = median(all_images,3);
+% mean_med_diff = im_median - im_mean;
+% ans_mean = mean(all_images_anscomb,3);
+% ans_var = var(all_images_anscomb,0,3);
+% threshed = mean_med_diff > -2 & mean_med_diff < 2;
+% im_cv = im_std./im_mean;
 
+focal_image_threshold = (2*std(all_images(:)))/range(all_images(:));
 csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),focal_image_threshold);
 
 toc;
