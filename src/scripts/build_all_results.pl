@@ -46,19 +46,25 @@ $|  = 1;
 #layer holds all of those commands with the appropriate directory to execute the
 #commands in.
 my @overall_command_seq = (
-	# [ [ "../find_cell_features",      "./setup_results_folder.pl" ], ],
 	[ [ "../find_cell_features",      "./collect_mask_image_set.pl" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_exp_min_max"], ],
 	[ [ "../find_cell_features",      "./collect_fa_image_set.pl" ], ],
 	[ [ "../find_cell_features",      "./collect_fa_properties.pl" ], ],
 	[ [ "../analyze_cell_features",   "./build_tracking_data.pl" ], ],
 	[ [ "../analyze_cell_features",   "./track_adhesions.pl" ], ],
-	[ [ "../visualize_cell_features", "./collect_visualizations.pl -only_config" ], ],
 	[ [ "../analyze_cell_features",   "./gather_tracking_results.pl" ], ],
 	[ [ "../analyze_cell_features",   "./build_R_models.pl" ], ],
 	[ [ "../visualize_cell_features", "./collect_visualizations.pl" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script ../visualize_cell_features/max_intent_project" ], ],
 );
+
+#some of the scripts only need to be run once for each experiment, this will
+#rely on being able to find an experiment with one of the following values in
+#it's name
+my @run_only_once = qw(Pax_01 Vin_01 FAK_01);
+
+my @skip_check = qw(track_adhesions gather_tracking_results build_R_models collect_visualizations 
+	max_intent_project);
 
 my $cfg_suffix = basename($opt{cfg});
 $cfg_suffix =~ s/.*\.(.*)/$1/;
@@ -69,129 +75,91 @@ my @config_files = File::Find::Rule->file()->name( "*.$cfg_suffix" )->in( ($cfg{
 if (exists($opt{exp_filter})) {
    @config_files = grep $_ =~ /$opt{exp_filter}/, @config_files;
 }
+die "No config files left after filtering." if (scalar(@config_files) == 0);
+
+my @run_once_configs = grep $_ =~ /time_series_01/, @config_files;
 
 #######################################
 # Program Running
 #######################################
 our @running_jobs;
-if ($opt{lsf}) {
-    if (not($opt{debug})) {
-        my $job_queue_thread = threads->create('shift_idle_jobs','');
-        $job_queue_thread->detach;
-    }
-    
-    my $starting_dir = getcwd;
-    for (@overall_command_seq) {
-		my $command_start_bench = new Benchmark;
-        my @command_seq = @{$_};
-        my @command_seq = map { [ $_->[0], $_->[1] . " -lsf" ] } @command_seq;
-        print "Starting on $command_seq[0][1]\n";
-        &execute_command_seq(\@command_seq, $starting_dir);
 
-        #If debugging is not on, we want to wait till the current jobs finish
-        #and then check the file complements of the experiments for completeness
-        if (not($opt{debug})) {
-            &wait_till_LSF_jobs_finish;
-            print "Checking for all output files on command $command_seq[0][1]\n";
-            my %exp_sets = &check_file_sets(\@config_files);
+if (not($opt{debug}) && $opt{lsf}) {
+	my $job_queue_thread = threads->create('shift_idle_jobs','');
+	$job_queue_thread->detach;
+}
 
-            for (1..2) {
-                #if no experiments are left to retry, we break out and continue
-                #to the next command set
-                if (not(@{$exp_sets{retry}})) {
-                    last;
-                    next;
-                }
-                print "Retrying these experiments:\n".
-                      join("\n", @{$exp_sets{retry}}) . "\n";
-                &execute_command_seq(\@command_seq, $starting_dir, \@{$exp_sets{retry}});
-                &wait_till_LSF_jobs_finish;
-                my %these_exp_sets = &check_file_sets(\@{$exp_sets{retry}});
+my $starting_dir = getcwd;
+for (@overall_command_seq) {
+	my $command_start_bench = new Benchmark;
+	my @command_seq = @{$_};
+	@command_seq = map { [ $_->[0], $_->[1] . " -lsf" ] } @command_seq if $opt{lsf};
+	print "Starting on $command_seq[0][1]\n";
+	if (grep $command_seq[0][1] =~ /$_/, @run_only_once) {
+		&execute_command_seq(\@command_seq, $starting_dir,\@run_once_configs);
+	} else {
+		&execute_command_seq(\@command_seq, $starting_dir);
+	}
 
-                push @{$exp_sets{good}}, @{$these_exp_sets{good}};
-                @{$exp_sets{retry}} = @{$these_exp_sets{retry}};
-            }
+	#If debugging is not on, we want to wait till the current jobs finish
+	#and then check the file complements of the experiments for completeness
+	&wait_till_LSF_jobs_finish if ($opt{lsf} && not($opt{debug}));
+	if (not($opt{debug}) && not(grep $command_seq[0][1] =~ /$_/, @skip_check)) {
+		print "Checking for all output files on command $command_seq[0][1]\n";
+		my %exp_sets = &check_file_sets(\@config_files);
 
-            #check if there are any files left in the retry set, if so, clear
-            #out the failed experiments from the next round
-            if (@{$exp_sets{retry}}) {
-                print "\nProblem with collecting full file complement on experiments after three tries:\n\t" .
-                    join("\n\t", @{$exp_sets{retry}}) . "\nRemoving them from the next run.\n\n";
-                @config_files = @{$exp_sets{good}};  
-            } else {
-                print "Output file set complete, moving on.\n";
-            }
-            my $command_end_bench = new Benchmark;
-            my $td = timediff($command_end_bench, $command_start_bench);
-            print "The command took:",timestr($td),"\n";
-            print "\n\n";
-        }
-        
-        #clear the running jobs list
-        @running_jobs = ();
-    }
-    
-    if (not($opt{debug})) {
-        #with all the jobs finished, lets kill the job queue changing thread
-        # my $job_queue_thread->exit;
-
-        my $t_bsub = new Benchmark;
-        my $td = timediff($t_bsub, $t1);
-		
-        my $time_diff_str = "\"Took:" . timestr($td) . "\"";
-
-        my $command = "bsub -J \"Job Finished: $opt{cfg}\" echo $time_diff_str";
-		
-		if (not $opt{no_email}) {
-        	system($command);
-		}
-    }
-} else {
-    my $starting_dir = getcwd;
-    for (@overall_command_seq) {
-		my @command_seq = @{$_};
-		$command_seq[0][1] =~ m#/(.*)\.pl#;
-		
-		print "Starting on $1\n";
-        
-		my $command_start_bench = new Benchmark;
-        
-        &execute_command_seq(\@command_seq, $starting_dir);
-		
-		if (not($opt{debug})) {
-			#check for all the results from the last set of experiments
-			my %exp_sets = &check_file_sets(\@config_files);
-
-			for (1..2) {
-				#if no experiments are left to retry, we break out and continue
-				#to the next command set
-				if (not(@{$exp_sets{retry}})) {
-					last;
-					next;
-				}
-				print "Retrying these experiments:\n".
-					  join("\n", @{$exp_sets{retry}}) . "\n";
-				&execute_command_seq(\@command_seq, $starting_dir, \@{$exp_sets{retry}});
-				my %these_exp_sets = &check_file_sets(\@{$exp_sets{retry}});
-
-				push @{$exp_sets{good}}, @{$these_exp_sets{good}};
-				@{$exp_sets{retry}} = @{$these_exp_sets{retry}};
+		for (1..2) {
+			#if no experiments are left to retry, we break out and continue
+			#to the next command set
+			if (not(@{$exp_sets{retry}})) {
+				last;
+				next;
 			}
+			print "Retrying these experiments:\n".
+				  join("\n", @{$exp_sets{retry}}) . "\n";
+			&execute_command_seq(\@command_seq, $starting_dir, \@{$exp_sets{retry}});
+			&wait_till_LSF_jobs_finish if ($opt{lsf});
+			my %these_exp_sets = &check_file_sets(\@{$exp_sets{retry}});
 
-			#check if there are any files left in the retry set, if so, clear
-			#out the failed experiments from the next round
-			if (@{$exp_sets{retry}}) {
-				print "\nProblem with collecting full file complement on experiments after three tries:\n\t" .
-					join("\n\t", @{$exp_sets{retry}}) . "\nRemoving them from the next run.\n\n";
-				@config_files = @{$exp_sets{good}};  
-			} else {
-				print "Output file set complete, moving on.\n";
-			}
+			push @{$exp_sets{good}}, @{$these_exp_sets{good}};
+			@{$exp_sets{retry}} = @{$these_exp_sets{retry}};
 		}
-		
+
+		#check if there are any files left in the retry set, if so, clear
+		#out the failed experiments from the next round
+		if (@{$exp_sets{retry}}) {
+			print "\nProblem with collecting full file complement on experiments after three tries:\n\t" .
+				join("\n\t", @{$exp_sets{retry}}) . "\nRemoving them from the next run.\n\n";
+			@config_files = @{$exp_sets{good}};  
+		} else {
+			print "Output file set complete, moving on.\n";
+		}
+	}
+
+	if (not $opt{debug}) {
 		my $command_end_bench = new Benchmark;
 		my $td = timediff($command_end_bench, $command_start_bench);
-		print "The command took:",timestr($td),"\n\n";
+		print "The command took:",timestr($td),"\n";
+	}
+	
+	#we are done with the current command, so we print a few spacer lines to
+	#indicate we have moved onto a new command
+	print "\n\n";
+	
+	#we expect the running jobs listed to be emptied after every command
+	@running_jobs = ();
+}
+
+if (not($opt{debug})) {
+	my $t_bsub = new Benchmark;
+	my $td = timediff($t_bsub, $t1);
+	
+	my $time_diff_str = "\"Took:" . timestr($td) . "\"";
+
+	my $command = "bsub -J \"Job Finished: $opt{cfg}\" echo $time_diff_str";
+	
+	if (not $opt{no_email}) {
+		system($command) if $opt{lsf};
 	}
 }
 
@@ -248,8 +216,9 @@ sub execute_command_seq {
 sub wait_till_LSF_jobs_finish {
     #After each step of the pipeline, we want to wait till all the individual
     #jobs are completed, which will be checked three times
-    for (1 .. 3) {
-        print "On check number $_\n";
+	my $total_checks = 3;
+    for (1 .. $total_checks) {
+        print "LSF finished check number $_/$total_checks\n";
         my $sleep_time = 10;
         do {
             sleep($sleep_time);
@@ -286,7 +255,9 @@ sub running_LSF_jobs {
 }
 
 sub kill_long_running_jobs {
-    if (scalar(@running_jobs) > 60) {
+	#we only need to worry about killing jobs that have run for at least 6
+	#hours, we check for running jobs every 10 seconds, so...
+    if (scalar(@running_jobs) > (6*60*10)) {
         my @long_running_jobs = @{$running_jobs[$#running_jobs]};
         my @last_hour = @running_jobs[($#running_jobs - 59) .. $#running_jobs];
         foreach my $jobs_ref (@last_hour) {
