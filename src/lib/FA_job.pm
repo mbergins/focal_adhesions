@@ -37,7 +37,7 @@ sub run_matlab_progam {
         if ($opt{debug}) {
             print "\n", join("\n", @matlab_code), "\n";
         } else {
-            &Math::Matlab::Extra::execute_commands(\@matlab_code, $opt{error_file});
+            &Math::Matlab::Extra::execute_commands(\@matlab_code, \%opt);
         }
     }
 }

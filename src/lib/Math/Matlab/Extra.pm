@@ -25,10 +25,15 @@ sub execute_commands {
     } else {
         die "Expected first argument to execute_commands to be an ref, specifically a scalar or an array ref";
     }
+	
+	my %opt = %{$_[1]};
 
-    my $error_file = $_[1];
+    my $error_file = $opt{error_file};
 
     my $matlab_object = Math::Matlab::Local->new();
+	if (defined $opt{abs_script_dir}) {
+		$matlab_object->root_mwd($opt{abs_script_dir});
+	}
     
     unlink($error_file) if (-e $error_file);
 
@@ -40,7 +45,7 @@ sub execute_commands {
             print ERR_OUT "\n\nMATLAB COMMANDS\n\n$command";
             close ERR_OUT;
 
-            #$matlab_object->remove_files;
+            $matlab_object->remove_files;
         }
     }
 }
