@@ -40,9 +40,7 @@ if (isempty(strmatch('cell_mask',i_p.UsingDefaults)))
 end
 
 %read in and normalize the input focal adhesion image
-focal_image  = imread(focal_file);
-scale_factor = double(intmax(class(focal_image)));
-focal_image  = double(focal_image)/scale_factor;
+focal_image = double(imread(focal_file));
 
 %read in the labeled adhesions
 adhesions = imread(adhesions_file);
@@ -132,11 +130,20 @@ adhesion_props = regionprops(labeled_adhesions,'all');
 %%Properites Always Extracted
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+centroid_data = [adhesion_props.Centroid];
+centroid_x = centroid_data(1:2:length(adhesion_props)*2);
+centroid_y = centroid_data(2:2:length(adhesion_props)*2);
+
+ad_centroid = [mean(centroid_x),mean(centroid_y)];
+
 for i=1:max(labeled_adhesions(:))
     adhesion_props(i).Average_adhesion_signal = mean(orig_I(labeled_adhesions == i));
     adhesion_props(i).Variance_adhesion_signal = var(orig_I(labeled_adhesions == i));
     adhesion_props(i).Max_adhesion_signal = max(orig_I(labeled_adhesions == i));
     adhesion_props(i).Min_adhesion_signal = min(orig_I(labeled_adhesions == i));
+    
+    adhesion_props(i).Dist_from_ad_centroid = sqrt((adhesion_props(i).Centroid(1) - ad_centroid(1))^2 + ...  
+        (adhesion_props(i).Centroid(2) - ad_centroid(2))^2);
     
     this_ad = labeled_adhesions;
     this_ad(labeled_adhesions ~= i) = 0;
@@ -263,6 +270,7 @@ if (exist('cell_mask','var'))
         adhesion_props(i).CB_corrected_signal = adhesion_props(i).Average_adhesion_signal - adhesion_props(1).Cell_not_ad_mean_intensity;
     end
 end
+    
 
 function write_adhesion_data(S,varargin)
 % WRITE_STRUCT_DATA     write most the data stored in a given struct to a
