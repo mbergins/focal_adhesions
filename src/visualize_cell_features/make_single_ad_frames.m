@@ -15,6 +15,7 @@ function make_single_ad_frames(cfg_file,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Setup variables and parse command line
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+tic;
 i_p = inputParser;
 i_p.FunctionName = 'MAKE_SINGLE_AD_FRAMES';
 
@@ -25,7 +26,9 @@ i_p.addParamValue('end_row',1,@(x)x >= 1);
 i_p.addParamValue('adhesion_file',@(x)exist(x,'file') == 2);
 
 i_p.parse(cfg_file,varargin{:});
-if (i_p.Results.debug == 1), profile off; profile on; end
+
+addpath(genpath('..'))
+filenames = add_filenames_to_struct(struct());
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program
@@ -164,6 +167,8 @@ bounding_matrix(bounding_matrix(:,4) > i_size(1),4) = i_size(1);
 % Build Single Ad Image Sequences
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+image_set_min_max = csvread(fullfile(I_folder,'01',filenames.focal_image_min_max));
+
 %i_seen will keep track of the number of images that have actually been
 %read into the program, we need to keep track of this due to skipped
 %frames, which will show up as missing files in the following loop
@@ -182,10 +187,9 @@ for j = 1:max_image_num
     i_seen = i_seen + 1;
 
     %Gather and scale the input adhesion image
-    orig_i = imread(fullfile(I_folder,padded_i_num,focal_image));
-    scale_factor = double(intmax(class(orig_i)));
-    orig_i = double(orig_i)/scale_factor;
-
+    orig_i = double(imread(fullfile(I_folder,padded_i_num,focal_image)));
+    orig_i = (orig_i - image_set_min_max(1))/range(image_set_min_max);
+    
     %Gather the ad label image
     ad_label_perim = imread(fullfile(I_folder,padded_i_num,adhesions_perim_filename));
 

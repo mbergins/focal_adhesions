@@ -14,7 +14,7 @@ function make_movie_frames(cfg_file,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Setup variables and parse command line
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+tic;
 i_p = inputParser;
 i_p.FunctionName = 'MAKE_MOVIE_FRAMES';
 
@@ -25,7 +25,9 @@ i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
 i_p.parse(cfg_file,varargin{:});
 
-if (i_p.Results.debug == 1), profile off; profile on; end
+addpath(genpath('..'));
+
+filenames = add_filenames_to_struct(struct());
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program
@@ -89,36 +91,7 @@ lineage_to_cmap = zeros(size(tracking_seq,1),1);
 time_cmap = jet(size(tracking_seq,2));
 birth_time_to_cmap = zeros(size(tracking_seq,1),1);
 
-i_seen = 0;
-
-image_set_range = [Inf,-Inf];
-for i = 1:max_image_num
-    if (i_seen + 1 > size(tracking_seq,2))
-        continue;
-    end
-    
-    padded_i_num = sprintf(['%0',num2str(folder_char_length),'d'],i);
-
-    if (not(exist(fullfile(I_folder,padded_i_num,focal_image),'file'))), continue; end
-
-    i_seen = i_seen + 1;
-
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %Gather and scale the input adhesion image
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    orig_i = imread(fullfile(I_folder,padded_i_num,focal_image));
-    
-    if (min(orig_i(:)) < image_set_range(1))
-        image_set_range(1) = min(orig_i(:));
-    end
-    
-    if (max(orig_i(:)) > image_set_range(2))
-        image_set_range(2) = max(orig_i(:));
-    end
-end
-
-disp('Done finding image range');
-
+image_set_range = csvread(fullfile(I_folder,'01',filenames.focal_image_min_max));
 i_seen = 0;
 
 for i = 1:max_image_num
