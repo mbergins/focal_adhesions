@@ -1,4 +1,4 @@
-function find_exp_min_max(exp_dir,varargin)
+function find_exp_thresholds(exp_dir,varargin)
 tic;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Setup variables and parse command line
@@ -6,6 +6,7 @@ tic;
 i_p = inputParser;
 
 i_p.addRequired('exp_dir',@(x)exist(x,'dir') == 7);
+i_p.addParamValue('stdev_thresh',4,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
 i_p.parse(exp_dir,varargin{:});
@@ -28,12 +29,18 @@ image_dirs = image_dirs(3:end);
 
 temp_image = imread(fullfile(base_dir,image_dirs(1).name,filenames.focal_image));
 all_images = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
-all_images_anscomb = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
+all_high_passed = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
 
 for i_num = 1:size(image_dirs,1)
     puncta_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
+    
+    I_filt = fspecial('disk',11);
+    blurred_image = imfilter(puncta_image,I_filt,'same',mean(puncta_image(:)));
+    high_passed_image = puncta_image - blurred_image;
+    
     all_images(:,:,i_num) = puncta_image;
-    all_images_anscomb(:,:,i_num) = 2*sqrt(puncta_image + (3/8));
+    all_high_passed(:,:,i_num) = high_passed_image;
+    disp([i_num,size(image_dirs,1)])
 end
 min_max = [min(all_images(:)),max(all_images(:))];
 
@@ -54,7 +61,7 @@ csvwrite(output_file,min_max);
 % threshed = mean_med_diff > -2 & mean_med_diff < 2;
 % im_cv = im_std./im_mean;
 
-focal_image_threshold = (2*std(all_images(:)))/range(all_images(:));
+focal_image_threshold = i_p.Results.stdev_thresh*std(all_high_passed(:));
 csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),focal_image_threshold);
 
 toc;

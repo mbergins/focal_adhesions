@@ -59,13 +59,11 @@ end
 
 filenames = add_filenames_to_struct(struct());
 
+filter_thresh = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
+
 %read in and normalize the input focal adhesion image
 focal_image  = double(imread(I_file));
-
-filter_thresh = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
 image_set_min_max = csvread(fullfile(fileparts(I_file),filenames.focal_image_min_max));
-filter_thresh = filter_thresh * range(image_set_min_max);
-
 focal_normed = (focal_image - image_set_min_max(1))/(range(image_set_min_max));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
