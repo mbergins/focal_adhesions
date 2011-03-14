@@ -31,11 +31,9 @@ i_p.addParamValue('cell_mask',0,@(x)exist(x,'file') == 2);
 
 %Adhesion filtering parameters
 i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x) && x > 0);
-
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
 i_p.addParamValue('filter_thresh',0.1,@isnumeric);
-i_p.addParamValue('min_independent_size',0.56,@(x)isnumeric(x) && x > 0);
-i_p.addParamValue('pixel_size',1,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('min_independent_size',14,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
 
 %output parameters
@@ -101,12 +99,12 @@ end
 %in order to select a threshold for having adhesions remain as seperate
 %enties when touching, so we also check for that before using the watershed
 %segmentation
-if (i_p.Results.no_ad_splitting || not(isempty(strmatch('pixel_size', i_p.UsingDefaults))))
+if (i_p.Results.no_ad_splitting || not(isempty(strmatch('min_independent_size', i_p.UsingDefaults))))
     %if splitting is off, there is no need to use the fancy watershed based
     %segmentation methods, just identify the connected areas
     ad_zamir = bwlabel(threshed_image,4);
 else
-    min_pixel_size = floor((sqrt(i_p.Results.min_independent_size)/i_p.Results.pixel_size)^2);
+    min_pixel_size = i_p.Results.min_independent_size;
     ad_zamir = find_ad_zamir(high_passed_image,threshed_image,min_pixel_size,'debug',i_p.Results.debug);
 end
 disp('Done finding adhesion regions')

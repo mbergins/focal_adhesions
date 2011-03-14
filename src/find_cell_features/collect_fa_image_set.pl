@@ -79,14 +79,14 @@ sub create_all_matlab_commands {
         if (defined $cfg{filter_thresh}) {
             $extra_opt .= ",'filter_thresh',$cfg{filter_thresh}";
         }
-        if (defined $cfg{scale_filter_thresh}) {
-            $extra_opt .= ",'scale_filter_thresh',$cfg{scale_filter_thresh}";
-        }
         if (defined $cfg{no_ad_splitting}) {
             $extra_opt .= ",'no_ad_splitting',$cfg{no_ad_splitting}";
         }
         if (defined $cfg{min_adhesion_size}) {
             $extra_opt .= ",'min_adhesion_size',$cfg{min_adhesion_size}";
+        }
+        if (defined $cfg{min_independent_size}) {
+            $extra_opt .= ",'min_independent_size',$cfg{min_independent_size}";
         }
 		if (-e $cell_mask) {
             $extra_opt .= ",'cell_mask','$cell_mask'";
