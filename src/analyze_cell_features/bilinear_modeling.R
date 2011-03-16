@@ -158,7 +158,9 @@ find_optimum_model_indexes <- function(assembly=NULL,disassembly=NULL) {
     best_fit_indexes
 }
 
-produce_rate_filters <- function(single.exp.data, min.r.sq=-Inf, max.p.val=0.05, pos.slope=TRUE) {
+produce_rate_filters <- function(single.exp.data, model_count, min.r.sq=-Inf, 
+    max.p.val=0.05, pos.slope=TRUE) {
+    
     filter_sets = list()
     
     # First we cycle through all the variables used to filter the assembly and
@@ -167,7 +169,7 @@ produce_rate_filters <- function(single.exp.data, min.r.sq=-Inf, max.p.val=0.05,
     vars_to_filter = c("assembly", "disassembly")
     for (var in vars_to_filter) {
         #apply a bonferroni correction to the maximum acceptable p-value calculation
-        corrected.p.value = max.p.val / sum(! is.na(single.exp.data[[var]]$p.value));
+        corrected.p.value = max.p.val / model_count;
         
         filter_sets[[var]]$good.r.sq = ! is.na(single.exp.data[[var]]$adj.r.squared) & single.exp.data[[var]]$adj.r.squared >= min.r.sq
         filter_sets[[var]]$low.p.val = ! is.na(single.exp.data[[var]]$p.value) & single.exp.data[[var]]$p.value < corrected.p.value 
@@ -207,6 +209,15 @@ produce_rate_filters <- function(single.exp.data, min.r.sq=-Inf, max.p.val=0.05,
     final_filters$filter_sets = filter_sets;
     
     return(final_filters)
+}
+
+find_number_of_models <- function(model_set) {
+    count = 0;
+    for (i in 1:length(model_set)) {
+        count = count + sum(! is.na(model_set[[i]]$assembly$p.value));
+        count = count + sum(! is.na(model_set[[i]]$disassembly$p.value));
+    }
+    return(count)
 }
 
 write_assembly_disassembly_periods <- function(result, dir) {

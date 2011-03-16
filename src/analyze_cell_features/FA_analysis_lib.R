@@ -76,6 +76,76 @@ plot_ad_seq <- function (results,index,type='assembly',log.trans = TRUE, time.sp
 	}
 }
 
+plot_ad_intensity <- function (results,index,phase_lengths,R_sq,time.spacing=1, ...) {
+    int_min_max = c(min(results$exp_data,na.rm=T), max(results$exp_data,na.rm=T))
+    
+	ad_seq = as.vector(results$exp_data[index,])
+    time_points = which(!is.nan(ad_seq))*time.spacing - time.spacing
+    ad_seq = na.omit(ad_seq)
+    
+    plot(time_points, ad_seq, xlab='Time (minutes)', ylab='Normalized Intensity',type="o", main=index,
+        ylim=int_min_max);
+    
+    plot_limits = par("usr")
+    segments(0,par("usr")[3],0,par("usr")[4])
+    segments((length(results$exp_data[index,])-1)*time.spacing,par("usr")[3],
+        (length(results$exp_data[index,])-1)*time.spacing,par("usr")[4])
+    
+    if (is.finite(phase_lengths[1])) {
+        assemb_time = time_points[1:phase_lengths[1]]
+        assemb_sig = ad_seq[1:phase_lengths[1]]
+        log_model = lm(log(assemb_sig) ~ assemb_time);
+        predicted_sig = predict(log_model);
+        
+        lines(assemb_time, exp(predicted_sig), col='darkgreen',lwd = 3)
+
+        text(plot_limits[1],plot_limits[4]*0.95,pos=4, 
+            paste('R-sq:', sprintf('%.2f',R_sq[1])))
+    }
+    
+    if (is.finite(phase_lengths[2])) {
+        dis_time = rev(time_points)[1:phase_lengths[2]]
+        dis_sig = rev(ad_seq)[1:phase_lengths[2]] 
+        log_model = lm(log(dis_sig) ~ dis_time);
+        predicted_sig = predict(log_model);
+        lines(dis_time, exp(predicted_sig), col='red',lwd = 3)
+        text(plot_limits[2],plot_limits[4]*0.95,pos=2, 
+            paste('R-sq:', sprintf('%.2f',R_sq[2])))
+    }
+}
+
+plot_all_ad_intensities <- function (raw_data,filtered_set) {
+    exp_count = length(raw_data)
+
+    for (i in 1:exp_count) {
+        this_raw_data = raw_data[[i]];
+        this_assembly_set = subset(filtered_set$assembly, exp_num == i);
+        this_disass_set = subset(filtered_set$dis, exp_num == i);
+
+        sorted_uniq_lin_nums = sort(unique(c(this_disass_set$lin_num,this_assembly_set$lin_num)))
+        
+        pdf(file.path(this_raw_data$exp_dir,'ad_intensity_plots.pdf'))
+        for (ad_num in sorted_uniq_lin_nums) {
+            as_row = which(this_assembly_set$lin_num == ad_num)
+            dis_row = which(this_disass_set$lin_num == ad_num)
+            
+            phase_lengths = c(NA, NA)
+            R_sq = c(NA, NA)
+            if (length(as_row) > 0) {
+                phase_lengths[1] = this_assembly_set$length[as_row]
+                R_sq[1] = this_assembly_set$adj.r.squared[as_row]
+            }
+            if (length(dis_row) > 0) {
+                phase_lengths[2] = this_disass_set$length[dis_row]
+                R_sq[2] = this_disass_set$adj.r.squared[dis_row]
+            }
+            
+            plot_ad_intensity(this_raw_data,ad_num,phase_lengths,R_sq,time.spacing = 2.5)
+        }
+        graphics.off()
+    }
+}
+
 plot_overall_residuals <- function(results,dir,file='overall_residual_plot.pdf',window = 0.1) {
 	resid = gather_exp_residuals(results)
 	
@@ -163,10 +233,11 @@ gather_exp_win_residuals <- function(resid, window) {
 }
 
 boxplot_with_points <- function(data,names=seq(1,length(data),by=1),
-    colors=c('darkgreen','red','yellow','blue','pink','cyan','gray','orange','brown','purple'),
+    colors=c('darkgreen','red','brown','blue','yellow','pink','cyan','gray','orange','purple'),
     notch=F,  range=1.5, inc.n.counts = TRUE, inc.points = TRUE, pch=20,
-    na.omit = TRUE, point.cex=0.2, return_output = FALSE, with.p.values = TRUE, bootstrap.rep = 10000,
-    p.values.pos = c(0.5,0.9), p.values.color = 'blue', ...) {
+    na.omit = TRUE, point.cex=0.2, return_output = FALSE, with.p.value = TRUE,
+    p.value.pos = c(0.5,0.9), p.value.color = 'black', p.value.type = 'median', 
+    bootstrap.rep = 10000, ...) {
 	
     if (any(is.null(data))) {
         print(paste("The data in position", which(is.null(data)), "is null"))
@@ -193,7 +264,7 @@ boxplot_with_points <- function(data,names=seq(1,length(data),by=1),
                    temp_data,col=colors[[i]], pch=pch, cex=point.cex, )
 		}
 	}
-    if (with.p.values) {
+    if (with.p.value) {
         data_set_lengths = lapply(data,length);
         if (any(data_set_lengths > 20000)) {
             conf_data = wilcox.test(data[[1]], data[[2]], correct=FALSE);
@@ -203,18 +274,30 @@ boxplot_with_points <- function(data,names=seq(1,length(data),by=1),
                 p_val_text = paste('p=',conf_data$p.value, sep='');
             }
         } else {
-            conf_data = determine_median_p_value(data[[1]], data[[2]], bootstrap.rep=bootstrap.rep);
-            if (length(conf_data$p.value) == 1) {
-                p_val_text = paste('p<',conf_data$p.value[1], sep='');
+            if (p.value.type == 'median') {
+                conf_data = determine_median_p_value(data[[1]], data[[2]],bootstrap.rep);
+            } else if (p.value.type == 'mean') {
+                conf_data = determine_mean_p_value(data[[1]], data[[2]],bootstrap.rep);
             } else {
-                p_val_text = paste(conf_data$p.value[1],'<p<',conf_data$p.value[2], sep='');
+                print('Unrecognized p.value.type');
+                stop()
+            }
+            p_val_text = paste('p<',conf_data$p.value[1], sep='');
+            if (conf_data$p.value[1] < 0.05) {
+                if (p.value.type == 'median') {
+                    p_val_text = paste(p_val_text,'\n',
+                        round(100*(median(data[[2]])/median(data[[1]]) - 1)), '%',sep='')
+                } else {
+                    p_val_text = paste(p_val_text,'\n',
+                        round(100*(mean(data[[2]])/mean(data[[1]]) - 1)), '%',sep='')
+                }
             }
         }
 
-        x_pos = (plot_dims[2] - plot_dims[1])*p.values.pos[1] + plot_dims[1]
-        y_pos = (plot_dims[4] - plot_dims[3])*p.values.pos[2] + plot_dims[3]
+        x_pos = (plot_dims[2] - plot_dims[1])*p.value.pos[1] + plot_dims[1]
+        y_pos = (plot_dims[4] - plot_dims[3])*p.value.pos[2] + plot_dims[3]
         
-        text(x_pos,y_pos, p_val_text, col=p.values.color);
+        text(x_pos,y_pos, p_val_text, col=p.value.color);
     }
     if (return_output) {
         return(box.data);
@@ -263,12 +346,12 @@ get_legend_rect_points <- function(left_x,bottom_y,right_x,top_y,box_num) {
 }
 
 plot_signif_bracket <- function(upper_left, lower_right, orientation = 'regular', 
-    over_text = NA, cex_text = 1.5, text_sep = 0.5, text_x_adj=0) {
+    over_text = NA, cex_text = 1, text_sep = 0.5, text_x_adj=0) {
     if (orientation == 'regular') {
         lines(c(upper_left[1],upper_left[1],lower_right[1], lower_right[1]),
               c(lower_right[2],upper_left[2],upper_left[2],lower_right[2]))  
         if (! is.na(over_text)) {
-            text(mean(c(upper_left[1],lower_right[1])),upper_left[2]*1.025,over_text,cex=cex_text)
+            text(mean(c(upper_left[1],lower_right[1])),lower_right[2],over_text,pos=3,cex=cex_text)
         }
     } 
     if (orientation == 'upside_down') {
@@ -276,6 +359,7 @@ plot_signif_bracket <- function(upper_left, lower_right, orientation = 'regular'
               c(upper_left[2],lower_right[2],lower_right[2],upper_left[2]))  
         if (! is.na(over_text)) {
             text(mean(c(upper_left[1],lower_right[1]))+text_x_adj,lower_right[2]-text_sep,over_text,cex=cex_text)
+            # text(mean(c(upper_left[1],lower_right[1])),lower_right[2],over_text,pos=3,cex=cex_text)
         }
     }
 }
@@ -329,90 +413,79 @@ plot_stage_length_data <- function(stage_length_data, type='stacked', top_gap = 
 ########################################
 #Data Summary functions
 ########################################
-filter_results <- function(results, min.r.sq=0.9, max.p.val = 0.05, debug = FALSE,
+filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 0.05, debug = FALSE,
         pos.slope = TRUE) {
 
-    points = list();
+    ad_data = list();
+    
+    if (is.na(model_count)) {
+        model_count = find_number_of_models(results)
+    }
+
     for (i in 1:length(results)) {
         if (debug) {
-            print(paste("Working on Experiment #:",i));
+            print(paste("Working on Experiment #:",i,'/',length(results)));
         }
         res = results[[i]];
 
-        filter_sets = produce_rate_filters(res, min.r.sq = min.r.sq, max.p.val = max.p.val, pos.slope = pos.slope)
+        filter_sets = produce_rate_filters(res, model_count, min.r.sq = min.r.sq, max.p.val = max.p.val, 
+            pos.slope = pos.slope)
         
         assembly_filt = filter_sets$assembly;
         disassembly_filt = filter_sets$disassembly;
         joint_filt = filter_sets$joint;
         
-        vars_to_add = names(res$assembly)
-        for (this_var in vars_to_add) {
-            points$assembly[[this_var]] = c(points$assembly[[this_var]], 
-                res$assembly[[this_var]][assembly_filt]);
+        #######################################################################
+        # Building the Assembly Data Set
+        #######################################################################
 
-        }
-        points$assembly$exp_num = c(points$assembly$exp_num, rep(i,length(which(assembly_filt))));
-        points$assembly$lin_num = c(points$assembly$lin_num, which(assembly_filt));
+        # create a temporary list to hold the variables we want to collect for
+        # each adhesion selected by filtering
+        this_assem_data = list()
+        this_assem_data = res$assembly[assembly_filt,]
+        these_props = subset(res$exp_props,select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num'))
+        this_assem_data = cbind(this_assem_data,these_props[assembly_filt,])
+        this_assem_data$exp_num = c(this_assem_data$exp_num, rep(i,length(which(assembly_filt))));
+        this_assem_data$lin_num = c(this_assem_data$lin_num, which(assembly_filt));
         
-        vars_to_add = names(res$dis)
-        for (this_var in vars_to_add) {
-            points$disassembly[[this_var]] = c(points$disassembly[[this_var]], 
-                res$disassembly[[this_var]][disassembly_filt]);
-
-        }
-        points$disassembly$exp_num = c(points$disassembly$exp_num, rep(i,length(which(disassembly_filt))));
-        points$disassembly$lin_num = c(points$disassembly$lin_num, which(disassembly_filt));
- 
-        vars_to_add = names(res$dis)
-        for (this_var in vars_to_add) {
-            points$disassembly[[this_var]] = c(points$disassembly[[this_var]], 
-                res$disassembly[[this_var]][disassembly_filt]);
-
-        }
-        points$disassembly$exp_num = c(points$disassembly$exp_num, rep(i,length(which(disassembly_filt))));
-        points$disassembly$lin_num = c(points$disassembly$lin_num, which(disassembly_filt));
+        ad_data$assembly = rbind(ad_data$assembly,this_assem_data)
+             
+        #######################################################################
+        # Building the Disassembly Data Set
+        #######################################################################
         
-        points$joint$exp_num = c(points$joint$exp_num, rep(i,length(which(joint_filt))));
-        points$joint$lin_num = c(points$joint$lin_num, which(joint_filt));
-        points$joint$assembly_length = c(points$joint$assembly_length, res$assembly$length[joint_filt]);
-        points$joint$disassembly_length = c(points$joint$disassembly_length, res$dis$length[joint_filt]);
+        this_dis_data = list()
+        this_dis_data = res$disassembly[disassembly_filt,]
+        these_props = subset(res$exp_props,select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num'))
+        this_dis_data = cbind(this_dis_data,these_props[disassembly_filt,])
+        this_dis_data$exp_num = c(this_dis_data$exp_num, rep(i,length(which(disassembly_filt))));
+        this_dis_data$lin_num = c(this_dis_data$lin_num, which(disassembly_filt));
         
-        # points$joint$assembly = c(points$joint$assembly, res$assembly$slope[joint_filt]);
-        # points$joint$assembly_R = c(points$joint$assembly_R, res$assembly$R_sq[joint_filt]);
-        # points$joint$disassembly = c(points$joint$disassembly, res$disassembly$slope[joint_filt]);
-        # points$joint$disassembly_R = c(points$joint$disassembly_R, res$disassembly$R_sq[joint_filt]);
-
-        # points$joint$stable_lifetime = c(points$joint$stable_lifetime, res$stable_lifetime[joint_filt]);
-        # points$joint$total_lifetime = c(points$joint$total_lifetime, res$exp_props$longevity[joint_filt]);
-        # points$joint$stable_mean = c(points$joint$stable_mean, res$stable_mean[joint_filt]);
-        # points$joint$stable_variance = c(points$joint$stable_variance, res$stable_variance[joint_filt]);
-        # for (j in names(points$joint)) {
-        #     if (length(points$joint[[1]]) != length(points$joint[[j]])) {
-        #         print(paste("Length of property '",j, "' wrong in joint filtering", sep=''))
-        #         print(paste("Lengths are", length(points$joint[[1]]), " ", length(points$joint[[j]])))
-        #         stop()
-        #     }
-        # }
-        # 
-        # if (! all(is.na(cell_intensities))) {
-        #     points$control$assembly_slope = c(points$control$assembly_slope,  mean(res$assembly$slope[assembly_filt]));
-        #     points$control$disassembly_slope = c(points$control$disassembly_slope,  mean(res$disassembly$slope[disassembly_filt]));
-        #     points$control$mean_cell_int = c(points$control$mean_cell_int, mean(cell_intensities[[i]]));
-        # }
+        ad_data$disassembly = rbind(ad_data$disassembly,this_dis_data)
+        
+        #######################################################################
+        # Building the Joint Data Set
+        #######################################################################
+        ad_data$joint$exp_num = c(ad_data$joint$exp_num, rep(i,length(which(joint_filt))));
+        ad_data$joint$lin_num = c(ad_data$joint$lin_num, which(joint_filt));
+        ad_data$joint$assembly_length = c(ad_data$joint$assembly_length, res$assembly$length[joint_filt]);
+        ad_data$joint$disassembly_length = c(ad_data$joint$disassembly_length, res$dis$length[joint_filt]);
     }
     
-    points$assembly$exp_num = as.factor(points$assembly$exp_num);
-    points$disassembly$exp_num = as.factor(points$disassembly$exp_num);
-    points$joint$exp_num = as.factor(points$joint$exp_num);
+    ad_data$assembly$exp_num = as.factor(ad_data$assembly$exp_num);
+    ad_data$disassembly$exp_num = as.factor(ad_data$disassembly$exp_num);
+    ad_data$joint$exp_num = as.factor(ad_data$joint$exp_num);
 
-    points$assembly = as.data.frame(points$assembly);
-    points$disassembly = as.data.frame(points$disassembly);
-    points$joint = as.data.frame(points$joint);
+    ad_data$assembly = as.data.frame(ad_data$assembly);
+    ad_data$disassembly = as.data.frame(ad_data$disassembly);
+    ad_data$joint = as.data.frame(ad_data$joint);
 
-    points
+    ad_data
 }
 
 determine_death_rate <- function(lineage_time_series) {
+
+    #death status 1 means a regular non-merging death
     total_deaths = sum(lineage_time_series$exp_props$death_status);
     total_time = dim(lineage_time_series$exp_data)[[2]];
 
@@ -421,14 +494,29 @@ determine_death_rate <- function(lineage_time_series) {
 
 determine_birth_rate <- function(lineage_time_series) {
     filtered_exp_data = lineage_time_series$exp_data[! lineage_time_series$exp_props$split_birth_status,1]
-
+    
+    # the first column of the exp data includes entries for every adhesion that
+    # will be born during the experiment, by excluding those adhesions that were
+    # alive in the first frame and removing adhesions that are born via splits,
+    # we can simply count the NaNs in the first column to see how many true
+    # adhesion births there will be in the experiment
     total_births = sum(is.nan(filtered_exp_data));
     total_time = dim(lineage_time_series$exp_data)[[2]];
 
     total_births/total_time;
 }
 
-gather_barplot_properties <- function(data_sets, bootstrap.rep = 50000) {
+determine_ad_turnover <- function(before_ts,after_ts,time.spacing = 1) {
+    before_birth = unlist(lapply(before_ts,determine_birth_rate))/time.spacing
+    before_death = unlist(lapply(before_ts,determine_death_rate))/time.spacing
+    
+    after_birth = unlist(lapply(after_ts,determine_birth_rate))/time.spacing
+    after_death = unlist(lapply(after_ts,determine_death_rate))/time.spacing
+
+    ad_turnover = (after_birth - before_birth + after_death - before_death)/2
+}
+
+gather_barplot_properties <- function(data_sets, bootstrap.rep = 10000) {
     plot_props = list()
     if (is.numeric(data_sets)) {
         plot_props$mean = mean(data_sets);
@@ -449,45 +537,47 @@ gather_barplot_properties <- function(data_sets, bootstrap.rep = 50000) {
     return(plot_props);
 }
 
-determine_mean_conf_int <- function(data, bootstrap.rep = 50000) {
+determine_mean_conf_int <- function(data, bootstrap.rep = 10000) {
 	require(boot);
 	boot_samp = boot(data, function(data,indexes) mean(data[indexes],na.rm=T), bootstrap.rep);
 		
-    conf_int = boot.ci(boot_samp, type="perc", conf=0.95)$percent[4:5]
+    conf_int = boot.ci(boot_samp, type="bca", conf=0.95)$percent[4:5]
 
     return(conf_int)
 }
 
-determine_mean_p_value <- function(data_1,data_2, bootstrap.rep = 50000) {
+determine_mean_p_value <- function(data_1,data_2, bootstrap.rep = 20000) {
 	require(boot);
-	boot_samp_1 = boot(data_1, function(data_1,indexes) mean(data_1[indexes],na.rm=T), bootstrap.rep);
-	boot_samp_2 = boot(data_2, function(data_1,indexes) mean(data_1[indexes],na.rm=T), bootstrap.rep);
-		
-    conf_int_one = boot.ci(boot_samp_1, type="perc", conf=0.99)
-    conf_int_two = boot.ci(boot_samp_2, type="perc", conf=0.99)
-
+    
+	boot_samp_1 = boot(data_1, function(values,indexes) mean(values[indexes],na.rm=T), bootstrap.rep);
+	boot_samp_2 = boot(data_2, function(values,indexes) mean(values[indexes],na.rm=T), bootstrap.rep);
+	
     results = list();
 
-    results$p_val = find_p_val_from_bootstrap(boot_samp_1, boot_samp_2);
+	results$p.value = find_p_val_from_bootstrap(boot_samp_1, boot_samp_2);
     results$mean_vals = c(boot_samp_1$t0, boot_samp_2$t0);
-    results$conf_ints = rbind(conf_int_one$percent[4:5], conf_int_two$percent[4:5])
 
     return(results);
 }
 
-determine_median_p_value <- function(data_1,data_2, bootstrap.rep = 50000) {
+determine_median_ratio_conf <- function(data_1,data_2, bootstrap.rep=10000) {
 	require(boot);
     
     data_package = list(one = data_1, two = data_2);
     boot_ratio = boot(data_package, function(values, indexes) ratio_samp(values$one, values$two), bootstrap.rep);
-    boot_ratio_conf = boot.ci(boot_ratio,type="perc", conf=0.99)
+    boot_ratio_conf = boot.ci(boot_ratio,type="bca", conf=0.99)
 
+    return(boot_ratio_conf)
+}
+
+determine_median_p_value <- function(data_1,data_2, bootstrap.rep = 10000) {
+	require(boot);
+    
     results = list()
-	
-    results$ratio_conf = boot_ratio_conf$perc[4:5];
 	
     boot_samp_1 = boot(data_1, function(values,indexes) median(values[indexes],na.rm=T), bootstrap.rep);
 	boot_samp_2 = boot(data_2, function(values,indexes) median(values[indexes],na.rm=T), bootstrap.rep);
+
 	results$p.value = find_p_val_from_bootstrap(boot_samp_1, boot_samp_2);
 	results$median_vals = c(boot_samp_1$t0, boot_samp_2$t0);
     
@@ -512,7 +602,7 @@ gather_stage_lengths <- function(results_1, results_2, bootstrap.rep = 50000, de
 	
 	#Assembly phase lengths
 	boot_samp = boot(results_1$a$length, function(data,indexes) mean(data[indexes], na.rm=T), bootstrap.rep)
-	boot_conf = boot.ci(boot_samp,type="perc")
+	boot_conf = boot.ci(boot_samp,type="bca")
 	conf_ints[1,3:4] = boot_conf$perc[4:5]
 	conf_ints[1,2] = boot_conf$t0
 	bar_lengths[1,1] = boot_conf$t0
@@ -522,7 +612,7 @@ gather_stage_lengths <- function(results_1, results_2, bootstrap.rep = 50000, de
 	}
 	
 	boot_samp_2 = boot(results_2$a$length, function(data,indexes) mean(data[indexes], na.rm=T), bootstrap.rep)
-	boot_conf = boot.ci(boot_samp_2,type="perc")
+	boot_conf = boot.ci(boot_samp_2,type="bca")
 	conf_ints[4,3:4] = boot_conf$perc[4:5]
 	conf_ints[4,2] = boot_conf$t0
 	bar_lengths[1,2] = boot_conf$t0
@@ -534,7 +624,7 @@ gather_stage_lengths <- function(results_1, results_2, bootstrap.rep = 50000, de
 
 	#Stability phase lengths
 	boot_samp = boot(results_1$joint$stable_lifetime, function(data,indexes) mean(data[indexes],na.rm=T), bootstrap.rep)
-	boot_conf = boot.ci(boot_samp,type="perc")
+	boot_conf = boot.ci(boot_samp,type="bca")
 	conf_ints[2,3:4] = boot_conf$perc[4:5]
 	conf_ints[2,2] = boot_conf$t0
 	bar_lengths[2,1] = boot_conf$t0
@@ -544,7 +634,7 @@ gather_stage_lengths <- function(results_1, results_2, bootstrap.rep = 50000, de
 	}
 
 	boot_samp_2 = boot(results_2$joint$stable_lifetime, function(data,indexes) mean(data[indexes],na.rm=T), bootstrap.rep)
-	boot_conf = boot.ci(boot_samp_2,type="perc")
+	boot_conf = boot.ci(boot_samp_2,type="bca")
 	conf_ints[5,3:4] = boot_conf$perc[4:5]
 	conf_ints[5,2] = boot_conf$t0
 	bar_lengths[2,2] = boot_conf$t0
@@ -556,7 +646,7 @@ gather_stage_lengths <- function(results_1, results_2, bootstrap.rep = 50000, de
 	
 	#Disassembly Stage Lengths
 	boot_samp = boot(results_1$d$length, function(data,indexes) mean(data[indexes],na.rm=T), bootstrap.rep)
-	boot_conf = boot.ci(boot_samp,type="perc")
+	boot_conf = boot.ci(boot_samp,type="bca")
 	conf_ints[3,3:4] = boot_conf$perc[4:5]
 	conf_ints[3,2] = boot_conf$t0
 	bar_lengths[3,1] = boot_conf$t0
@@ -566,7 +656,7 @@ gather_stage_lengths <- function(results_1, results_2, bootstrap.rep = 50000, de
 	}
 
 	boot_samp_2 = boot(results_2$d$length, function(data,indexes) mean(data[indexes],na.rm=T), bootstrap.rep)
-	boot_conf = boot.ci(boot_samp_2,type="perc")
+	boot_conf = boot.ci(boot_samp_2,type="bca")
 	conf_ints[6,3:4] = boot_conf$perc[4:5]
 	conf_ints[6,2] = boot_conf$t0
 	bar_lengths[3,2] = boot_conf$t0
@@ -585,34 +675,68 @@ gather_stage_lengths <- function(results_1, results_2, bootstrap.rep = 50000, de
 	return_data
 }
 
-find_p_val_from_bootstrap <- function(boot_one, boot_two, 
-	p_vals_to_test = c(seq(0.99,0.01,by=-0.01),1E-3,1E-4,1E-5)) {
-	
+find_p_val_from_bootstrap <- function(boot_one, boot_two) {
+    p_vals_to_test = c(seq(0.99,0.01,by=-0.01),1E-3,1E-4,1E-5)
+
 	stopifnot(class(boot_one) == "boot")
 	stopifnot(class(boot_two) == "boot")
 	
-	correct_p_vals = c();
-    for (this_val in p_vals_to_test) {
-		conf_int_one = boot.ci(boot_one, type="perc", conf=(1-this_val))
-		conf_int_two = boot.ci(boot_two, type="perc", conf=(1-this_val))
-				
-		if (ranges_overlap(conf_int_one$perc[4:5], conf_int_two$perc[4:5])) {
-            break;
-        } else {
-            correct_p_vals = c(correct_p_vals,this_val);
-		}
-	}
+    overlap = rep(NA,length(p_vals_to_test));
+    overlap[length(overlap)] = bootstrap_overlap(boot_one, boot_two, 1-p_vals_to_test[length(p_vals_to_test)])
+    #if the lowest p-value doesn't produce overlapping intervals, return the
+    #lowest p-value from the function, otherwise, begin binary search for
+    #p-value cutoff
+    if (! overlap[length(overlap)]) {
+        return(p_vals_to_test[length(p_vals_to_test)])
+    }
+    overlap[1] = bootstrap_overlap(boot_one, boot_two, 1-p_vals_to_test[1])
     
-    if (length(correct_p_vals) == length(p_vals_to_test)) {
-        correct_p_vals = correct_p_vals[length(correct_p_vals)];
-    } else {
-        correct_p_vals = correct_p_vals[(length(correct_p_vals)-1):length(correct_p_vals)];
+    upper = length(p_vals_to_test)
+    lower = 1
+    middle = floor(mean(c(upper,lower)))
+
+    while (middle != lower && middle != upper) {
+        overlap[middle] = bootstrap_overlap(boot_one, boot_two, 1-p_vals_to_test[middle])
+        if (overlap[middle]) {
+            upper = middle;
+            middle = floor(mean(c(upper,lower)))
+        } else {
+            lower = middle;
+            middle = floor(mean(c(upper,lower)))
+        }
     }
 
-    return(correct_p_vals)
+    overlap_indexes = which(overlap)
+    no_overlap_indexes = which(!overlap)
+    
+    p_val_range = c(p_vals_to_test[no_overlap_indexes[length(no_overlap_indexes)]],
+        p_vals_to_test[overlap_indexes[1]])
+    
+    # these lines deal with a strange bug where R decides that some of the
+    # p-values are not quantized property, i.e. 0.05 as 0.04999999..., adding
+    # this sprintf to deal with those problems
+    if (p_val_range[1] > 1E-3) { p_val_range[1] = sprintf('%0.2f',as.numeric(p_val_range[1])) }
+    if (p_val_range[2] > 1E-3) { p_val_range[2] = sprintf('%0.2f',as.numeric(p_val_range[2])) }
+    
+    return(p_val_range)
+}
+
+bootstrap_overlap <- function(boot_one,boot_two,p_val) {
+    conf_int_one = boot.ci(boot_one, type="bca", conf=p_val)
+    conf_int_two = boot.ci(boot_two, type="bca", conf=p_val)
+    
+    #occassionally, very large confidence intervals yield NA values, we will
+    #assume that those confidence intervals overlap
+    if (any(is.na(c(conf_int_one$bca[4:5], conf_int_two$bca[4:5])))) {
+        return(TRUE)
+    }
+
+    return(ranges_overlap(conf_int_one$bca[4:5], conf_int_two$bca[4:5]))
 }
 
 ranges_overlap <- function(range_1, range_2) {
+	if(length(range_1) != 2) browser('range check'); 
+	if(length(range_2) != 2) browser('range check');
 	stopifnot(length(range_1) == 2)
 	stopifnot(length(range_2) == 2)
 	
@@ -678,6 +802,7 @@ gather_static_props <- function(ind_results, debug=FALSE) {
 load_results <- function(dirs,file, debug=TRUE) {
 	results = list()
     if (length(dirs) == 0) return()
+    if (debug) print(paste('Loading data from',length(dirs),'files.'))
 
 	for (i in 1:length(dirs)) {
 		this_file = file.path(dirs[i],file)
@@ -765,6 +890,39 @@ load_data_files <- function(dirs, files, headers = FALSE, inc_exp_names = TRUE, 
 	results
 }
 
+output_phase_lengths_from_filtered <- function(signif_data,raw_data, dirs = NA) {
+    #assembly lengths
+    exp_nums = as.numeric(unique(signif_data$assembly$exp_num))
+    print('Writing assembly row data to:')
+    for (this_exp_num in exp_nums) {
+        if (! is.na(dirs)) {
+            this_exp_dir = file.path(dirs[this_exp_num],'..');
+        } else {
+            this_exp_dir = raw_data$intensity[[this_exp_num]]$exp_dir
+        }
+        print(this_exp_dir)
+        this_signif_data = subset(signif_data$assembly, exp_num == this_exp_num, 
+            select = c('lin_num','length'))
+        write.table(this_signif_data,file=file.path(this_exp_dir,'signif_assembly_rows_lengths.csv'), 
+            sep=',', row.names=FALSE, col.names=FALSE)
+    }
+    
+    print('Writing disassembly row data to:')
+    exp_nums = as.numeric(unique(signif_data$dis$exp_num))
+    for (this_exp_num in exp_nums) {
+        if (! is.na(dirs)) {
+            this_exp_dir = file.path(dirs[this_exp_num],'..');
+        } else {
+            this_exp_dir = raw_data$intensity[[this_exp_num]]$exp_dir
+        }
+        print(this_exp_dir)
+        this_signif_data = subset(signif_data$dis, exp_num == this_exp_num, 
+            select = c('lin_num','length'))
+        write.table(this_signif_data,file=file.path(this_exp_dir,'signif_disassembly_rows_lengths.csv'), 
+            sep=',', row.names=FALSE, col.names=FALSE)
+    }
+}
+
 ########################################
 #Spacial Functions
 ########################################
@@ -843,7 +1001,7 @@ bin_corr_data <- function(corr_results, bin_size = NA, bootstrap.rep = 5000, bin
 		if (all(boot_samp$t[1] == boot_samp$t)) {
 			browser()
 		} else {		
-			boot_conf = boot.ci(boot_samp,type="perc")
+			boot_conf = boot.ci(boot_samp,type="bca")
 			lower[i-1] = boot_conf$perc[4]
 			upper[i-1] = boot_conf$perc[5]
 		}
@@ -886,8 +1044,8 @@ if (length(args) != 0) {
     }
 	
     class(min_length) <- "numeric";
-	print(data_dir);
     if (exists('data_dir') & exists('model_type')) {
+	    print(data_dir);
         if (model_type == 'average') {
             average_model = gather_bilinear_models_from_dirs(data_dir,
                     data_file='Average_adhesion_signal.csv', min_length = min_length,
