@@ -54,6 +54,7 @@ my @overall_command_seq = (
 	[ [ "../analyze_cell_features",   "./track_adhesions.pl" ], ],
 	[ [ "../analyze_cell_features",   "./gather_tracking_results.pl" ], ],
 	[ [ "../analyze_cell_features",   "./build_R_models.pl" ], ],
+	[ [ "../analyze_cell_features",   "./find_signif_models.pl" ], ],
 	[ [ "../visualize_cell_features", "./collect_visualizations.pl" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script ../visualize_cell_features/max_intent_project" ], ],
 );
@@ -61,7 +62,7 @@ my @overall_command_seq = (
 #some of the scripts only need to be run once for each experiment, this will
 #rely on being able to find an experiment with one of the following values in
 #it's name
-my @run_only_once = qw(Pax_01 Vin_01 FAK_01);
+my @run_only_once = qw(find_signif_models);
 
 my @skip_check = qw(track_adhesions gather_tracking_results build_R_models collect_visualizations 
 	max_intent_project);
@@ -77,7 +78,7 @@ if (exists($opt{exp_filter})) {
 }
 die "No config files left after filtering." if (scalar(@config_files) == 0);
 
-my @run_once_configs = grep $_ =~ /time_series_01/, @config_files;
+my @run_once_configs = $config_files[0];
 
 #######################################
 # Program Running
