@@ -91,7 +91,10 @@ lineage_to_cmap = zeros(size(tracking_seq,1),1);
 time_cmap = jet(size(tracking_seq,2));
 birth_time_to_cmap = zeros(size(tracking_seq,1),1);
 
-image_set_range = csvread(fullfile(I_folder,'01',filenames.focal_image_min_max));
+image_folders = dir(I_folder);
+image_folders = image_folders(3:end);
+image_set_range = csvread(fullfile(I_folder,image_folders(1).name,filenames.focal_image_min_max));
+
 i_seen = 0;
 
 for i = 1:max_image_num
