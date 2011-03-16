@@ -61,7 +61,7 @@ csvwrite(output_file,min_max);
 % threshed = mean_med_diff > -2 & mean_med_diff < 2;
 % im_cv = im_std./im_mean;
 
-focal_image_threshold = i_p.Results.stdev_thresh*std(all_high_passed(:));
+focal_image_threshold = mean(all_high_passed(:)) + i_p.Results.stdev_thresh*std(all_high_passed(:));
 csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),focal_image_threshold);
 
 toc;
