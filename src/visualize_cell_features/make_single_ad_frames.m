@@ -166,8 +166,9 @@ bounding_matrix(bounding_matrix(:,4) > i_size(1),4) = i_size(1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Build Single Ad Image Sequences
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-image_set_min_max = csvread(fullfile(I_folder,'01',filenames.focal_image_min_max));
+image_folders = dir(I_folder);
+image_folders = image_folders(3:end);
+image_set_min_max = csvread(fullfile(I_folder,image_folders(1).name,filenames.focal_image_min_max));
 
 %i_seen will keep track of the number of images that have actually been
 %read into the program, we need to keep track of this due to skipped
