@@ -194,7 +194,7 @@ sub build_single_ad_commands {
     
     my $ad_per_run = 10000;
     my @commands;
-    my $assembly_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 'assembly_rows_lengths.csv');
+    my $assembly_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 'signif_assembly_rows_lengths.csv');
     if (-e $assembly_file) {
         my $assembly_option = "'adhesion_file','$assembly_file'";
         for (0 .. (ceil($line_count/$ad_per_run) - 1)) {
@@ -205,7 +205,7 @@ sub build_single_ad_commands {
         }
     }
     
-    my $disassembly_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 'disassembly_rows_lengths.csv');
+    my $disassembly_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 'signif_disassembly_rows_lengths.csv');
     if (-e $disassembly_file) {
         my $disassembly_option = "'adhesion_file','$disassembly_file'";
         for (0 .. (ceil($line_count/$ad_per_run) - 1)) {
