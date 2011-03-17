@@ -20,7 +20,6 @@ filenames = add_filenames_to_struct(struct());
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 base_dir = fullfile(exp_dir,'individual_pictures');
 
 image_dirs = dir(base_dir);
@@ -34,7 +33,6 @@ image_dirs = image_dirs(3:end);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Build the maximum intensity projection
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 exp_data = read_in_file_set(fullfile(base_dir,image_dirs(1).name),filenames);
 
 all_images = zeros(size(exp_data.focal_image,1),size(exp_data.focal_image,2),size(image_dirs,1));
@@ -51,8 +49,20 @@ max_image_projection = (max_image_projection - min(max_image_projection(:)))/ran
 % Gather the adhesion data
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-assembly_rows = csvread(fullfile(base_dir,image_dirs(1).name,filenames.assembly_rows));
-disassembly_rows = csvread(fullfile(base_dir,image_dirs(1).name,filenames.disassembly_rows));
+%wrap the following reads in trys because the files will sometimes be
+%missing, if they are, there weren't any significant events of that class,
+%so define placeholder variables
+try 
+    assembly_rows = csvread(fullfile(base_dir,image_dirs(1).name,filenames.assembly_rows));
+catch %#ok<CTCH>
+    assembly_rows = zeros(0,2);
+end
+
+try
+    disassembly_rows = csvread(fullfile(base_dir,image_dirs(1).name,filenames.disassembly_rows));
+catch %#ok<CTCH>
+    disassembly_rows = zeros(0,2);
+end
 
 ad_data_set = struct();
 ad_data_set.centroid_x = csvread(fullfile(base_dir,image_dirs(1).name,filenames.centroid_x));
