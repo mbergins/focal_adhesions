@@ -289,11 +289,6 @@ if (length(args) != 0) {
         model$exp_props = exp_props
         model$exp_dir = data_dir
         model$exp_data = data_set
-        #regexpr returns -1 when no hit is found
-        if (regexpr("Average_adhesion_signal",model_file) != -1) {
-            print('Outputing model assembly and disassembly periods')
-            write_assembly_disassembly_periods(model,data_dir)	
-        }
 
         R_model_file = sub(".csv$", ".Rdata", model_file ,perl=T)
         output_file = file.path(data_dir,'models',R_model_file);
