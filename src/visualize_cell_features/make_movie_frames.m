@@ -82,6 +82,7 @@ edge_cmap = jet(size(tracking_seq,2));
 %define the edge image here because the edge image will be added to each
 %image loop, so the image should be global
 edge_image_ad = ones(i_size(1),i_size(2),3);
+edge_image_ad_time = ones(i_size(1),i_size(2),3);
 
 max_live_adhesions = find_max_live_adhesions(tracking_seq);
 
@@ -184,10 +185,12 @@ for i = 1:max_image_num
     this_cmap = zeros(max(ad_label_perim(:)),3);
     this_cmap(ad_nums,:) = time_cmap(cmap_nums,:);
     highlighted_time = create_highlighted_image(orig_i,ad_label_perim,'color_map',this_cmap);
-
+    edge_image_ad_time = create_highlighted_image(edge_image_ad_time,ad_label_perim,'color_map',this_cmap);
+    
     if (exist(fullfile(I_folder,padded_i_num,edge_filename),'file'))
         cell_edge = bwperim(imread(fullfile(I_folder,padded_i_num,edge_filename)));
         edge_image_ad = create_highlighted_image(edge_image_ad,cell_edge,'color_map',edge_cmap(i_seen,:));
+        edge_image_ad_time = create_highlighted_image(edge_image_ad_time,cell_edge,'color_map',edge_cmap(i_seen,:));
         highlighted_all = create_highlighted_image(highlighted_all,cell_edge,'color_map',edge_cmap(i_seen,:));
     end
     edge_image_ad = create_highlighted_image(edge_image_ad,im2bw(ad_label_perim,0),'color_map',edge_cmap(i_seen,:));
@@ -198,13 +201,14 @@ for i = 1:max_image_num
     highlighted_all = highlighted_all(b_box(2):b_box(4), b_box(1):b_box(3), 1:3);
     highlighted_time = highlighted_time(b_box(2):b_box(4), b_box(1):b_box(3), 1:3);
     edge_image_ad_bounded = edge_image_ad(b_box(2):b_box(4), b_box(1):b_box(3), 1:3);
+    edge_image_ad_time_bounded = edge_image_ad_time(b_box(2):b_box(4), b_box(1):b_box(3), 1:3);
 
     spacer = 0.5*ones(size(edge_image_ad_bounded,1),1,3);
     
     frame = cell(1,3);
     frame{1} = [edge_image_ad_bounded,spacer,highlighted_all];
     frame{2} = [cat(3,orig_i,orig_i,orig_i),spacer,highlighted_all];
-    frame{3} = [edge_image_ad_bounded,spacer,highlighted_time];
+    frame{3} = [edge_image_ad_time_bounded,spacer,highlighted_time];
     
     %Add scale bars if the pixel size is available
     if (exist('pixel_size','var') && not(i_p.Results.no_scale_bar))
