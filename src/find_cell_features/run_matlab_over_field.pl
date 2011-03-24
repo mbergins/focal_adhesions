@@ -49,7 +49,10 @@ $opt{abs_script_dir} = File::Spec->rel2abs($opt{script_dir});
 ################################################################################
 # Main Program
 ################################################################################
-my @matlab_code = ("$opt{script}('$cfg{exp_results_folder}')\n");
+
+my $extra = &build_extra_command_line_opts;
+
+my @matlab_code = ("$opt{script}('$cfg{exp_results_folder}'$extra)\n");
 
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, $opt{script});
 $opt{error_file} = catfile($opt{error_folder}, 'error.txt');
@@ -59,3 +62,20 @@ if (defined $cfg{job_group}) {
 }
 
 &FA_job::run_matlab_progam(\@matlab_code,\%opt);
+
+################################################################################
+# Functions
+################################################################################
+
+sub build_extra_command_line_opts {
+
+	my $extra = '';
+
+	if ($opt{script} =~ /find_exp_thresholds/) {
+        if (defined $cfg{stdev_thresh}) {
+            $extra .= ",'stdev_thresh',$cfg{stdev_thresh}";
+        }
+	}
+
+	return $extra;
+}
