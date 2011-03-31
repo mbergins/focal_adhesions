@@ -33,7 +33,7 @@ sub convert_vect_images {
 			my $converted_file = $output_name;
 			$converted_file =~ s/\.png/\.$opt{convert_to}/;
 			print "convert $output_name $converted_file\n";
-			print "unlink $output_name";
+			print "unlink $output_name\n";
 		}
     } else {
         system($command);

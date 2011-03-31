@@ -1,0 +1,6 @@
+adhesions = imread('adhesions.png');
+
+major_axis = csvread('raw_data/MajorAxisLength.csv');
+minor_axis = csvread('raw_data/MinorAxisLength.csv');
+
+eccen = major_axis./minor_axis;
