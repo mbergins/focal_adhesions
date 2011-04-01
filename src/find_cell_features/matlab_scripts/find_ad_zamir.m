@@ -77,7 +77,7 @@ connected_ad = false(size(ad_zamir));
 connected_ad(pix_pos) = 1;
 ad_nums = zeros(4);
 %wrap these calls in try, since they could attempt to access indexes
-%outside the accepted 1-size range
+%outside the 1-size range
 try ad_nums(1) = ad_zamir(pix_pos_ind(1) - 1,pix_pos_ind(2)); end %#ok<TRYNC>
 try ad_nums(2) = ad_zamir(pix_pos_ind(1) + 1,pix_pos_ind(2)); end %#ok<TRYNC>
 try ad_nums(3) = ad_zamir(pix_pos_ind(1),pix_pos_ind(2) - 1); end %#ok<TRYNC>
@@ -94,26 +94,25 @@ end
 old_ad = false(size(ad_zamir));
 old_ad(and(ad_zamir > 0,connected_ad)) = 1;
 
-%also build an image with the connected old adhesions renumbered to start
-%with one, since it will be easier to work with the regionprops output when
-%numbered from one
-relabeled_old_ad = ad_zamir;
-relabeled_old_ad(old_ad ~= 1) = 0;
-ad_nums = unique(relabeled_old_ad);
-assert(ad_nums(1) == 0, 'Error in collecting relabeled_old_ad unique ad numbers')
-for i = 2:length(ad_nums)
-    relabeled_old_ad(relabeled_old_ad == ad_nums(i)) = i - 1;
-end
-assert(all(unique(relabeled_old_ad)' == 0:(length(ad_nums) - 1)), 'Error in old ad relabeling')
-
-assert(sum(connected_ad(:)) == (sum(old_ad(:)) + 1),'Error in connected ad finding: %d, %d ',sum(connected_ad(:)),sum(old_ad(:)))
-
 %if there aren't any pixels which were connected to newest pixel, add the
 %newest pixel as a new adhesion, otherwise, start a more complicated
 %procedure
 if (sum(old_ad(:)) == 0)
     ad_zamir(connected_ad) = max(ad_zamir(:)) + 1;
 else
+    %build an image with the connected old adhesions renumbered to start
+    %with one, since it will be easier to work with the regionprops output when
+    %numbered from one
+    relabeled_old_ad = ad_zamir;
+    relabeled_old_ad(old_ad ~= 1) = 0;
+    ad_nums = unique(relabeled_old_ad);
+    assert(ad_nums(1) == 0, 'Error in collecting relabeled_old_ad unique ad numbers')
+    for i = 2:length(ad_nums)
+        relabeled_old_ad(relabeled_old_ad == ad_nums(i)) = i - 1;
+    end
+    assert(all(unique(relabeled_old_ad)' == 0:(length(ad_nums) - 1)), 'Error in old ad relabeling')
+    assert(sum(connected_ad(:)) == (sum(old_ad(:)) + 1),'Error in connected ad finding: %d, %d ',sum(connected_ad(:)),sum(old_ad(:)))
+    
     props = regionprops(relabeled_old_ad,'Area','Centroid');
 
     %if there is only one set of props, we know there was only one adhesion

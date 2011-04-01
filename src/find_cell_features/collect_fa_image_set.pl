@@ -88,6 +88,10 @@ sub create_all_matlab_commands {
         if (defined $cfg{min_independent_size}) {
             $extra_opt .= ",'min_independent_size',$cfg{min_independent_size}";
         }
+        if (defined $cfg{max_adhesion_count}) {
+            $extra_opt .= ",'max_adhesion_count',$cfg{max_adhesion_count}";
+        }
+
 		if (-e $cell_mask) {
             $extra_opt .= ",'cell_mask','$cell_mask'";
 		}
