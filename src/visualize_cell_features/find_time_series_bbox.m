@@ -28,7 +28,6 @@ image_filename = i_p.Results.image_filename;
 
 folders_to_exclude = {'.','..'};
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -51,7 +50,7 @@ for i = 1:num_files
     
     if (not(exist(best_image_path,'file')))
         best_image_path = fullfile(full_folder_path,i_p.Results.backup_image_filename);
-    
+        
         if (not(exist(best_image_path,'file')))
             continue;
         end
@@ -63,8 +62,5 @@ for i = 1:num_files
     if (bbox(2) > this_bbox(2)), bbox(2) = this_bbox(2); end
     if (bbox(3) < this_bbox(3)), bbox(3) = this_bbox(3); end
     if (bbox(4) < this_bbox(4)), bbox(4) = this_bbox(4); end
-        
-    end
-    
     
 end
