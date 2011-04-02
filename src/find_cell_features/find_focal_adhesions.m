@@ -35,7 +35,7 @@ i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
 i_p.addParamValue('filter_thresh',0.1,@isnumeric);
 i_p.addParamValue('min_independent_size',14,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
-i_p.addParamValue('max_number_adhesions', Inf, @(x) isnumeric(x));
+i_p.addParamValue('max_adhesion_count', Inf, @(x) isnumeric(x));
 
 %output parameters
 i_p.addParamValue('output_dir', fileparts(I_file), @(x)exist(x,'dir')==7);
@@ -139,10 +139,10 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Check for too many adhesions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if (max(ad_zamir(:)) > i_p.Results.max_number_adhesions)
+if (max(ad_zamir(:)) > i_p.Results.max_adhesion_count)
     system(['touch ', fullfile(i_p.Results.output_dir, 'Found_too_many_adhesions')]);
     error(['Found more (',num2str(max(ad_zamir(:))),') adhesions than', ...
-        ' max adhesion count (',num2str(i_p.Results.max_number_adhesions),').']);
+        ' max adhesion count (',num2str(i_p.Results.max_adhesion_count),').']);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
