@@ -112,16 +112,6 @@ end
 disp('Done finding adhesion regions')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Renumber adhesions to be sequential
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-ad_nums = unique(ad_zamir);
-assert(ad_nums(1) == 0, 'Background pixels not found after building adhesion label matrix')
-for i = 2:length(ad_nums)
-    ad_zamir(ad_zamir == ad_nums(i)) = i - 1;
-end
-disp('Done renumbering adhesion regions')
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Remove adhesions outside mask
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if (exist('cell_mask','var'))
@@ -139,7 +129,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Check for too many adhesions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if (max(ad_zamir(:)) > i_p.Results.max_adhesion_count)
+ad_nums = unique(ad_zamir)';
+assert(ad_nums(1) == 0, 'Background pixels not found after building adhesion label matrix')
+if ((length(ad_nums) - 1) > i_p.Results.max_adhesion_count)
     system(['touch ', fullfile(i_p.Results.output_dir, 'Found_too_many_adhesions')]);
     error(['Found more (',num2str(max(ad_zamir(:))),') adhesions than', ...
         ' max adhesion count (',num2str(i_p.Results.max_adhesion_count),').']);
@@ -148,12 +140,11 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Find and fill holes in single adhesions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+props = regionprops(ad_zamir,'Area');
+large_ad_nums = find([props.Area] >= 4);
 tic;
-ad_nums = unique(ad_zamir);
-assert(ad_nums(1) == 0, 'Background pixels not found after building adhesion label matrix')
-for i = 2:length(ad_nums)
-    this_num = ad_nums(i);
-    
+% for this_num = large_ad_nums
+for this_num = large_ad_nums
     %first make a binary image of the current adhesion and then run imfill
     %to fill any holes present
     this_ad = zeros(size(ad_zamir));
@@ -161,12 +152,22 @@ for i = 2:length(ad_nums)
     filled_ad = imfill(this_ad);
     
     ad_zamir(logical(filled_ad)) = this_num;
-    if (i_p.Results.debug && mod(i,50)==0)
-        disp(['Done filling holes in ',num2str(i), '/', num2str(length(ad_nums))]);
+    if (i_p.Results.debug && mod(this_num,50)==0)
+        disp(['Done filling holes in ',num2str(this_num), '/', num2str(length(ad_nums))]);
     end
 end
 toc;
 disp('Done filling adhesion holes')
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Renumber adhesions to be sequential
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ad_nums = unique(ad_zamir);
+assert(ad_nums(1) == 0, 'Background pixels not found after building adhesion label matrix')
+for i = 2:length(ad_nums)
+    ad_zamir(ad_zamir == ad_nums(i)) = i - 1;
+end
+disp('Done renumbering adhesion regions')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Build adhesion perimeters image
