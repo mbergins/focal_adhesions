@@ -6,13 +6,13 @@ gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
     data_set = read_in_orientation_data(exp_dir, min_eccen=3);
     data_set$angle_search = test_dom_angles(data_set$subseted_data$orientation);
 
-    min_angle_indexes = which(min(data_set$angle_search$angle_sds) == data_set$angle_search$angle_sds)
+    max_angle_indexes = which(max(data_set$angle_search$angle_FAAI) == data_set$angle_search$angle_FAAI)
 
     if (is.na(fixed_best_angle)) {
-        data_set$best_angle = median(data_set$angle_search$test_angles[min_angle_indexes])
+        data_set$best_angle = median(data_set$angle_search$test_angles[max_angle_indexes])
     } else {
         data_set$best_angle = fixed_best_angle
-        data_set$actual_best_angle = median(data_set$angle_search$test_angles[min_angle_indexes])
+        data_set$actual_best_angle = median(data_set$angle_search$test_angles[max_angle_indexes])
     }
     data_set$corrected_orientation = apply_new_orientation(data_set$subseted_data$orientation,
         data_set$best_angle)
@@ -27,11 +27,13 @@ gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
     hist(data_set$subseted_data$orientation,main='Pos X-axis Reference',
         xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''));
     
-    plot(data_set$angle_search$test_angles,data_set$angle_search$angle_sds,typ='l',
-        xlab='Dominant Search Angle',ylab='STDEV FA Orientation');
+    plot(data_set$angle_search$test_angles,data_set$angle_search$angle_FAAI,typ='l',
+        xlab='Dominant Search Angle',ylab='FA Alignment Index',ylim=c(0,90));
     if (! is.na(fixed_best_angle)) {
         segments(fixed_best_angle,0,fixed_best_angle,2000,col='red')
         segments(data_set$actual_best_angle,0,data_set$actual_best_angle,2000,col='green')
+    } else {
+        segments(data_set$best_angle,0,data_set$best_angle,2000,col='green')
     }
 
     hist(data_set$corrected_orientation,
@@ -78,7 +80,9 @@ find_per_image_dom_angle <- function(mat_data, min_eccen=3) {
         
         angle_search = test_dom_angles(this_orientation[good_ads]);
         
-        this_best = median(angle_search$test_angles[which(min(angle_search$angle_sds) == angle_search$angle_sds)])
+        best_FAAI_indexes = which(max(angle_search$angle_FAAI) == angle_search$angle_FAAI);
+
+        this_best = median(angle_search$test_angles[best_FAAI_indexes])
         best_angles = c(best_angles, this_best);
     }
 
@@ -95,14 +99,14 @@ test_dom_angles <- function(orientation, search_resolution = 0.1) {
     
     results = list(x = angles_to_test, test_angles = angles_to_test);
 
-    new_angle_sd = c()
+    new_angle_FAAI = c()
     for (angle in angles_to_test) {
         new_orientation = apply_new_orientation(orientation,angle);
-        new_angle_sd = c(new_angle_sd, 90-sd(new_orientation));
+        new_angle_FAAI = c(new_angle_FAAI, 90-sd(new_orientation));
     }
         
-    results$y = new_angle_sd;
-    results$angle_sds = new_angle_sd;
+    results$y = new_angle_FAAI;
+    results$angle_FAAI = new_angle_FAAI;
 
     return(results)
 }
@@ -114,6 +118,31 @@ apply_new_orientation <- function(orientation_data,angle) {
     orientation_data[less_neg_ninety] = orientation_data[less_neg_ninety] + 180;
 
     return(orientation_data)
+}
+
+load_alignment_props <- function(alignment_models) {
+    
+    if (length(alignment_models) == 0) {
+        print('Problem, no alignment models submitted.');
+    }
+
+    align_props = list()
+    for (align_file in alignment_models) {
+        var_name = load(align_file)
+        data_set = get(var_name);
+        
+        align_props$FAAI = c(align_props$mean_dev, max(data_set$angle_search$angle_FAAI));
+        if (any(names(data_set) == "actual_best_angle")) {
+            align_props$best_angle = c(align_props$best_angle, data_set$actual_best_angle);
+        } else {
+            align_props$best_angle = c(align_props$best_angle, data_set$best_angle);
+        }
+        align_props$align_file = c(align_props$align_file, align_file);
+        print(paste('Done loading:', align_file))
+    }
+    
+    align_props = as.data.frame(align_props);
+    return(align_props)
 }
 
 ################################################################################
