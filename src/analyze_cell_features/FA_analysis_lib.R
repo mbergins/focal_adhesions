@@ -484,7 +484,6 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
 }
 
 determine_death_rate <- function(lineage_time_series) {
-
     #death status 1 means a regular non-merging death
     total_deaths = sum(lineage_time_series$exp_props$death_status);
     total_time = dim(lineage_time_series$exp_data)[[2]];
@@ -970,7 +969,8 @@ stopifnot(! enough_overlap(rep(NaN, 10), rep(1,10), min_overlap=10))
 stopifnot(enough_overlap(rep(2, 10), rep(1,10), min_overlap=10))
 stopifnot(! enough_overlap(c(rep(1, 9), NaN), rep(1,10), min_overlap=10))
 
-bin_corr_data <- function(corr_results, bin_size = NA, bootstrap.rep = 5000, bin_max = NA, pixel_size=0.215051) {
+bin_corr_data <- function(corr_results, bin_size = NA, bootstrap.rep = 5000, 
+    bin_max = NA, pixel_size=0.215051) {
 	require(boot)
 	corr_results$distances = corr_results$distances*pixel_size
 
