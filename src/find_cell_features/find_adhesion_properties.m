@@ -135,6 +135,7 @@ centroid_x = centroid_data(1:2:length(adhesion_props)*2);
 centroid_y = centroid_data(2:2:length(adhesion_props)*2);
 
 ad_centroid = [mean(centroid_x),mean(centroid_y)];
+adhesion_props(1).Adhesion_centroid = ad_centroid;
 
 for i=1:max(labeled_adhesions(:))
     adhesion_props(i).Average_adhesion_signal = mean(orig_I(labeled_adhesions == i));
@@ -213,7 +214,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if (exist('cell_mask','var'))
-    cell_centroid = regionprops(bwlabel(cell_mask),'centroid');
+    cell_centroid = regionprops(bwlabel(cell_mask),'centroid'); %#ok<MRPBW>
     cell_centroid = cell_centroid.Centroid;
     
     [border_row,border_col] = ind2sub(size(cell_mask),find(bwperim(cell_mask)));
@@ -240,7 +241,7 @@ if (exist('cell_mask','var'))
     black_border_mask(1,:) = 0; black_border_mask(end,:) = 0; 
     black_border_mask(:,1) = 0; black_border_mask(:,end) = 0;
     
-    [bb_dists, bb_indexes] = bwdist(~black_border_mask);
+    [bb_dists, bb_indexes] = bwdist(~black_border_mask); %#ok<NASGU>
     
     dists(bb_dists < dists) = NaN;
     for i=1:max(labeled_adhesions(:))
