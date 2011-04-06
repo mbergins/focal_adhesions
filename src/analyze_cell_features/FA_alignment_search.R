@@ -6,19 +6,17 @@ gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
     data_set = read_in_orientation_data(exp_dir, min_eccen=3);
     data_set$angle_search = test_dom_angles(data_set$subseted_data$orientation);
 
-    max_angle_indexes = which(max(data_set$angle_search$angle_FAAI) == data_set$angle_search$angle_FAAI)
-
     if (is.na(fixed_best_angle)) {
-        data_set$best_angle = median(data_set$angle_search$test_angles[max_angle_indexes])
+        data_set$best_angle = find_best_alignment_angle(data_set$angle_search)
     } else {
         data_set$best_angle = fixed_best_angle
-        data_set$actual_best_angle = median(data_set$angle_search$test_angles[max_angle_indexes])
+        data_set$actual_best_angle = find_best_alignment_angle(data_set$angle_search)
     }
     data_set$corrected_orientation = apply_new_orientation(data_set$subseted_data$orientation,
         data_set$best_angle)
     
     per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min_eccen=3)
-
+    
     #diagnostic figure
     pdf(file.path(exp_dir,'..','adhesion_orientation.pdf'))
     layout(rbind(c(1,2),c(3,4)))
@@ -29,6 +27,7 @@ gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
     
     plot(data_set$angle_search$test_angles,data_set$angle_search$angle_FAAI,typ='l',
         xlab='Dominant Search Angle',ylab='FA Alignment Index',ylim=c(0,90));
+    lines(data_set$angle_search$test_angles, abs(data_set$angle_search$mean_angle), col='red')
     if (! is.na(fixed_best_angle)) {
         segments(fixed_best_angle,0,fixed_best_angle,2000,col='red')
         segments(data_set$actual_best_angle,0,data_set$actual_best_angle,2000,col='green')
@@ -38,7 +37,7 @@ gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
 
     hist(data_set$corrected_orientation,
         main=paste('Rotated ',data_set$best_angle,'\u00B0 / ',
-            sprintf('%0.1f',90-sd(data_set$corrected_orientation)),' STDEV',sep=''),
+            sprintf('%0.1f',90-sd(data_set$corrected_orientation)),' FAAI',sep=''),
         xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''));
     
     plot(per_image_dom_angle,xlab='Image Number',ylab='Dominant Angle',ylim=c(0,180));
@@ -56,8 +55,6 @@ read_in_orientation_data <- function(time_series_dir,min_eccen = 3) {
     minor_axis = read.csv(file.path(time_series_dir,'MinorAxisLength.csv'),header=F);
     
     data_set$mat$eccentricity = major_axis/minor_axis;
-    
-    
 
     unlist_data_set = list()
     for (i in names(data_set$mat)) {
@@ -76,9 +73,9 @@ find_per_image_dom_angle <- function(mat_data, min_eccen=3) {
         this_orientation = mat_data$orientation[,i_num];
         this_eccen = mat_data$eccentricity[,i_num];
 
-        good_ads = !is.na(this_orientation) & this_eccen >= min_eccen;
+        good_rows = !is.na(this_orientation) & this_eccen >= min_eccen;
         
-        angle_search = test_dom_angles(this_orientation[good_ads]);
+        angle_search = test_dom_angles(this_orientation[good_rows]);
         
         best_FAAI_indexes = which(max(angle_search$angle_FAAI) == angle_search$angle_FAAI);
 
@@ -100,15 +97,31 @@ test_dom_angles <- function(orientation, search_resolution = 0.1) {
     results = list(x = angles_to_test, test_angles = angles_to_test);
 
     new_angle_FAAI = c()
+    mean_angle = c()
     for (angle in angles_to_test) {
         new_orientation = apply_new_orientation(orientation,angle);
+        mean_angle = c(mean_angle,mean(new_orientation));
         new_angle_FAAI = c(new_angle_FAAI, 90-sd(new_orientation));
     }
         
     results$y = new_angle_FAAI;
+    results$mean_angle = mean_angle;
     results$angle_FAAI = new_angle_FAAI;
 
     return(results)
+}
+
+find_best_alignment_angle <- function(test_angle_set) {
+    max_FAAI = max(test_angle_set$angle_FAAI)
+    max_FAAI_indexes = which(max_FAAI == test_angle_set$angle_FAAI)
+    
+    abs_mean = abs(test_angle_set$mean_angle)[max_FAAI_indexes];
+    sorted_abs_mean = sort(abs_mean,decreasing = F, index.return = T)
+    
+    best_index = max_FAAI_indexes[sorted_abs_mean$ix[1]]
+
+    best_angle = test_angle_set$test_angles[best_index];
+    return(best_angle)
 }
 
 apply_new_orientation <- function(orientation_data,angle) {
@@ -118,6 +131,32 @@ apply_new_orientation <- function(orientation_data,angle) {
     orientation_data[less_neg_ninety] = orientation_data[less_neg_ninety] + 180;
 
     return(orientation_data)
+}
+
+analyze_single_adhesions <- function(align_data, min.data.points = 5, min.eccen = 3) {
+    orientations = as.matrix(data_set$mat$orientation);
+    eccentricities = as.matrix(data_set$mat$eccentricity);
+
+    num_above_eccen_limit = apply(eccentricities,1,function(x) sum(! is.na(x) & x >= min.eccen));
+
+    passed_ad_nums = which(num_above_eccen_limit >= min.data.points);
+
+    for (ad_num in passed_ad_nums) {
+        this_ad_filter = ! is.na(eccentricities[ad_num,]) & eccentricities[ad_num,] >= min.eccen;
+
+        these_angles = orientations[ad_num,this_ad_filter];
+        these_eccen = eccentricities[ad_num,this_ad_filter];
+        stopifnot(length(these_angles) == num_above_eccen_limit[ad_num])
+        
+        angle_search = test_dom_angles(these_angles);
+        best_angle = find_best_alignment_angle(angle_search);
+        # plot(angle_search)
+        # segments(best_angle,0,best_angle,10000)
+        # points(angle_search$x,abs(angle_search$mean_angle) * (80/max(abs(angle_search$mean_angle))),col='red')
+        #     browser()
+        if (ad_num == 115) {
+        }
+    }
 }
 
 load_alignment_props <- function(alignment_models) {
@@ -131,7 +170,7 @@ load_alignment_props <- function(alignment_models) {
         var_name = load(align_file)
         data_set = get(var_name);
         
-        align_props$FAAI = c(align_props$mean_dev, max(data_set$angle_search$angle_FAAI));
+        align_props$best_FAAI = c(align_props$best_FAAI, max(data_set$angle_search$angle_FAAI));
         if (any(names(data_set) == "actual_best_angle")) {
             align_props$best_angle = c(align_props$best_angle, data_set$actual_best_angle);
         } else {
