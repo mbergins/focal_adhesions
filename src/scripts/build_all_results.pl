@@ -66,7 +66,7 @@ my @overall_command_seq = (
 my @run_only_once = qw(find_signif_models);
 
 my @skip_check = qw(track_adhesions gather_tracking_results build_R_models collect_visualizations 
-	max_intent_project);
+	max_intent_project make_eccen_filtered_vis);
 
 my $cfg_suffix = basename($opt{cfg});
 $cfg_suffix =~ s/.*\.(.*)/$1/;
