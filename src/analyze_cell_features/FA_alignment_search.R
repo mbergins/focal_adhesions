@@ -16,10 +16,14 @@ gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
         data_set$best_angle)
     
     per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min_eccen=3)
-    
+    data_set$per_image_dom_angle = per_image_dom_angle
+
+    single_adhesion_data = analyze_single_adhesions(data_set)
+    data_set$single_ads = single_adhesion_data
+
     #diagnostic figure
-    pdf(file.path(exp_dir,'..','adhesion_orientation.pdf'))
-    layout(rbind(c(1,2),c(3,4)))
+    pdf(file.path(exp_dir,'..','adhesion_orientation.pdf'), height=7*(3/2))
+    layout(rbind(c(1,2),c(3,4),c(5,6)))
     par(bty='n', mar=c(4,4.2,2,0),mgp=c(2,1,0))
     
     hist(data_set$subseted_data$orientation,main='Pos X-axis Reference',
@@ -28,8 +32,9 @@ gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
     plot(data_set$angle_search$test_angles,data_set$angle_search$angle_FAAI,typ='l',
         xlab='Dominant Search Angle',ylab='FA Alignment Index',ylim=c(0,90));
     lines(data_set$angle_search$test_angles, abs(data_set$angle_search$mean_angle), col='red')
+    lines(data_set$angle_search$test_angles, abs(data_set$angle_search$median_angle), col='blue')
     if (! is.na(fixed_best_angle)) {
-        segments(fixed_best_angle,0,fixed_best_angle,2000,col='red')
+        segments(fixed_best_angle,0,fixed_best_angle,2000,col='blue')
         segments(data_set$actual_best_angle,0,data_set$actual_best_angle,2000,col='green')
     } else {
         segments(data_set$best_angle,0,data_set$best_angle,2000,col='green')
@@ -41,6 +46,13 @@ gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
         xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''));
     
     plot(per_image_dom_angle,xlab='Image Number',ylab='Dominant Angle',ylim=c(0,180));
+
+    hist(data_set$single_ads$best_angle,main='Single Adhesions - Best Angle',
+        xlab=paste('Angle n=',length(data_set$single_ads$best_angle),sep=''),xlim=c(0,180));
+    
+    hist(data_set$single_ads$FAAI,main='Single Adhesions - Max FAAI',
+        xlab=paste('Angle n=',length(data_set$single_ads$best_angle),sep=''),xlim=c(0,90));
+
     graphics.off()
 
     save(data_set,file=file.path(exp_dir,'..','FA_orientation.Rdata'))
@@ -76,11 +88,9 @@ find_per_image_dom_angle <- function(mat_data, min_eccen=3) {
         good_rows = !is.na(this_orientation) & this_eccen >= min_eccen;
         
         angle_search = test_dom_angles(this_orientation[good_rows]);
-        
-        best_FAAI_indexes = which(max(angle_search$angle_FAAI) == angle_search$angle_FAAI);
+        best_angle = find_best_alignment_angle(angle_search)
 
-        this_best = median(angle_search$test_angles[best_FAAI_indexes])
-        best_angles = c(best_angles, this_best);
+        best_angles = c(best_angles, best_angle);
     }
 
     return(best_angles)
@@ -98,20 +108,26 @@ test_dom_angles <- function(orientation, search_resolution = 0.1) {
 
     new_angle_FAAI = c()
     mean_angle = c()
+    median_angle = c()
     for (angle in angles_to_test) {
         new_orientation = apply_new_orientation(orientation,angle);
         mean_angle = c(mean_angle,mean(new_orientation));
+        median_angle = c(median_angle,median(new_orientation));
         new_angle_FAAI = c(new_angle_FAAI, 90-sd(new_orientation));
     }
         
     results$y = new_angle_FAAI;
     results$mean_angle = mean_angle;
+    results$median_angle = median_angle;
     results$angle_FAAI = new_angle_FAAI;
 
     return(results)
 }
 
 find_best_alignment_angle <- function(test_angle_set) {
+    # to select the best angle, find the angles with the maximum FAAI, from
+    # those angles select the angle with the lowest (meaning closest to zero)
+    # mean angle
     max_FAAI = max(test_angle_set$angle_FAAI)
     max_FAAI_indexes = which(max_FAAI == test_angle_set$angle_FAAI)
     
@@ -134,13 +150,15 @@ apply_new_orientation <- function(orientation_data,angle) {
 }
 
 analyze_single_adhesions <- function(align_data, min.data.points = 5, min.eccen = 3) {
-    orientations = as.matrix(data_set$mat$orientation);
-    eccentricities = as.matrix(data_set$mat$eccentricity);
+    orientations = as.matrix(align_data$mat$orientation);
+    eccentricities = as.matrix(align_data$mat$eccentricity);
 
     num_above_eccen_limit = apply(eccentricities,1,function(x) sum(! is.na(x) & x >= min.eccen));
 
     passed_ad_nums = which(num_above_eccen_limit >= min.data.points);
-
+    
+    single_ad_data = list()
+    single_ad_data$ad_nums = passed_ad_nums
     for (ad_num in passed_ad_nums) {
         this_ad_filter = ! is.na(eccentricities[ad_num,]) & eccentricities[ad_num,] >= min.eccen;
 
@@ -150,17 +168,15 @@ analyze_single_adhesions <- function(align_data, min.data.points = 5, min.eccen 
         
         angle_search = test_dom_angles(these_angles);
         best_angle = find_best_alignment_angle(angle_search);
-        # plot(angle_search)
-        # segments(best_angle,0,best_angle,10000)
-        # points(angle_search$x,abs(angle_search$mean_angle) * (80/max(abs(angle_search$mean_angle))),col='red')
-        #     browser()
-        if (ad_num == 115) {
-        }
+
+        single_ad_data$best_angle = c(single_ad_data$best_angle,best_angle)
+        single_ad_data$FAAI = c(single_ad_data$FAAI, max(angle_search$angle_FAAI))
     }
+
+    return(single_ad_data);
 }
 
 load_alignment_props <- function(alignment_models) {
-    
     if (length(alignment_models) == 0) {
         print('Problem, no alignment models submitted.');
     }
