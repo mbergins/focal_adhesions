@@ -724,13 +724,19 @@ sub gather_speed_props {
 
 sub gather_merge_count {
     my @merge_count = map 0, (0 .. $#tracking_mat);
-    my @data_keys = sort keys %data_sets;
     print "\r", " " x 80, "\rGathering Merge Counts" if $opt{debug};
+
+	#scan through each row, containing data about a single adhesion, skipping
+	#forward when we find negative value, indicating that an adhesion has not
+	#been born or is already dead
     for my $i (0 .. $#tracking_mat) {
         for my $j (0 .. $#{ $tracking_mat[$i] }) {
-            next if ($tracking_mat[$i][$j] <= -1);
-            for my $k (0 .. $#{ $tracking_mat[$i] }) {
-                $merge_count[$i]++ if ($tracking_mat[$i][$k] == ($tracking_mat[$i][$j] + 2) * -1);
+			next if ($tracking_mat[$i][$j] <= -1);
+			#this adhesion position ($i,$j) is live, now scan through all the
+			#other adhesions in this column ($j), looking for another adhesion
+			#which is marked as dead, but labeled with the adhesion's merge code
+            for my $k (0 .. $#tracking_mat) {
+                $merge_count[$i]++ if ($tracking_mat[$i][$j] == ($tracking_mat[$k][$j] + 2) * -1);
             }
         }
     }
