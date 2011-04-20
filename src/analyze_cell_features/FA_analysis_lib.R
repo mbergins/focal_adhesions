@@ -236,7 +236,7 @@ boxplot_with_points <- function(data,names=seq(1,length(data),by=1),
     colors=c('darkgreen','red','brown','blue','yellow','pink','cyan','gray','orange','purple'),
     notch=F,  range=1.5, inc.n.counts = TRUE, inc.points = TRUE, pch=20,
     na.omit = TRUE, point.cex=0.2, return_output = FALSE, with.p.value = TRUE,
-    p.value.pos = c(0.5,0.9), p.value.color = 'black', p.value.type = 'median', 
+    p.value.pos = c(0.5,0.9), p.value.color = 'black', p.value.type = 'mean', 
     bootstrap.rep = 10000, ...) {
 	
     if (any(is.null(data))) {
@@ -253,15 +253,16 @@ boxplot_with_points <- function(data,names=seq(1,length(data),by=1),
 		}
 	}
 	
-	box.data = boxplot(data,notch = notch,names = names,varwidth=T,range = range,pch=19,cex=0.25,...)
+	box.data = boxplot(data,notch = notch,names = names,range = range,pch=19,cex=0.25,...)
 
     plot_dims = par("usr");
 	if (inc.points) {
+        colors = rep(colors,length(data));
 		for (i in 1:length(data)) {
 			this_data = data[[i]]
 			temp_data = this_data[this_data >= box.data$stat[1,i] & this_data <= box.data$stat[5,i]]
 			points(jitter(array(0,dim=c(1,length(temp_data))),10)+i,
-                   temp_data,col=colors[[i]], pch=pch, cex=point.cex, )
+                   temp_data,col=colors[i], pch=pch, cex=point.cex)
 		}
 	}
     if (with.p.value) {
@@ -346,12 +347,12 @@ get_legend_rect_points <- function(left_x,bottom_y,right_x,top_y,box_num) {
 }
 
 plot_signif_bracket <- function(upper_left, lower_right, orientation = 'regular', 
-    over_text = NA, cex_text = 1, text_sep = 0.5, text_x_adj=0) {
+    over_text = NA, cex_text = 1,text_sep = 0, text_x_adj=0) {
     if (orientation == 'regular') {
         lines(c(upper_left[1],upper_left[1],lower_right[1], lower_right[1]),
               c(lower_right[2],upper_left[2],upper_left[2],lower_right[2]))  
         if (! is.na(over_text)) {
-            text(mean(c(upper_left[1],lower_right[1])),lower_right[2],over_text,pos=3,cex=cex_text)
+            text(mean(c(upper_left[1],lower_right[1])),upper_left[2]-text_sep,over_text,pos=3,cex=cex_text)
         }
     } 
     if (orientation == 'upside_down') {
@@ -407,6 +408,29 @@ plot_stage_length_data <- function(stage_length_data, type='stacked', top_gap = 
         errbar(sideways_err_bars[,1],sideways_err_bars[,2],sideways_err_bars[,3],
             sideways_err_bars[,4],add=TRUE,cex=1E-20, xlab='', ylab='');
         return(sideways_err_bars);
+    }
+}
+
+add_labels_with_sub <- function(data_sets,names,at,subtitle=NA,...) {
+    pl_size = par("usr");
+    char_size = par("cxy")[2]
+    
+    stopifnot(length(at) == length(names))
+    
+    if (any(is.na(data_sets))) {
+        labs = names;
+    } else {
+        labs = c()
+        for (i in 1:length(data_sets)) {
+            labs = c(labs, paste(names[i],' (n=',length(data_sets[[i]]),')',sep=''))
+        }
+    }
+
+    axis(1,labels=labs,at=at,...)
+
+    if (! is.na(subtitle)) {
+        lines(c(min(at),max(at)),rep(pl_size[3]-char_size*1.675,2),lwd=3)
+        mtext(subtitle,1,at=mean(at),line=1.7)
     }
 }
 
@@ -545,7 +569,7 @@ determine_mean_conf_int <- function(data, bootstrap.rep = 10000) {
     return(conf_int)
 }
 
-determine_mean_p_value <- function(data_1,data_2, bootstrap.rep = 20000) {
+determine_mean_p_value <- function(data_1,data_2, bootstrap.rep = 10000) {
 	require(boot);
     
 	boot_samp_1 = boot(data_1, function(values,indexes) mean(values[indexes],na.rm=T), bootstrap.rep);
