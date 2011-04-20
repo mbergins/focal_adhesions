@@ -413,5 +413,11 @@ if (length(args) != 0) {
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle);
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
             min.eccen=2,output_file='FA_orientation_eccen2.Rdata');
+        temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
+            min.eccen=4,output_file='FA_orientation_eccen4.Rdata');
+        temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
+            min.eccen=5,output_file='FA_orientation_eccen5.Rdata');
+        temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
+            min.eccen=6,output_file='FA_orientation_eccen6.Rdata');
     }
 }
