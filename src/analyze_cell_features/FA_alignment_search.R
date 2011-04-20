@@ -3,7 +3,7 @@
 ###############################################################################
 
 gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
-    min.eccen = 3,output_file = 'FA_orientation.Rdata') {
+    min.eccen = 3,output_file = 'FA_orientation.Rdata',diagnostic.figure=F) {
 
     data_set = read_in_orientation_data(exp_dir, min.eccen=min.eccen);
     data_set$angle_search = test_dom_angles(data_set$subseted_data$orientation);
@@ -22,6 +22,12 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
 
     single_adhesion_data = analyze_single_adhesions(data_set)
     data_set$single_ads = single_adhesion_data
+    
+    save(data_set,file=file.path(exp_dir,'..',output_file))
+    
+    if (! diagnostic.figure) {
+        return(data_set);
+    }
 
     #diagnostic figure
     pdf(file.path(exp_dir,'..','adhesion_orientation.pdf'), height=7*(3/2))
@@ -57,7 +63,6 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
 
     graphics.off()
 
-    save(data_set,file=file.path(exp_dir,'..',output_file))
     return(data_set)
 }
 
@@ -410,7 +415,9 @@ if (length(args) != 0) {
 	
     class(fixed_best_angle) <- "numeric";
     if (exists('time_series_dir')) {
-        temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle);
+        temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle, 
+            diagnostic.figure=T);
+
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
             min.eccen=2,output_file='FA_orientation_eccen2.Rdata');
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
