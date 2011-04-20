@@ -2,9 +2,10 @@
 # FA Orientation Models
 ###############################################################################
 
-gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
-    data_set = read_in_orientation_data(exp_dir, min_eccen=3, 
-    output_file = 'FA_orientation.Rdata');
+gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
+    min.eccen = 3,output_file = 'FA_orientation.Rdata') {
+
+    data_set = read_in_orientation_data(exp_dir, min.eccen=min.eccen);
     data_set$angle_search = test_dom_angles(data_set$subseted_data$orientation);
 
     if (is.na(fixed_best_angle)) {
@@ -16,7 +17,7 @@ gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
     data_set$corrected_orientation = apply_new_orientation(data_set$subseted_data$orientation,
         data_set$best_angle)
     
-    per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min_eccen=3)
+    per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min.eccen=min.eccen)
     data_set$per_image_dom_angle = per_image_dom_angle
 
     single_adhesion_data = analyze_single_adhesions(data_set)
@@ -60,7 +61,7 @@ gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
     return(data_set)
 }
 
-read_in_orientation_data <- function(time_series_dir,min_eccen = 3) {
+read_in_orientation_data <- function(time_series_dir,min.eccen = 3) {
     data_set = list();
     data_set$mat$orientation = read.csv(file.path(time_series_dir,'Orientation.csv'),header=F);
     data_set$mat$area = read.csv(file.path(time_series_dir,'Area.csv'),header=F);
@@ -75,18 +76,18 @@ read_in_orientation_data <- function(time_series_dir,min_eccen = 3) {
     }
     unlist_data_set = as.data.frame(unlist_data_set);
     data_set$subseted_data = subset(unlist_data_set, !is.nan(unlist_data_set$eccentricity) & 
-        unlist_data_set$eccentricity >= min_eccen);
+        unlist_data_set$eccentricity >= min.eccen);
     
     return(data_set);
 }
 
-find_per_image_dom_angle <- function(mat_data, min_eccen=3) {
+find_per_image_dom_angle <- function(mat_data, min.eccen=3) {
     best_angles = c()
     for (i_num in 1:dim(mat_data$orientation)[2]) {
         this_orientation = mat_data$orientation[,i_num];
         this_eccen = mat_data$eccentricity[,i_num];
 
-        good_rows = !is.na(this_orientation) & this_eccen >= min_eccen;
+        good_rows = !is.na(this_orientation) & this_eccen >= min.eccen;
         
         angle_search = test_dom_angles(this_orientation[good_rows]);
         best_angle = find_best_alignment_angle(angle_search)
