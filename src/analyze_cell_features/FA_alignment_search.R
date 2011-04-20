@@ -56,7 +56,7 @@ gather_FA_orientation_data <- function(exp_dir, fixed_best_angle = NA) {
 
     graphics.off()
 
-    save(data_set,file=file.path(exp_dir,'..','FA_orientation.Rdata'))
+    save(data_set,file=file.path(exp_dir,'..',output_file))
     return(data_set)
 }
 
