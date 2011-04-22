@@ -2,7 +2,8 @@
 # Assembly/Disassembly Rate models
 ###############################################################################
 
-build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacing=1) {
+build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacing=1,
+    diagnostic.figure = NA) {
     
     #get a blank result to make sure we can add the proper number of blank
     #entries for adhesions which dont meet analysis criteria
@@ -45,7 +46,6 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
             names(disassembly_model_results) <- names(sample_model_results);
         }
         
-        # browser()
         # if (is.na(assembly_model_results[1])) browser()
         
         # now to determine the best model fits, if either model set is all NA's,
@@ -88,12 +88,26 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
 
     models$assembly = as.data.frame(models$assembly);
     models$disassembly = as.data.frame(models$disassembly);
+    models$exp_data = data;
     
     print(paste('Built ', length(which(!is.na(models$assembly$length))), 
         ' assembly models, built ', length(which(!is.na(models$disassembly$length))), 
         ' disassembly models',sep=''))
 
-    models
+    return(models)
+}
+
+draw_diagnostic_traces <- function(models,file.name) {
+    ad_nums = sort(intersect(which(!is.na(models$assembly$slope)),
+        which(!is.na(models$disassembly$slope))));
+    
+    pdf(file.name)
+    for (i in ad_nums) {
+        phase_lengths = c(models$assembly$length[i],models$disassembly$length[i])
+        R_sq = c(models$assembly$adj.r.squared[i],models$disassembly$adj.r.squared[i])
+        plot_ad_intensity(models,i,phase_lengths,R_sq);
+    }
+    graphics.off()
 }
 
 
@@ -290,10 +304,15 @@ if (length(args) != 0) {
         # Model Building and Output
         #######################################################################
         model = build_bilinear_models(data_set,exp_props, min.phase.length = min_length, 
-            time.spacing = time_spacing)
-        model$exp_props = exp_props
-        model$exp_dir = data_dir
-        model$exp_data = data_set
+            time.spacing = time_spacing);
+        model$exp_props = exp_props;
+        model$exp_dir = data_dir;
+        model$exp_data = data_set;
+        
+        diagnostic_diagrams_file = sub(".csv$", ".pdf", model_file ,perl=T)
+        output_file = file.path(data_dir,'models',diagnostic_diagrams_file);
+        source('FA_analysis_lib.R')
+        draw_diagnostic_traces(model,output_file);
 
         R_model_file = sub(".csv$", ".Rdata", model_file ,perl=T)
         output_file = file.path(data_dir,'models',R_model_file);

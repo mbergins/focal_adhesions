@@ -1,6 +1,5 @@
 ################################################################################
-# FA_analysis_lib.R: various functions used to find and plot the linear regions
-#  and associated data from the focal adhesion identification/analysis programs
+# FA_analysis_lib.R: various functions used to work with the focal adhesion data
 ################################################################################
 
 ########################################
@@ -56,7 +55,7 @@ plot_ad_seq <- function (results,index,type='assembly',log.trans = TRUE, time.sp
 		y = c(results$assembly$slope[index]*x[1] + results$assembly$inter[index],
 			  results$assembly$slope[index]*x[2] + results$assembly$inter[index]);
 		
-		plot(0:(length(ad_seq)-1), ad_seq, xlab='Time (minutes)', ylab='Normalized Intensity',type="o");
+		plot(0:(length(ad_seq)-1), ad_seq, xlab='Time (minutes)', ylab='Intensity',type="o");
 		
         phase_lengths = c(results$assembly$length[index], results$disassembly$length[index]);
 
@@ -83,8 +82,8 @@ plot_ad_intensity <- function (results,index,phase_lengths,R_sq,time.spacing=1, 
     time_points = which(!is.nan(ad_seq))*time.spacing - time.spacing
     ad_seq = na.omit(ad_seq)
     
-    plot(time_points, ad_seq, xlab='Time (minutes)', ylab='Normalized Intensity',type="o", main=index,
-        ylim=int_min_max);
+    plot(time_points, ad_seq, xlab='Time (minutes)', ylab='Normalized Intensity',type="o", 
+        main=index);
     
     plot_limits = par("usr")
     segments(0,par("usr")[3],0,par("usr")[4])
@@ -98,9 +97,10 @@ plot_ad_intensity <- function (results,index,phase_lengths,R_sq,time.spacing=1, 
         predicted_sig = predict(log_model);
         
         lines(assemb_time, exp(predicted_sig), col='darkgreen',lwd = 3)
-
-        text(plot_limits[1],plot_limits[4]*0.95,pos=4, 
-            paste('R-sq:', sprintf('%.2f',R_sq[1])))
+        if (is.finite(R_sq[1])) {
+            text(plot_limits[1],plot_limits[4]*0.95,pos=4, 
+                paste('R-sq:', sprintf('%.2f',R_sq[1])))
+        }
     }
     
     if (is.finite(phase_lengths[2])) {
@@ -109,8 +109,11 @@ plot_ad_intensity <- function (results,index,phase_lengths,R_sq,time.spacing=1, 
         log_model = lm(log(dis_sig) ~ dis_time);
         predicted_sig = predict(log_model);
         lines(dis_time, exp(predicted_sig), col='red',lwd = 3)
-        text(plot_limits[2],plot_limits[4]*0.95,pos=2, 
-            paste('R-sq:', sprintf('%.2f',R_sq[2])))
+        
+        if (is.finite(R_sq[2])) {
+            text(plot_limits[2],plot_limits[4]*0.95,pos=2, 
+                paste('R-sq:', sprintf('%.2f',R_sq[2])))
+        }
     }
 }
 
@@ -529,6 +532,27 @@ determine_birth_rate <- function(lineage_time_series) {
     total_births/total_time;
 }
 
+gather_global_exp_summary <- function(data_set) {
+    stopifnot(is.list(data_set))
+    
+    average_adhesion_count = c()
+    sd_adhesion_count = c()
+    exp_dirs = c()
+    for (i in 1:length(data_set)) {
+        these_counts = apply(data_set[[i]]$exp_data,2,function(x) sum(!is.nan(x)))
+        average_adhesion_count = c(average_adhesion_count, mean(these_counts))
+        sd_adhesion_count = c(sd_adhesion_count, sd(these_counts))
+
+        exp_dirs = c(exp_dirs, data_set[[i]]$exp_dir)
+    }
+    
+    adhesion_count_data = data.frame(mean_ad_count = average_adhesion_count, 
+        sd_adhesion_count = sd_adhesion_count,
+        exp_dirs = exp_dirs)
+    
+    return(adhesion_count_data);
+}
+
 determine_ad_turnover <- function(before_ts,after_ts,time.spacing = 1) {
     before_birth = unlist(lapply(before_ts,determine_birth_rate))/time.spacing
     before_death = unlist(lapply(before_ts,determine_death_rate))/time.spacing
@@ -744,9 +768,9 @@ find_p_val_from_bootstrap <- function(boot_one, boot_two) {
     return(p_val_range)
 }
 
-bootstrap_overlap <- function(boot_one,boot_two,p_val) {
-    conf_int_one = boot.ci(boot_one, type="bca", conf=p_val)
-    conf_int_two = boot.ci(boot_two, type="bca", conf=p_val)
+bootstrap_overlap <- function(boot_one,boot_two,p_val, type="bca") {
+    conf_int_one = boot.ci(boot_one, type=type, conf=p_val)
+    conf_int_two = boot.ci(boot_two, type=type, conf=p_val)
     
     #occassionally, very large confidence intervals yield NA values, we will
     #assume that those confidence intervals overlap
