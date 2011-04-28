@@ -178,7 +178,7 @@ find_optimum_model_indexes <- function(assembly=NULL,disassembly=NULL) {
 }
 
 produce_rate_filters <- function(single.exp.data, model_count, min.r.sq=-Inf, 
-    max.p.val=0.05, pos.slope=TRUE) {
+    max.p.val=0.05, pos.slope=TRUE, old.names=F) {
     
     filter_sets = list()
     
@@ -187,12 +187,28 @@ produce_rate_filters <- function(single.exp.data, model_count, min.r.sq=-Inf,
     # fulfill which criteria
     vars_to_filter = c("assembly", "disassembly")
     for (var in vars_to_filter) {
-        #apply a bonferroni correction to the maximum acceptable p-value calculation
-        corrected.p.value = max.p.val / model_count;
+        #apply a bonferroni correction to the maximum acceptable p-value
+        #calculation if model count provided
+        corrected.p.value = max.p.val;
+        if (! is.na(model_count)) {
+            corrected.p.value = corrected.p.value / model_count;
+        }
         
-        filter_sets[[var]]$good.r.sq = ! is.na(single.exp.data[[var]]$adj.r.squared) & single.exp.data[[var]]$adj.r.squared >= min.r.sq
-        filter_sets[[var]]$low.p.val = ! is.na(single.exp.data[[var]]$p.value) & single.exp.data[[var]]$p.value < corrected.p.value 
-        filter_sets[[var]]$pos.slope = ! is.na(single.exp.data[[var]]$slope) & single.exp.data[[var]]$slope > 0; 
+        if (old.names) {
+            filter_sets[[var]]$good.r.sq = ! is.na(single.exp.data[[var]]$R_sq) & 
+                single.exp.data[[var]]$R_sq >= min.r.sq
+            filter_sets[[var]]$low.p.val = ! is.na(single.exp.data[[var]]$p_val) & 
+                single.exp.data[[var]]$p_val < corrected.p.value 
+            filter_sets[[var]]$pos.slope = ! is.na(single.exp.data[[var]]$slope) & 
+                single.exp.data[[var]]$slope > 0; 
+        } else {
+            filter_sets[[var]]$good.r.sq = ! is.na(single.exp.data[[var]]$adj.r.squared) & 
+                single.exp.data[[var]]$adj.r.squared >= min.r.sq
+            filter_sets[[var]]$low.p.val = ! is.na(single.exp.data[[var]]$p.value) & 
+                single.exp.data[[var]]$p.value < corrected.p.value 
+            filter_sets[[var]]$pos.slope = ! is.na(single.exp.data[[var]]$slope) & 
+                single.exp.data[[var]]$slope > 0; 
+        }
     }
     
     # There are two variables that are unique to assembly and disassembly
@@ -299,7 +315,12 @@ if (length(args) != 0) {
             print(paste('Could not find exp props file: ', file.path(data_dir,'single_lin.csv')))
             stop()
         }
-
+        
+        output_folder = file.path(data_dir,'models');
+        if (! file.exists(output_folder) {
+            dir.create(dirname(output_folder),recursive=TRUE);
+        }
+        
         #######################################################################
         # Model Building and Output
         #######################################################################
@@ -310,15 +331,12 @@ if (length(args) != 0) {
         model$exp_data = data_set;
         
         diagnostic_diagrams_file = sub(".csv$", ".pdf", model_file ,perl=T)
-        output_file = file.path(data_dir,'models',diagnostic_diagrams_file);
+        output_file = file.path(output_folder,diagnostic_diagrams_file);
         source('FA_analysis_lib.R')
         draw_diagnostic_traces(model,output_file);
 
         R_model_file = sub(".csv$", ".Rdata", model_file ,perl=T)
-        output_file = file.path(data_dir,'models',R_model_file);
-        if (! file.exists(dirname(output_file))) {
-            dir.create(dirname(output_file),recursive=TRUE);
-        }
+        output_file = file.path(output_folder,R_model_file);
         save(model,file = output_file)
     }
 }

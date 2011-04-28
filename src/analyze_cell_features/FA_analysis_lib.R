@@ -441,14 +441,10 @@ add_labels_with_sub <- function(data_sets,names,at,subtitle=NA,...) {
 #Data Summary functions
 ########################################
 filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 0.05, debug = FALSE,
-        pos.slope = TRUE) {
+        pos.slope = TRUE,old.names=F) {
 
     ad_data = list();
     
-    if (is.na(model_count)) {
-        model_count = find_number_of_models(results)
-    }
-
     for (i in 1:length(results)) {
         if (debug) {
             print(paste("Working on Experiment #:",i,'/',length(results)));
@@ -456,7 +452,7 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         res = results[[i]];
 
         filter_sets = produce_rate_filters(res, model_count, min.r.sq = min.r.sq, max.p.val = max.p.val, 
-            pos.slope = pos.slope)
+            pos.slope = pos.slope,old.names=old.names)
         
         assembly_filt = filter_sets$assembly;
         disassembly_filt = filter_sets$disassembly;
@@ -470,7 +466,8 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         # each adhesion selected by filtering
         this_assem_data = list()
         this_assem_data = res$assembly[assembly_filt,]
-        these_props = subset(res$exp_props,select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num'))
+        these_props = subset(res$exp_props,
+            select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num','mean_area'))
         this_assem_data = cbind(this_assem_data,these_props[assembly_filt,])
         this_assem_data$exp_num = c(this_assem_data$exp_num, rep(i,length(which(assembly_filt))));
         this_assem_data$lin_num = c(this_assem_data$lin_num, which(assembly_filt));
@@ -483,7 +480,8 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         
         this_dis_data = list()
         this_dis_data = res$disassembly[disassembly_filt,]
-        these_props = subset(res$exp_props,select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num'))
+        these_props = subset(res$exp_props,
+            select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num','mean_area'))
         this_dis_data = cbind(this_dis_data,these_props[disassembly_filt,])
         this_dis_data$exp_num = c(this_dis_data$exp_num, rep(i,length(which(disassembly_filt))));
         this_dis_data$lin_num = c(this_dis_data$lin_num, which(disassembly_filt));
