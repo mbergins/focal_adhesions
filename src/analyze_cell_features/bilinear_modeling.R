@@ -317,7 +317,7 @@ if (length(args) != 0) {
         }
         
         output_folder = file.path(data_dir,'models');
-        if (! file.exists(output_folder) {
+        if (! file.exists(output_folder)) {
             dir.create(dirname(output_folder),recursive=TRUE);
         }
         
