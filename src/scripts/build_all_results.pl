@@ -55,6 +55,7 @@ my @overall_command_seq = (
 	[ [ "../analyze_cell_features",   "./gather_tracking_results.pl" ], ],
 	[ [ "../analyze_cell_features",   "./build_R_models.pl" ], ],
 	[ [ "../analyze_cell_features",   "./find_signif_models.pl" ], ],
+	[ [ "../analyze_cell_features",   "./build_alignment_models.pl" ], ],
 	[ [ "../visualize_cell_features", "./collect_visualizations.pl" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script ../visualize_cell_features/max_intent_project" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script ../visualize_cell_features/make_eccen_filtered_vis" ], ],
@@ -65,7 +66,8 @@ my @overall_command_seq = (
 #it's name
 my @run_only_once = qw(find_signif_models);
 
-my @skip_check = qw(track_adhesions gather_tracking_results build_R_models collect_visualizations 
+my @skip_check = qw(find_exp_thresholds track_adhesions gather_tracking_results
+	build_R_models build_alignment_models collect_visualizations
 	max_intent_project make_eccen_filtered_vis);
 
 my $cfg_suffix = basename($opt{cfg});
