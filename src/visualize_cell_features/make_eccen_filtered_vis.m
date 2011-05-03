@@ -1,4 +1,4 @@
-function make_filtered_vis(exp_dir,varargin)
+function make_eccen_filtered_vis(exp_dir,varargin)
 
 tic;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -64,6 +64,7 @@ for i_num = 1:size(image_dirs)
     
     highlight = create_highlighted_image(this_data.focal_norm,high_eccen_perim,'color_map',[0,1,0]);
     highlight = create_highlighted_image(highlight,low_eccen_perim,'color_map',[1,0,0]);
+    highlight = add_centroid_mark(highlight,this_data.adhesion_centroid,[0,0,1]);
     
     padded_i_num = sprintf('%04d',i_num);
     
@@ -74,3 +75,16 @@ toc;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function image = add_centroid_mark(image,centroid,color)
+
+dilation_element = strel('square',5);
+
+x_pos = round(centroid(1));
+y_pos = round(centroid(2));
+
+binary = zeros(size(image));
+binary(x_pos,y_pos) = 1;
+binary = imdilate(binary,dilation_element);
+
+image = create_highlighted_image(image,binary,'color_map',color);
