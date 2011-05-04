@@ -196,7 +196,7 @@ sub build_single_ad_commands {
     my @commands;
 	
 	#command to produce small multiple figures for all adhesions
-	push @commands, "make_single_ad_frames('" . $single_ad_params{'config_file'} . ")";
+	push @commands, "make_single_ad_frames('" . $single_ad_params{'config_file'} . "')";
     
 	my $assembly_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 'signif_assembly_rows_lengths.csv');
     if (-e $assembly_file) {
