@@ -89,17 +89,17 @@ image_with_bar = image_no_bar;
 for i=1:image_depth
     switch position_code
         case 1
-            bar_rows = round(row_offset*image_height):round(row_offset*image_height)-1+bar_size(1);
-            bar_cols = round(col_offset*image_width)-bar_size(2):round(col_offset*image_width)-1;
+            bar_rows = ceil(row_offset*image_height):ceil(row_offset*image_height)-1+bar_size(1);
+            bar_cols = ceil(col_offset*image_width)-bar_size(2):ceil(col_offset*image_width)-1;
         case 2
-            bar_rows = round(row_offset*image_height)-bar_size(1):round(row_offset*image_height)-1;
-            bar_cols = round(col_offset*image_width)-bar_size(2):round(col_offset*image_width)-1;
+            bar_rows = ceil(row_offset*image_height)-bar_size(1):ceil(row_offset*image_height)-1;
+            bar_cols = ceil(col_offset*image_width)-bar_size(2):ceil(col_offset*image_width)-1;
         case 3
-            bar_rows = round(row_offset*image_height)-bar_size(1):round(row_offset*image_height)-1;
-            bar_cols = round(col_offset*image_width):round(col_offset*image_width)-1+bar_size(2);
+            bar_rows = ceil(row_offset*image_height)-bar_size(1):ceil(row_offset*image_height)-1;
+            bar_cols = ceil(col_offset*image_width):ceil(col_offset*image_width)-1+bar_size(2);
         case 4
-            bar_rows = round(row_offset*image_height):round(row_offset*image_height)-1+bar_size(1);
-            bar_cols = round(col_offset*image_width):round(col_offset*image_width)-1+bar_size(2);
+            bar_rows = ceil(row_offset*image_height):ceil(row_offset*image_height)-1+bar_size(1);
+            bar_cols = ceil(col_offset*image_width):ceil(col_offset*image_width)-1+bar_size(2);
         otherwise
             error('ERROR: draw_scale_bar - unexpected position code, must be between 0-4');
     end
