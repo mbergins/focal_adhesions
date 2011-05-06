@@ -24,6 +24,7 @@ i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 i_p.addParamValue('start_row',1,@(x)x >= 1);
 i_p.addParamValue('end_row',1,@(x)x >= 1);
 i_p.addParamValue('adhesion_file',@(x)exist(x,'file') == 2);
+i_p.addParamValue('min_longevity',-Inf,@(x)isnumeric(x) && x > 0);
 
 i_p.parse(cfg_file,varargin{:});
 
@@ -95,6 +96,9 @@ if (isempty(strmatch('adhesion_file', i_p.UsingDefaults)))
     temp_tracking_mat(ad_to_include(:,1),:) = tracking_seq(ad_to_include(:,1),:);
     tracking_seq = temp_tracking_mat;
 end
+
+longevities = sum(tracking_seq > 0,2);
+tracking_seq = tracking_seq(longevities >= i_p.Results.min_longevity,:);
 
 rows_to_examine = zeros(size(tracking_seq,1),1);
 for i=1:size(tracking_seq)
