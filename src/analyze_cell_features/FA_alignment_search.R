@@ -36,7 +36,7 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     
     hist(data_set$subseted_data$orientation,main='Pos X-axis Reference',
         xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''), 
-		xlim=c(-90,90));
+		xlim=c(-100,100));
     
     plot(data_set$angle_search$test_angles,data_set$angle_search$angle_FAAI,typ='l',
         xlab='Dominant Search Angle',ylab='FA Alignment Index',ylim=c(0,90));
@@ -53,7 +53,7 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
         main=paste('Rotated ',data_set$best_angle,'\u00B0 / ',
             sprintf('%0.1f',90-sd(data_set$corrected_orientation)),' FAAI',sep=''),
         xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''),
-		xlim=c(-90,90));
+		xlim=c(-100,100));
     
     plot(per_image_dom_angle,xlab='Image Number',ylab='Dominant Angle',ylim=c(0,180));
 
@@ -121,7 +121,7 @@ test_dom_angles <- function(orientation, search_resolution = 0.1) {
         new_orientation = apply_new_orientation(orientation,angle);
         mean_angle = c(mean_angle,mean(new_orientation));
         median_angle = c(median_angle,median(new_orientation));
-        new_angle_FAAI = c(new_angle_FAAI, 90-sd(new_orientation));
+        new_angle_FAAI = c(new_angle_FAAI, find_FAAI_from_orientation(new_orientation));
     }
         
     results$y = new_angle_FAAI;
@@ -130,6 +130,10 @@ test_dom_angles <- function(orientation, search_resolution = 0.1) {
     results$angle_FAAI = new_angle_FAAI;
 
     return(results)
+}
+
+find_FAAI_from_orientation <- function(orientation_data) {
+    return(90-sd(orientation_data));
 }
 
 find_best_alignment_angle <- function(test_angle_set) {
@@ -191,9 +195,9 @@ analyze_single_adhesions <- function(align_data, min.data.points = 5, min.eccen 
     return(single_ad_data);
 }
 
-plot_single_adhesion_orientations <- function(align_data, min.data.points = 20, max.data.points=Inf,
-    min.eccen = 3, dominant.angle = 0, which.ads=NA, min.area = 80) {
-
+filter_alignment_data <- function(align_data, min.data.points = 20, max.data.points=Inf,
+    min.eccen = 3, min.area = 100) {
+    
     orientations = as.matrix(align_data$mat$orientation);
     eccentricities = as.matrix(align_data$mat$eccentricity);
     area = as.matrix(align_data$mat$area);
@@ -206,7 +210,6 @@ plot_single_adhesion_orientations <- function(align_data, min.data.points = 20, 
 
     num_above_limits = rowSums(above_all_limits,na.rm=T)
     
-    browser()
     passed_ad_nums = which(num_above_limits >= min.data.points)
     passed_ad_nums = which(consecutive_above_limits >= min.data.points)
 
@@ -214,8 +217,29 @@ plot_single_adhesion_orientations <- function(align_data, min.data.points = 20, 
         passed_ad_nums = intersect(passed_ad_nums, which(sample_data$lineage_data$merge_count <= 5));
     }
 
+    orientations[! above_all_limits] = NA;
+    align_data$mat$filtered_orienations = orientations;
+
+    return(align_data);
+}
+
+plot_single_adhesion_orientations <- function(align_data, min.data.points = 20, max.data.points=Inf,
+    min.eccen = 3, dominant.angle = 0, which.ads=NA, min.area = 100,main=NA,with.tags=F) {
+
+    orientations = as.matrix(align_data$mat$orientation);
+    eccentricities = as.matrix(align_data$mat$eccentricity);
+    area = as.matrix(align_data$mat$area);
+ 
+    passed_ad_nums = build_single_orientation_filters(align_data,
+        min.data.points = min.data.points, max.data.points=max.data.points,
+        min.eccen = min.eccen, min.area = min.area)
+
     if (! is.na(which.ads)) {
         passed_ad_nums = which.ads
+    }
+    
+    if (length(passed_ad_nums) == 0) {
+        return();
     }
 
     colors = rainbow(length(passed_ad_nums));
@@ -230,19 +254,35 @@ plot_single_adhesion_orientations <- function(align_data, min.data.points = 20, 
         angle_sequence[! this_ad_filter] = NA;
         angle_sequence = apply_new_orientation(angle_sequence,dominant.angle);
         
-        
         if (count == 1) {
+            xlims = c(0,max(time))
+            if (with.tags) {
+                xlims = c(0,max(time)*1.1);
+            }
+
             plot(time,angle_sequence,ylim=c(-90,90),col=colors[count],
-                pch=19,cex=0.5,xlim=c(0,max(time)*1.1),axes=F,typ='l',
+                pch=19,cex=0.25,xlim=xlims,axes=F,
                 xlab='Time (min)',ylab='FA Orientation (degrees)');
+            lines(time,angle_sequence, col=colors[count],pch=19,cex=0.25)
+
+            if (! is.na(main)) {
+                title(main=main);
+            }
             
-            axis(1, at = seq(0,200,by=40))
+            p_limits = par("usr");
+            text(p_limits[2],p_limits[4],
+                paste(align_data$best_angle,'\u00B0','/','n=',length(passed_ad_nums),sep=''),
+                pos=2,offset=c(0,-1));
+
+            axis(1)
             axis(2, at = seq(-90,90,by=90))
         } else {
-            lines(time,angle_sequence, col=colors[count],pch=19,cex=0.5)
+            points(time,angle_sequence, col=colors[count],pch=19,cex=0.25)
+            lines(time,angle_sequence, col=colors[count],pch=19,cex=0.25)
         }
 
         ad_present_time = (which(!is.na(angle_sequence))-1)*2.5;
+        omited_sequence = na.omit(angle_sequence);
         # segments(min(ad_present_time),mean(angle_sequence,na.rm=T),
         #     max(ad_present_time),mean(angle_sequence,na.rm=T),
         #     col=colors[count])
@@ -251,17 +291,18 @@ plot_single_adhesion_orientations <- function(align_data, min.data.points = 20, 
         lin_model_summary = summary(lin_model);
         # lines(ad_present_time,predict(lin_model))
         
-        single_ad_index = which(align_data$single_ads$ad_nums == ad_num);
-        text(max(ad_present_time),mean(angle_sequence,na.rm=T),
-            sprintf('%.1f',align_data$single_ads$FAAI[single_ad_index]),col=colors[count],
-            pos=3)
-        text(max(ad_present_time),mean(angle_sequence,na.rm=T),
-            ad_num,col=colors[count],
-            pos=1)
-        text(max(ad_present_time),mean(angle_sequence,na.rm=T),
-            sprintf('%.1e',lin_model_summary$coefficients[2,4]),col=colors[count],
-            pos=4)
-
+        if (with.tags) {
+            single_ad_index = which(align_data$single_ads$ad_nums == ad_num);
+            # text(max(ad_present_time),mean(angle_sequence,na.rm=T),
+            #     sprintf('%.1f',align_data$single_ads$FAAI[single_ad_index]),col=colors[count],
+            #     pos=3)
+            text(max(ad_present_time),tail(omited_sequence,1),
+                ad_num,col=colors[count],
+                pos=1)
+            # text(max(ad_present_time),mean(angle_sequence,na.rm=T),
+            #     sprintf('%.1e',lin_model_summary$coefficients[2,4]),col=colors[count],
+            #     pos=4)
+        }
         count = count + 1;
     }
     pl_size = par("usr");
@@ -271,7 +312,6 @@ plot_single_adhesion_orientations <- function(align_data, min.data.points = 20, 
 }
 
 number_consecutive_trues <- function(logical_seq) {
-
     logical_seq = as.logical(logical_seq)
 
     max_consec = 0
@@ -381,16 +421,18 @@ load_alignment_props <- function(alignment_models) {
         var_name = load(align_file)
         data_set = get(var_name);
         
-        align_props$best_FAAI = c(align_props$best_FAAI, max(data_set$angle_search$angle_FAAI));
+        align_props$best_FAAI = c(align_props$best_FAAI, 
+            find_FAAI_from_orientation(data_set$corrected_orientation));
         if (any(names(data_set) == "actual_best_angle")) {
-            align_props$best_angle = c(align_props$best_angle, data_set$actual_best_angle);
+            align_props$actual_best_angle = c(align_props$actual_best_angle, data_set$actual_best_angle);
+            align_props$best_angle = c(align_props$best_angle, data_set$best_angle);
         } else {
             align_props$best_angle = c(align_props$best_angle, data_set$best_angle);
         }
         align_props$align_file = c(align_props$align_file, align_file);
         print(paste('Done loading:', align_file))
     }
-    
+    browser()
     align_props = as.data.frame(align_props);
     return(align_props)
 }
