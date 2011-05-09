@@ -270,6 +270,7 @@ sub gather_and_output_lineage_properties {
 
     $props{longevity}               = &gather_longevities;
     $props{merge_count}             = &gather_merge_count;
+    $props{split_count}             = &gather_split_count;
     $props{death_status}            = &gather_death_status;
     $props{split_birth_status}      = &gather_split_birth_status;
     $props{Average_adhesion_signal} = &gather_prop_seq("Average_adhesion_signal");
@@ -744,6 +745,33 @@ sub gather_merge_count {
     return \@merge_count;
 }
 
+sub gather_split_count {
+    my @split_count = map 0, (0 .. $#tracking_mat);
+    print "\r", " " x 80, "\rGathering Split Counts" if $opt{debug};
+
+	#scan through each row, containing data about a single adhesion, skipping
+	#forward when we find negative value, indicating that an adhesion has not
+	#been born or is already dead
+    for my $i (0 .. $#tracking_mat) {
+        for my $j (1 .. $#{ $tracking_mat[$i] }) {
+			next if ($tracking_mat[$i][$j] <= -1);
+			#this adhesion position ($i,$j) is live, now scan through all the
+			#other adhesions in this column ($j), finding first the adhesions
+			#that are live at this time point, then looking backwards one spot
+			#to find adhesions tagged with the proper code for a split event
+            for my $k (0 .. $#tracking_mat) {
+				next if ($tracking_mat[$k][$j] <= 0);
+				#adhesion is live...
+				if ($tracking_mat[$i][$j] == ($tracking_mat[$k - 1][$j] + 2) * -1) {
+                	$split_count[$i]++;
+				}
+            }
+        }
+    }
+
+    return \@split_count;
+}
+
 sub gather_death_status {
     my @death_status = map 0, (0 .. $#tracking_mat);
     print "\r", " " x 80, "\rGathering Death Status" if $opt{debug};
@@ -778,7 +806,7 @@ sub gather_lineage_summary_data {
     my %props          = %{ $_[0] };
 	my @possible_props = qw(longevity largest_area mean_area starting_edge_dist
 	mean_edge_dist ending_edge_dist starting_center_dist mean_center_dist
-	ending_center_dist merge_count death_status split_birth_status
+	ending_center_dist merge_count split_count death_status split_birth_status
 	average_speeds max_speeds ad_sig birth_i_num start_x start_y death_i_num
 	end_x end_y mean_axial_ratio); 
 	
