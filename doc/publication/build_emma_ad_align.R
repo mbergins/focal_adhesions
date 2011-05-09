@@ -175,39 +175,37 @@ graphics.off()
 # Single Adhesion Stability
 #######################################
 
-align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/*/FA_orientation.Rdata'));
-lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
-pdf(file.path(out_folder,'single_adhesions_set_60.pdf'));
-for (i in 1:length(align_files)) {
-    print(align_files[i])
-    
-    source('FA_alignment_search.R')
-    var_name = load(align_files[i])
-    sample_data = get(var_name);
-    sample_data$lineage_data <- read.table(lin_files[i],sep=',',header=T);
-    
-    sample_data_filtered = filter_alignment_data(sample_data);
-
-    par(xpd=T)
-    plot_single_adhesion_orientations(sample_data,
-        dominant.angle=sample_data$best_angle,
-        main=align_files[i],with.tags=T,min.area=60)
-}
-graphics.off()
-
-var_name = load('../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_02/adhesion_props/FA_orientation.Rdata')
-sample_data = get(var_name);
-sample_data$lineage_data <- read.table('../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_01/adhesion_props/single_lin.csv',sep=',',header=T);
+source('FA_alignment_search.R')
+align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_1ug_trial_2/WT_*/*/FA_orientation.Rdata'));
+lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_1ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
+ad_dev_1ug = gather_all_single_adhesion_deviances(align_files,lin_files);
 
 source('FA_alignment_search.R')
-plot_single_adhesion_orientations(sample_data,
-    max.data.points=Inf,dominant.angle=sample_data$best_angle,min.data.points=27)
+align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_10ug_trial_2/WT_*/*/FA_orientation.Rdata'));
+lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_10ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
+ad_dev_10ug = gather_all_single_adhesion_deviances(align_files,lin_files);
 
-# svg(file.path(out_folder,'single_adhesions.svg'),height=5,width=5);
-# par(bty='n',mar=c(3.1,3.1,0.5,0.1), mgp=c(2.1,1,0))
-# plot_single_adhesion_orientations(sample_data,min.data.points=40,
-#     max.data.points=Inf,dominant.angle=dom_angle,which.ads=c(701, 193, 4032))
-# graphics.off()
+source('FA_alignment_search.R')
+align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/*/FA_orientation.Rdata'));
+lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
+ad_dev_100ug = gather_all_single_adhesion_deviances(align_files,lin_files);
+
+svg(file.path(out_folder,'FAAI','single_ad_stability.svg'));
+par(bty='n',mar=c(2.8,2.6,0.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
+hist_100ug = hist(ad_dev_100ug$mean_dev,xlab='Average Deviance from Start (degrees)',
+	ylab='# of Focal Adhesions',main='',axis=F)
+axis(1,lwd=3)
+axis(2,lwd=3)
+graphics.off()
+
+ad_dev_100ug_less25 = subset(ad_dev_100ug, mean_dev <= 25)
+svg(file.path(out_folder,'FAAI','single_ad_stability_less_25.svg'));
+par(bty='n',mar=c(2.8,2.6,0.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
+hist_100ug = hist(ad_dev_100ug_less25$mean_dev,seq(0,25,by=5),xlab='Average Deviance from Start (degrees)',
+	ylab='# of Focal Adhesions',main='',axis=F)
+axis(1,lwd=3)
+axis(2,lwd=3)
+graphics.off()
 
 #######################################
 # Sample FAAI plots
