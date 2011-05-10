@@ -376,14 +376,15 @@ stopifnot(number_consecutive_trues(c(rep(F,10),rep(T,10),rep(F,50),rep(T,20))) =
 stopifnot(number_consecutive_trues(c(rep(T,25),rep(F,10),rep(T,10),rep(F,50),rep(T,20))) == 25)
 stopifnot(number_consecutive_trues(rep(T,20)) == 20)
 
-gather_all_single_adhesion_deviances <- function(align_files, lin_files) {
+gather_all_single_adhesion_deviances <- function(align_files, lin_files, min.area=60, min.data.points=10) {
 	all_dev_data = list();
 	for (i in 1:length(align_files)) {
         print(paste('Done with ',i,'/',length(align_files),sep=''));
 		sample_data = get(load(align_files[i]))
 		sample_data$lineage_data <- read.table(lin_files[i],sep=',',header=T);
 		
-		sample_data_filtered = filter_alignment_data(sample_data);
+		sample_data_filtered = filter_alignment_data(sample_data, 
+			min.area=min.area, min.data.points=min.data.points);
 		overall_dev = adhesion_angle_deviance(sample_data_filtered$mat$filtered_orientation);
 		overall_dev$exp_num = rep(i,dim(overall_dev)[1])
 
