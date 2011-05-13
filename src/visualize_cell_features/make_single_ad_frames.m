@@ -98,7 +98,7 @@ if (isempty(strmatch('adhesion_file', i_p.UsingDefaults)))
 end
 
 longevities = sum(tracking_seq > 0,2);
-tracking_seq = tracking_seq(longevities >= i_p.Results.min_longevity,:);
+tracking_seq(longevities < i_p.Results.min_longevity,:) = 0;
 
 rows_to_examine = zeros(size(tracking_seq,1),1);
 for i=1:size(tracking_seq)
@@ -203,6 +203,7 @@ for j = 1:max_image_num
         cell_edge = bwperim(imread(fullfile(I_folder,padded_i_num,edge_filename)));
     end
     
+    %cycle through each adhesion that we want to make a small multiple of
     for i = 1:size(rows_to_examine,1)
         row_num = rows_to_examine(i);
         
@@ -240,10 +241,11 @@ for j = 1:max_image_num
             all_images{row_num}{i_seen} = highlighted_image;
         end
         
+        %check if this adhesion's small multiple set is complete
         if (all(surrounding_entries <= 0) || j == max_image_num)
             
-            %exit out of this loop through the tracking matrix if all the
-            %current image set is empty, we have yet to hit the adhesions
+            %if the current image set is empty, we haven't hit the adhesion
+            %yet in the image set, so continue to the next adhesion
             if (size(all_images{row_num}, 2) == 0), continue; end
             
             if (exist('ad_to_include','var') && size(ad_to_include,2) == 2)
@@ -288,7 +290,6 @@ for j = 1:max_image_num
             all_images{row_num} = cell(0);
             continue;
         end
-        
     end
     if (mod(j,10) == 0)
         disp(['Highlight image: ',num2str(i_seen)]);
