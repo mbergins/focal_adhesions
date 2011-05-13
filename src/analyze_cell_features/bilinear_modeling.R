@@ -98,7 +98,7 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
 }
 
 draw_diagnostic_traces <- function(models,file.name) {
-    ad_nums = sort(intersect(which(!is.na(models$assembly$slope)),
+    ad_nums = sort(union(which(!is.na(models$assembly$slope)),
         which(!is.na(models$disassembly$slope))));
     
     pdf(file.name)
@@ -109,7 +109,6 @@ draw_diagnostic_traces <- function(models,file.name) {
     }
     graphics.off()
 }
-
 
 fit_all_possible_log_models <- function(time.series,min.phase.length=10) {
     time.series$value = time.series$value/time.series$value[1];
