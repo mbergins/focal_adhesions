@@ -30,27 +30,24 @@ sub gather_data_sets {
     my %data_sets;
 
     my @folders = <$cfg{individual_results_folder}/*/$cfg{raw_data_folder}>;
-      
+	my @image_nums = &gather_sorted_image_numbers(\%cfg);
+	die if (scalar(@folders) != scalar(@image_nums));
+
+
     #Will hold a list of data files seen in other images, if a discrepency is
     #noticed in list on scanning a folder, an error will be raised.
     my @data_files_found;
 
-    foreach my $this_folder (@folders) {
-        my $i_num;
-        if ($this_folder =~ /$cfg{individual_results_folder}\/(.*)\/$cfg{raw_data_folder}/) {
-            $i_num = $1;
-            if (not($i_num =~ /^\d+$/)) {
-                warn "ERROR: Problem finding image number in folder: $this_folder, ",
-                  "skipping folder in further computation.\n"
-                  if $opt{debug};
-                next;
-            }
-        } else {
-            warn "ERROR: Problem finding image number in folder name: $this_folder, ",
-              "skipping folder in further computation.\n"
-              if $opt{debug};
-            next;
-        }
+    foreach (0..$#folders) {
+		my $this_folder = $folders[$_];
+        my $i_num = $image_nums[$_];
+		my @adj_nums = ($i_num);
+		if (defined $image_nums[$_ - 1]) {
+			push @adj_nums, $image_nums[$_ - 1];
+		}
+		if (defined $image_nums[$_ + 1]) {
+			push @adj_nums, $image_nums[$_ + 1];
+		}
 
         #Skip further processing on images in the excluded list
         next if grep $i_num == $_, @{ $cfg{exclude_image_nums} };
@@ -59,7 +56,7 @@ sub gather_data_sets {
 		#the current image number is more than one number away from that image
 		#number, further away properties aren't used, so this is a safe operation
 		if (defined $opt{image_num}) {
-			if (($i_num > ($opt{image_num} + 1)) || ($i_num < ($opt{image_num} - 1))) {
+			if (not (grep $opt{image_num} == $_, @adj_nums)) {
 				next;
 			}
 		}
