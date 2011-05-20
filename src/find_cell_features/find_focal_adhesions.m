@@ -142,8 +142,6 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 props = regionprops(ad_zamir,'Area');
 large_ad_nums = find([props.Area] >= 4);
-tic;
-% for this_num = large_ad_nums
 for this_num = large_ad_nums
     %first make a binary image of the current adhesion and then run imfill
     %to fill any holes present
@@ -156,7 +154,6 @@ for this_num = large_ad_nums
         disp(['Done filling holes in ',num2str(this_num), '/', num2str(length(ad_nums))]);
     end
 end
-toc;
 disp('Done filling adhesion holes')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
