@@ -14,7 +14,7 @@ function get_fa_sizes(I_folder,varargin)
 %        microns, if not specified output size values are in pixels
 %       -filter_size: size of the averaging filter to use, defaults to 23
 %       -filter_thresh: threshold used to identify focal adhesions in the
-%        average filtered image, defaults to 0.1
+%        high pass filtered image, defaults to 0.1
 %       -debug: set to 1 to output debugging information, defaults to 0
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
