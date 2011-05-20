@@ -40,8 +40,7 @@ my %cfg = ParseConfig(\%opt);
 ################################################################################
 # Main Program
 ################################################################################
-my @model_files = qw(Average_adhesion_signal.csv Background_corrected_signal.csv
-	Area.csv);
+my @model_files = qw(Average_adhesion_signal.csv Photo_cor_ad_signal.csv);
 if ($opt{lsf}) {
     my @commands;
     foreach (@model_files) {
