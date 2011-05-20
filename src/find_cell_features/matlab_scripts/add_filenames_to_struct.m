@@ -11,6 +11,8 @@ filenames.focal_image = 'focal_image.png';
 filenames.adhesions = 'adhesions.png';
 filenames.adhesions_perim = 'adhesions_perim.png';
 
+filenames.photo_bleach_correction = 'photo_correct.txt';
+
 filenames.focal_image_min_max = '../../adhesion_props/focal_min_max.csv';
 filenames.focal_image_threshold = '../../adhesion_props/focal_threshold.csv';
 

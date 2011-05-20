@@ -30,9 +30,15 @@ i_p.parse(focal_file, adhesions_file);
 i_p.addParamValue('output_dir', fileparts(focal_file), @(x)exist(x,'dir')==7);
 i_p.addOptional('cell_mask',0,@(x)exist(x,'file') == 2);
 i_p.addOptional('protrusion_file',0,@(x)exist(x,'file') == 2);
+i_p.addOptional('photo_bleach_correction',0,@(x)x == 0 || x == 1);
 i_p.addOptional('debug',0,@(x)x == 1 || x == 0);
 
 i_p.parse(focal_file, adhesions_file, varargin{:});
+
+
+%Add the folder with all the scripts used in this master program
+addpath(genpath('matlab_scripts'));
+filenames = add_filenames_to_struct(struct());
 
 %read in the cell mask image if defined in parameter set
 if (isempty(strmatch('cell_mask',i_p.UsingDefaults)))
@@ -50,21 +56,32 @@ if (isempty(strmatch('protrusion_file',i_p.UsingDefaults)))
     load(i_p.Results.protrusion_file);
 end
 
+photo_correct = NaN;
+image_dir = fileparts(focal_file);
+if (i_p.Results.photo_bleach_correction)
+    photo_file = fullfile(image_dir,filenames.photo_bleach_correction);
+    if (exist(photo_file,'file'))
+        photo_correct = csvread(photo_file);
+    else
+        disp(['Specified photo correction, but couldn''t find photo correction file (',photo_file,')'])
+    end
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if (exist('cell_mask','var'))
     if (exist('protrusion','var'))
-        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,'cell_mask',cell_mask,'protrusion_data',protrusion,'debug',i_p.Results.debug);
+        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,photo_correct,'cell_mask',cell_mask,'protrusion_data',protrusion,'debug',i_p.Results.debug);
     else
-        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,'cell_mask',cell_mask,'debug',i_p.Results.debug);
+        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,photo_correct,'cell_mask',cell_mask,'debug',i_p.Results.debug);
     end
 else
     if (exist('protrusion_matrix','var'))
-        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,'protrusion_data',protrusion,'debug',i_p.Results.debug);
+        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,photo_correct,'protrusion_data',protrusion,'debug',i_p.Results.debug);
     else
-        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,'debug',i_p.Results.debug);
+        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,photo_correct,'debug',i_p.Results.debug);
     end
 end
 if (i_p.Results.debug), disp('Done with gathering properties'); end
@@ -72,12 +89,11 @@ if (i_p.Results.debug), disp('Done with gathering properties'); end
 %write the results to files
 write_adhesion_data(adhesion_properties,'out_dir',fullfile(i_p.Results.output_dir,'raw_data'));
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function adhesion_props = collect_adhesion_properties(orig_I,labeled_adhesions,varargin)
+function adhesion_props = collect_adhesion_properties(orig_I,labeled_adhesions,photo_correct,varargin)
 % COLLECT_ADHESION_PROPERTIES    using the identified adhesions, various
 %                                properties are collected concerning the
 %                                morphology and physical properties of the
@@ -103,13 +119,14 @@ i_p.FunctionName = 'COLLECT_ADHESION_PROPERTIES';
 
 i_p.addRequired('orig_I',@isnumeric);
 i_p.addRequired('labeled_adhesions',@(x)isnumeric(x));
+i_p.addRequired('photo_correct',@(x)isnan(x) || (isnumeric(x) && x > 0));
 
 i_p.addParamValue('cell_mask',0,@(x)isnumeric(x) || islogical(x));
 i_p.addParamValue('background_border_size',5,@(x)isnumeric(x));
 i_p.addParamValue('protrusion_data',0,@(x)iscell(x));
 i_p.addOptional('debug',0,@(x)x == 1 || x == 0);
 
-i_p.parse(labeled_adhesions,orig_I,varargin{:});
+i_p.parse(labeled_adhesions,orig_I,photo_correct,varargin{:});
 
 %read in the cell mask image if defined in parameter set
 if (isempty(strmatch('cell_mask',i_p.UsingDefaults)))
@@ -142,6 +159,10 @@ for i=1:max(labeled_adhesions(:))
     adhesion_props(i).Variance_adhesion_signal = var(orig_I(labeled_adhesions == i));
     adhesion_props(i).Max_adhesion_signal = max(orig_I(labeled_adhesions == i));
     adhesion_props(i).Min_adhesion_signal = min(orig_I(labeled_adhesions == i));
+
+    if (not(isnan(photo_correct)))
+        adhesion_props(i).Photo_cor_ad_signal = adhesion_props(i).Average_adhesion_signal*photo_correct;
+    end
     
     adhesion_props(i).Dist_from_ad_centroid = sqrt((adhesion_props(i).Centroid(1) - ad_centroid(1))^2 + ...  
         (adhesion_props(i).Centroid(2) - ad_centroid(2))^2);
