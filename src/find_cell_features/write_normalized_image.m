@@ -45,4 +45,7 @@ end
 
 imwrite(input_image,out_file,'Bitdepth',16);
 
+temp = imread(out_file);
+assert(all(all(input_image == temp)))
+
 end
