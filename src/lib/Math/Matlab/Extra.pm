@@ -31,8 +31,8 @@ sub execute_commands {
     my $error_file = $opt{error_file};
 
     my $matlab_object = Math::Matlab::Local->new();
-	if (defined $opt{abs_script_dir}) {
-		$matlab_object->root_mwd($opt{abs_script_dir});
+	if (defined $opt{root_mwd}) {
+		$matlab_object->root_mwd($opt{root_mwd});
 	}
     
     unlink($error_file) if (-e $error_file);

@@ -44,7 +44,7 @@ chdir $opt{script_dir};
 if ($opt{script} =~ /$opt{script_dir}\/(.*)/) {
 	$opt{script} = $1;
 }
-$opt{abs_script_dir} = File::Spec->rel2abs($opt{script_dir});
+$opt{root_mwd} = File::Spec->rel2abs($opt{script_dir});
 
 ################################################################################
 # Main Program
@@ -68,7 +68,6 @@ if (defined $cfg{job_group}) {
 ################################################################################
 
 sub build_extra_command_line_opts {
-
 	my $extra = '';
 
 	if ($opt{script} =~ /find_exp_thresholds/) {
