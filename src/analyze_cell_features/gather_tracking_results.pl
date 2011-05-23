@@ -302,6 +302,10 @@ sub gather_and_output_lineage_properties {
     &output_prop_time_series($props{speeds}{All}, "All_speeds");
     ($props{average_speeds}, $props{variance_speeds}, $props{max_speeds}) = 
 		&gather_speed_props($props{speeds}{All});
+    
+	if (grep "drug_addition_time" eq $_, keys %cfg) {
+		@{$props{drug_addition_time}} = map $cfg{drug_addition_time}, 1..scalar(@tracking_mat);
+	}
 
     if (grep "Area" eq $_, @available_data_types) {
         $props{Area} = &gather_prop_seq("Area");
@@ -809,7 +813,7 @@ sub gather_lineage_summary_data {
 	mean_edge_dist ending_edge_dist starting_center_dist mean_center_dist
 	ending_center_dist merge_count split_count death_status split_birth_status
 	average_speeds max_speeds ad_sig birth_i_num start_x start_y death_i_num
-	end_x end_y mean_axial_ratio); 
+	end_x end_y mean_axial_ratio drug_addition_time); 
 	
     my @lin_summary_data;
     for (@possible_props) {
