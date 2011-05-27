@@ -40,7 +40,9 @@ for i_num = 1:size(image_dirs,1)
     
     all_images(:,:,i_num) = puncta_image;
     all_high_passed(:,:,i_num) = high_passed_image;
-    disp([i_num,size(image_dirs,1)])
+    if (mod(i_num,10) == 0)
+        disp([i_num,size(image_dirs,1)])
+    end
 end
 min_max = [min(all_images(:)),max(all_images(:))];
 
@@ -63,5 +65,16 @@ csvwrite(output_file,min_max);
 
 focal_image_threshold = mean(all_high_passed(:)) + i_p.Results.stdev_thresh*std(all_high_passed(:));
 csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),focal_image_threshold);
+
+hist(all_high_passed(:),100);
+xlabel('High Pass Filtered Intensity','FontSize',16,'FontName','Helvetica');
+ylabel('Pixel Count','FontSize',16,'FontName','Helvetica');
+y_limits = ylim();
+line([focal_image_threshold,focal_image_threshold],[0,y_limits(2)],'Color','red', ... 
+    'LineStyle','--','LineWidth',3);
+set(gca, 'FontName','Helvetica','FontSize',16,'Box','off');
+set(gcf, 'PaperPositionMode', 'auto');
+print('-depsc2', fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold_plot));
+close;
 
 toc;

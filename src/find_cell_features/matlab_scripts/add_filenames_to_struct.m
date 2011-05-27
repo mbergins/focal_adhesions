@@ -15,6 +15,7 @@ filenames.photo_bleach_correction = 'photo_correct.txt';
 
 filenames.focal_image_min_max = '../../adhesion_props/focal_min_max.csv';
 filenames.focal_image_threshold = '../../adhesion_props/focal_threshold.csv';
+filenames.focal_image_threshold_plot = '../../adhesion_props/focal_threshold.eps';
 
 filenames.assembly_rows = '../../adhesion_props/signif_assembly_rows_lengths.csv';
 filenames.disassembly_rows = '../../adhesion_props/signif_disassembly_rows_lengths.csv';

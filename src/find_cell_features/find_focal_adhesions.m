@@ -44,6 +44,8 @@ i_p.addParamValue('output_file_perim', 'adhesions_perim.png', @ischar);
 i_p.addParamValue('output_file_binary', 'adhesions_binary.png', @ischar);
 
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
+i_p.addParamValue('paper_figures',0,@(x)x == 1 || x == 0);
+i_p.addParamValue('status_messages',1,@(x)x == 1 || x == 0);
 
 i_p.parse(I_file,varargin{:});
 
@@ -77,6 +79,7 @@ blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
 high_passed_image = focal_image - blurred_image;
 threshed_image = high_passed_image > filter_thresh;
 
+
 %identify and remove adhesions on the immediate edge of the image
 threshed_image = remove_edge_adhesions(threshed_image);
 
@@ -109,7 +112,7 @@ else
     ad_zamir = find_ad_zamir(high_passed_image,threshed_image,min_pixel_size,'debug',i_p.Results.debug);
 end
 
-disp('Done finding adhesion regions')
+if(i_p.Results.status_messages), disp('Done finding adhesion regions'); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Remove adhesions outside mask
@@ -123,7 +126,7 @@ if (exist('cell_mask','var'))
             ad_zamir(ad_zamir == i) = 0;
         end
     end
-    disp('Done removing adhesions outside the cell edge')
+    if(i_p.Results.status_messages), disp('Done removing adhesions outside the cell edge'); end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -154,7 +157,7 @@ for this_num = large_ad_nums
         disp(['Done filling holes in ',num2str(this_num), '/', num2str(length(ad_nums))]);
     end
 end
-disp('Done filling adhesion holes')
+if(i_p.Results.status_messages), disp('Done filling adhesion holes'); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Renumber adhesions to be sequential
@@ -164,7 +167,7 @@ assert(ad_nums(1) == 0, 'Background pixels not found after building adhesion lab
 for i = 2:length(ad_nums)
     ad_zamir(ad_zamir == ad_nums(i)) = i - 1;
 end
-disp('Done renumbering adhesion regions')
+if(i_p.Results.status_messages), disp('Done renumbering adhesion regions'); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Build adhesion perimeters image
@@ -176,7 +179,7 @@ for i = 1:max(ad_zamir(:))
     this_ad(ad_zamir == i) = 1;
     ad_zamir_perim(bwperim(this_ad)) = i;
 end
-disp('Done building adhesion perimeters')
+if(i_p.Results.status_messages), disp('Done building adhesion perimeters'); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Write the output files
@@ -185,13 +188,28 @@ imwrite(double(ad_zamir)/2^16,fullfile(i_p.Results.output_dir, i_p.Results.outpu
 imwrite(double(ad_zamir_perim)/2^16,fullfile(i_p.Results.output_dir, i_p.Results.output_file_perim),'bitdepth',16);
 imwrite(im2bw(ad_zamir,0),fullfile(i_p.Results.output_dir, i_p.Results.output_file_binary));
 
-highlighted_image = create_highlighted_image(focal_normed, im2bw(ad_zamir_perim,0));
+highlighted_image = create_highlighted_image(focal_normed, im2bw(ad_zamir_perim,0), 'color_map',[1,1,0]);
 if (exist('cell_mask','var'))
     highlighted_image = create_highlighted_image(highlighted_image, bwperim(cell_mask),'color_map',[1,0,0]);
 end
 imwrite(highlighted_image,fullfile(i_p.Results.output_dir, 'highlights.png'));
 
+if (i_p.Results.paper_figures)
+    
+    col_range = (find(sum(ad_zamir),1,'first')-5):(find(sum(ad_zamir),1,'last')+5);
+    col_range = col_range(col_range > 0 & col_range < size(ad_zamir,2));
+    row_range = (find(sum(ad_zamir,2),1,'first')-5):(find(sum(ad_zamir,2),1,'last')+5);
+    row_range = row_range(row_range > 0 & row_range < size(ad_zamir,1));
+    
+    normed_hp_image = (high_passed_image - min(high_passed_image(:)))/range(high_passed_image(:));
+    normed_hp_image = normed_hp_image(row_range,col_range);
+    imwrite(normed_hp_image,fullfile(i_p.Results.output_dir,'high_passed_image.png'),'bitdepth',16);
+    
+    imwrite(highlighted_image(row_range,col_range,1:3),fullfile(i_p.Results.output_dir,'highlights_cropped.png'));
+    imwrite(focal_normed(row_range,col_range),fullfile(i_p.Results.output_dir,'focal_cropped.png'));
+end
+
 if (nargout > 0)
     varargout{1} = struct('adhesions',im2bw(ad_zamir,0),'ad_zamir',ad_zamir);
 end
-toc;
+if(i_p.Results.status_messages), toc; end
