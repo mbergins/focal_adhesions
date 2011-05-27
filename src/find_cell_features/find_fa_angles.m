@@ -61,7 +61,7 @@ props_start = tic;
 all_props = struct();
 for i_num = 1:size(image_dirs,1)
     image_set = read_in_file_set(fullfile(base_dir,image_dirs(i_num).name),filenames);
-    props = regionprops(image_set.adhesions,'MajorAxisLength','MinorAxisLength','Orientation');
+    props = regionprops(image_set.adhesions,'MajorAxisLength','MinorAxisLength','Orientation','Area');
     
     propnames = fieldnames(props);
     for i = 1:length(propnames)
@@ -96,10 +96,15 @@ for i_num = 1:size(image_dirs,1)
     end
 end
 
+all_data_output_dir = fullfile(exp_dir,'adhesion_props','lin_time_series');
+if (not(exist(all_data_output_dir,'dir'))) 
+    mkdir(all_data_output_dir);
+end
+
 propnames = fieldnames(all_props);
 for i = 1:length(propnames)
     this_prop = propnames{i};
-    dlmwrite(fullfile(exp_dir,'adhesion_props',[this_prop,'.csv']),[all_props.(this_prop)]);
+    dlmwrite(fullfile(all_data_output_dir,[this_prop,'.csv']),[all_props.(this_prop)]);
 end
 toc(props_start);
 
