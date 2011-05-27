@@ -24,7 +24,7 @@ filenames = add_filenames_to_struct(struct());
 % Threshold Determination
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 thresh_start = tic;
-% find_exp_thresholds(exp_dir,'stdev_thresh',i_p.Results.stdev_thresh);
+find_exp_thresholds(exp_dir,'stdev_thresh',i_p.Results.stdev_thresh);
 disp('Done with finding threshold')
 toc(thresh_start);
 
