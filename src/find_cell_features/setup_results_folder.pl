@@ -45,11 +45,11 @@ if (not $opt{debug}) {
 	mkpath($cfg{individual_results_folder});
 }
 my @image_sets = (
-    [qw(raw_mask_folder raw_mask_file)],
+    # [qw(raw_mask_folder raw_mask_file)],
     [qw(adhesion_image_folder adhesion_image_file)],
-    [qw(gel_image_folder gel_image_file)],
-    [qw(adhesion_image_folder_vin adhesion_image_file)],
-    [qw(adhesion_image_folder_fak adhesion_image_file)],
+    # [qw(gel_image_folder gel_image_file)],
+    # [qw(adhesion_image_folder_vin adhesion_image_file)],
+    # [qw(adhesion_image_folder_fak adhesion_image_file)],
     );
 my @matlab_code;
 my $all_images_empty = 1;
@@ -66,7 +66,9 @@ foreach (@image_sets) {
 	if ($opt{debug}) {
 		print "Searching: $cfg{exp_data_folder}/$folder/\n";
 	}
-    my @image_files = sort <"$cfg{exp_data_folder}/$folder"/*>;
+    my $search_dir = catdir($cfg{exp_data_folder},$folder);
+    $search_dir =~ s/ /\\ /g;
+    my @image_files = sort <$search_dir/*>;
     my @image_files = map { $_ =~ s/\'//g; $_; } @image_files;
 
     #Move all the files with spaces in their names, MATLAB on emerald doesn't
