@@ -29,40 +29,30 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     }
 
     #diagnostic figure
-    # pdf(file.path(exp_dir,'..','adhesion_orientation.pdf'), height=7*(3/2))
-    # layout(rbind(c(1,2),c(3,4),c(5,6)))
-    # par(bty='n', mar=c(4,4.2,2,0),mgp=c(2,1,0))
-    # 
-    # hist(data_set$subseted_data$orientation,main='Pos X-axis Reference',
-    #     xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''), 
+    pdf(file.path(exp_dir,'..','adhesion_orientation.pdf'))
+    layout(rbind(c(1,2),c(3,4)))
+    par(bty='n', mar=c(4,4.2,2,0),mgp=c(2,1,0))
+    
+    hist(data_set$subseted_data$orientation,main='Pos X-axis Reference',
+        xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''), 
 	#	xlim=c(-100,100));
-    # 
-    # plot(data_set$angle_search$test_angles,data_set$angle_search$angle_FAAI,typ='l',
-    #     xlab='Dominant Search Angle',ylab='FA Alignment Index',ylim=c(0,90));
-    # lines(data_set$angle_search$test_angles, abs(data_set$angle_search$mean_angle), col='red')
-    # lines(data_set$angle_search$test_angles, abs(data_set$angle_search$median_angle), col='blue')
-    # if (! is.na(fixed_best_angle)) {
-    #     segments(fixed_best_angle,0,fixed_best_angle,2000,col='blue')
-    #     segments(data_set$actual_best_angle,0,data_set$actual_best_angle,2000,col='green')
-    # } else {
-    #     segments(data_set$best_angle,0,data_set$best_angle,2000,col='green')
-    # }
+    
+    plot(data_set$angle_search$test_angles,data_set$angle_search$angle_FAAI,typ='l',
+        xlab='Dominant Search Angle',ylab='FA Alignment Index',ylim=c(0,90));
+    lines(data_set$angle_search$test_angles, abs(data_set$angle_search$mean_angle), col='red')
+    lines(data_set$angle_search$test_angles, abs(data_set$angle_search$median_angle), col='blue')
+    if (! is.na(fixed_best_angle)) {
+        segments(fixed_best_angle,0,fixed_best_angle,2000,col='blue')
+        segments(data_set$actual_best_angle,0,data_set$actual_best_angle,2000,col='green')
+    } else {
+        segments(data_set$best_angle,0,data_set$best_angle,2000,col='green')
+    }
 
-    # hist(data_set$corrected_orientation,
-    #     main=paste('Rotated ',data_set$best_angle,'\u00B0 / ',
-    #         sprintf('%0.1f',90-sd(data_set$corrected_orientation)),' FAAI',sep=''),
-    #     xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''),
-	#	xlim=c(-100,100));
-    # 
-    # plot(per_image_dom_angle,xlab='Image Number',ylab='Dominant Angle',ylim=c(0,180));
-
-    # hist(data_set$single_ads$best_angle,main='Single Adhesions - Best Angle',
-    #     xlab=paste('Angle n=',length(data_set$single_ads$best_angle),sep=''),xlim=c(0,180));
-    # 
-    # hist(data_set$single_ads$FAAI,main='Single Adhesions - Max FAAI',
-    #     xlab=paste('Angle n=',length(data_set$single_ads$best_angle),sep=''),xlim=c(0,90));
-
-    # graphics.off()
+    hist(data_set$corrected_orientation,
+        main=paste('Rotated ',data_set$best_angle,'\u00B0 / ',
+            sprintf('%0.1f',90-sd(data_set$corrected_orientation)),' FAAI',sep=''),
+        xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''),
+    graphics.off()
 
     return(data_set)
 }

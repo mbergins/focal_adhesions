@@ -7,7 +7,7 @@ i_p = inputParser;
 
 i_p.addRequired('exp_dir',@(x)exist(x,'dir') == 7);
 i_p.addParamValue('stdev_thresh',2,@(x)isnumeric(x) && x > 0);
-i_p.addParamValue('min_ratio',3,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('min_axial_ratio',3,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('color_blind',0,@(x)isnumeric(x) && x == 1 || x == 0);
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
@@ -74,7 +74,7 @@ for i_num = 1:size(image_dirs,1)
     end
     
     ratio = [props.MajorAxisLength]./[props.MinorAxisLength];
-    low_ratio = find(ratio < i_p.Results.min_ratio);
+    low_ratio = find(ratio < i_p.Results.min_axial_ratio);
     high_ratio = setdiff(1:max(image_set.adhesions(:)), low_ratio);
     
     low_ratio_perim = ismember(image_set.adhesions_perim,low_ratio);
