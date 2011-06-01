@@ -30,7 +30,7 @@ i_p.parse(I_file);
 i_p.addParamValue('cell_mask',0,@(x)exist(x,'file') == 2);
 
 %Adhesion filtering parameters
-i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('min_adhesion_size',2,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
 i_p.addParamValue('filter_thresh',0.1,@isnumeric);
 i_p.addParamValue('min_independent_size',14,@(x)isnumeric(x) && x > 0);

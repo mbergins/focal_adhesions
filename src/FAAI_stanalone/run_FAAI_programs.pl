@@ -7,6 +7,7 @@
 use lib "../lib";
 
 use File::Copy;
+use File::Spec::Functions;
 use File::Basename;
 use Data::Dumper;
 use Cwd;
@@ -19,8 +20,8 @@ $opt{debug} = 0;
 $opt{worker_ID} = 1;
 GetOptions(\%opt, "debug|d", "worker_ID=s") or die;
 
-my $PID_file = "/var/run/FAAI_webapp/run_$opt{worker_ID}.pid";
-my $data_upload_dir = "/tmp/FAAI_webapp/";
+my $PID_file = "/var/run/FAAI_webapp/run_$opt{worker_ID}_testing.pid";
+my $data_upload_dir = "/tmp/FAAI_webapp_testing/";
 
 ################################################################################
 # Main
@@ -34,7 +35,7 @@ if (&processing_occuring) {
     exit();
 }
 
-my @upload_files = </tmp/FAAI_webapp/*>;
+my @upload_files = <$data_upload_dir/*>;
 if (scalar(@upload_files) == 0) {
     # print "Didn't find any files to process, quitting.\n";
     exit();
@@ -76,8 +77,8 @@ print "\nStarting on processing pipeline:\n\n";
 my $starting_dir = getcwd();
 for my $command_ref (@command_seq) {
     my ($working_dir,$command) = @{$command_ref};
-    
-    chdir($working_dir);
+   
+    chdir($working_dir) if ($working_dir);
     
     if ($opt{debug}) {
        print("$command -cfg $config_file\n");
@@ -87,14 +88,16 @@ for my $command_ref (@command_seq) {
        print "Done with $command\n\n";
     }
 
-    chdir($starting_dir);
+    chdir($starting_dir) if ($starting_dir);
 }
 
-open OUTPUT, ">../../results/$cfg{exp_id}/Exp Note.txt" or die "$!";
-print OUTPUT $cfg{self_note};
-close OUTPUT;
-
 if (not $opt{debug}) {
+    open OUTPUT, ">../../results/$cfg{exp_id}/Exp Note.txt" or die "$!";
+    print OUTPUT $cfg{self_note};
+    close OUTPUT;
+
+    copy($config_file, '../../results/$cfg{exp_id}/exp_settings.cfg');
+    
     chdir('../../results');
     system("zip -r $cfg{exp_id}.zip $cfg{exp_id}");
 } else {
@@ -172,10 +175,19 @@ sub move_uploaded_data {
     system("echo '<<include ../config/FAAI_default.cfg>>' >> $cfg_file");
 
     $data_file = "$exp_data_dir/$exp_name";
-    print "Changing data file to: $data_file\n";
-    my $unzip_return = system("unzip -o -q -d $exp_data_dir $data_file");
-    if ($unzip_return) {
-        die "unzip returned $unzip_return, failed";
+
+    my $file_type = `file $data_file`;
+    if ($file_type =~ /Zip/) {
+        my $unzip_return = system("unzip -o -q -d $exp_data_dir $data_file");
+        if ($unzip_return) {
+            die "unzip returned $unzip_return, failed";
+        }
+    } elsif ($file_type =~ /TIFF/) {
+        mkdir catfile($exp_data_dir,'Images');
+        move($data_file,catdir($exp_data_dir,'Images','data.tiff'));
+    } else {
+        die "Couldn't identify file ($data_file) with file command. File command " .
+            "returned: $file_type.";
     }
 
     my $image_folder;
@@ -223,7 +235,6 @@ sub send_email {
     my $body = $_[1];
     
     if ($opt{debug}) {
-        print("echo -e \"$body\" | mail -s \"$subject\" $cfg{email}");
     } else {
         system("echo -e \"$body\" | mail -s \"$subject\" $cfg{email}");
     }

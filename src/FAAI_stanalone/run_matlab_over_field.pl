@@ -70,10 +70,10 @@ if (defined $cfg{job_group}) {
 sub build_extra_command_line_opts {
 	my $extra = '';
 
-	if ($opt{script} =~ /find_exp_thresholds/) {
-        if (defined $cfg{stdev_thresh}) {
-            $extra .= ",'stdev_thresh',$cfg{stdev_thresh}";
-        }
+	if ($opt{script} =~ /find_fa_angles/) {
+        $extra .= ",'stdev_thresh',$cfg{stdev_thresh}";
+        $extra .= ",'color_blind',$cfg{color_blind}";
+        $extra .= ",'min_axial_ratio',$cfg{min_axial_ratio}";
 	}
 
 	return $extra;
