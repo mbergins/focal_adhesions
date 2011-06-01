@@ -84,8 +84,8 @@ for i_num = 1:size(image_dirs,1)
     
     highlight = image_set.focal_norm;
     if (i_p.Results.color_blind)
-        highlight = create_highlighted_image(highlight,high_ratio_perim,'color_map',[0,0,1],'mix_percent',0.5);
-        highlight = create_highlighted_image(highlight,low_ratio_perim,'color_map',[1,1,0],'mix_percent',0.5);        
+        highlight = create_highlighted_image(highlight,high_ratio_perim,'color_map',[1,1,0],'mix_percent',0.5);
+        highlight = create_highlighted_image(highlight,low_ratio_perim,'color_map',[0,0,1],'mix_percent',0.5);        
     else
         highlight = create_highlighted_image(highlight,high_ratio_perim,'color_map',[0,1,0],'mix_percent',0.5);
         highlight = create_highlighted_image(highlight,low_ratio_perim,'color_map',[1,0,0],'mix_percent',0.5);
