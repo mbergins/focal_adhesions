@@ -20,8 +20,13 @@ $opt{debug} = 0;
 $opt{worker_ID} = 1;
 GetOptions(\%opt, "debug|d", "worker_ID=s") or die;
 
-my $PID_file = "/var/run/FAAI_webapp/run_$opt{worker_ID}_testing.pid";
-my $data_upload_dir = "/tmp/FAAI_webapp_testing/";
+if (not -e "../../run/") {
+    mkdir('../../run/');
+}
+
+my $PID_file = "../../run/run_$opt{worker_ID}.pid";
+my $data_upload_dir = "../../upload/";
+my $output_dir = "/Users/mbergins/Sites/FAAI_results/";
 
 ################################################################################
 # Main
@@ -62,7 +67,9 @@ my %cfg = $conf->getall;
 ############################################################
 # Setup the data folder and process the data
 ############################################################
-&send_processing_started_email;
+if (not $opt{debug}) {
+    &send_processing_started_email;
+}
 
 my $config_file = &move_uploaded_data($youngest_cfg);
 
@@ -96,15 +103,16 @@ if (not $opt{debug}) {
     print OUTPUT $cfg{self_note};
     close OUTPUT;
 
-    copy($config_file, '../../results/$cfg{exp_id}/exp_settings.cfg');
+    copy($config_file, "../../results/$cfg{exp_id}/exp_settings.cfg");
+    copy("understanding_your_results.txt", "../../results/$cfg{exp_id}/");
     
     chdir('../../results');
     system("zip -r $cfg{exp_id}.zip $cfg{exp_id}");
+    copy("$cfg{exp_id}.zip",$output_dir);
+    &send_processing_finished_email;
 } else {
-    print("zip -r $cfg{exp_id}.zip $cfg{exp_id}");
+    print("zip -r $cfg{exp_id}.zip $cfg{exp_id}\n");
 }
-
-&send_processing_finished_email;
 
 &remove_PID_file;
 
@@ -169,8 +177,8 @@ sub move_uploaded_data {
     }
 
     print "Moving $data_file to $exp_data_dir\n";
-    move($data_file,$exp_data_dir);
-    move($cfg_file,$exp_data_dir);
+    copy($data_file,$exp_data_dir);
+    copy($cfg_file,$exp_data_dir);
     $cfg_file = "$exp_data_dir/$exp_name.cfg";
     system("echo '<<include ../config/FAAI_default.cfg>>' >> $cfg_file");
 
@@ -225,7 +233,7 @@ sub send_processing_finished_email {
     my $body = "Your focal adhesion analysis job has finished processing.\n\nThe " . 
     "note you left yourself with this expeirment is: $cfg{self_note}.\n\nYou can " .
     "download your results here: " .
-    "\n\nhttp://balder.bme.unc.edu/~mbergins/FAAI_webapp/results/$cfg{exp_id}.zip";
+    "\n\nhttp://balder.bme.unc.edu/~mbergins/FAAI_results/$cfg{exp_id}.zip";
    
     &send_email($subject, $body);
 }
