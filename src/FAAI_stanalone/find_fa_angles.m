@@ -8,6 +8,7 @@ i_p = inputParser;
 i_p.addRequired('exp_dir',@(x)exist(x,'dir') == 7);
 i_p.addParamValue('stdev_thresh',2,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('min_axial_ratio',3,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('min_adhesion_size',3,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('color_blind',0,@(x)isnumeric(x) && x == 1 || x == 0);
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
@@ -44,7 +45,8 @@ image_dirs = image_dirs(3:end);
 
 for i_num = 1:size(image_dirs,1)
     puncta_file = fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image);
-    find_focal_adhesions(puncta_file,'status_messages',0);
+    find_focal_adhesions(puncta_file,'status_messages',0,'min_adhesion_size', ...
+        i_p.Results.min_adhesion_size);
     
     if (mod(i_num,1) == 0)
         fprintf('Done find FAs: %d/%d\n',i_num, size(image_dirs,1))

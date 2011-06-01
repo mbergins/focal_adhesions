@@ -35,7 +35,7 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     
     hist(data_set$subseted_data$orientation,main='Pos X-axis Reference',
         xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''), 
-	#	xlim=c(-100,100));
+		xlim=c(-100,100));
     
     plot(data_set$angle_search$test_angles,data_set$angle_search$angle_FAAI,typ='l',
         xlab='Dominant Search Angle',ylab='FA Alignment Index',ylim=c(0,90));
@@ -51,7 +51,7 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     hist(data_set$corrected_orientation,
         main=paste('Rotated ',data_set$best_angle,'\u00B0 / ',
             sprintf('%0.1f',90-sd(data_set$corrected_orientation)),' FAAI',sep=''),
-        xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''),
+        xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''))
     graphics.off()
 
     return(data_set)
