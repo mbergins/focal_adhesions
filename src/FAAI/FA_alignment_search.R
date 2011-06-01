@@ -17,11 +17,9 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     data_set$corrected_orientation = apply_new_orientation(data_set$subseted_data$orientation,
         data_set$best_angle)
     
-    # per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min.ratio=min.ratio)
-    # data_set$per_image_dom_angle = per_image_dom_angle
+    write.table(as.numeric(sprintf('%.2f',find_FAAI_from_orientation(data_set$corrected_orientation))),
+        file=file.path(exp_dir,'..','..','FAAI.txt'),col.names=F,row.names=F)
 
-    data_set$single_ads = analyze_single_adhesions(data_set)
-    
     save(data_set,file=file.path(exp_dir,'..',output_file))
     
     if (! diagnostic.figure) {
@@ -594,6 +592,6 @@ if (length(args) != 0) {
     class(fixed_best_angle) <- "numeric";
     if (exists('time_series_dir')) {
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle, 
-            diagnostic.figure=T);
+            min.ratio=minimum.axial.ratio, diagnostic.figure=T);
     }
 }
