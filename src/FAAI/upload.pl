@@ -19,7 +19,7 @@ use Cwd;
 
 $| = 1;
 
-my $upload_dir = catdir(getcwd,'..','upload');
+my $upload_dir = catdir(getcwd,'..','..','upload');
 $upload_dir =~ /(.*)/;
 $upload_dir = $1;
 if (not -e $upload_dir) {
@@ -35,8 +35,6 @@ my $q = CGI->new();
 print $q->header,
 	  $q->start_html(-title=>'Focal Adhesion Alignment Index Server'), 
 	  $q->h1('Focal Adhesion Alignment Index Server');
-
-print $q->h1(getcwd);
 
 my $lightweight_fh = $q->upload('uploaded_file');
 # undef may be returned if it's not a valid file handle
