@@ -3,9 +3,9 @@
 ###############################################################################
 
 gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
-    min.eccen = 3,output_file = 'FA_orientation.Rdata',diagnostic.figure=F) {
+    min.ratio = 3,output_file = 'FA_orientation.Rdata',diagnostic.figure=F) {
 
-    data_set = read_in_orientation_data(exp_dir, min.eccen=min.eccen);
+    data_set = read_in_orientation_data(exp_dir, min.ratio=min.ratio);
     data_set$angle_search = test_dom_angles(data_set$subseted_data$orientation);
 
     if (is.na(fixed_best_angle)) {
@@ -17,7 +17,7 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     data_set$corrected_orientation = apply_new_orientation(data_set$subseted_data$orientation,
         data_set$best_angle)
     
-    per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min.eccen=min.eccen)
+    per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min.ratio=min.ratio)
     data_set$per_image_dom_angle = per_image_dom_angle
 
     data_set$single_ads = analyze_single_adhesions(data_set)
@@ -67,33 +67,33 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     return(data_set)
 }
 
-read_in_orientation_data <- function(time_series_dir,min.eccen = 3) {
+read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
     data_set = list();
     data_set$mat$orientation = read.csv(file.path(time_series_dir,'Orientation.csv'),header=F);
     data_set$mat$area = read.csv(file.path(time_series_dir,'Area.csv'),header=F);
     major_axis = read.csv(file.path(time_series_dir,'MajorAxisLength.csv'),header=F);
     minor_axis = read.csv(file.path(time_series_dir,'MinorAxisLength.csv'),header=F);
     
-    data_set$mat$eccentricity = major_axis/minor_axis;
+    data_set$mat$ratio = major_axis/minor_axis;
 
     unlist_data_set = list()
     for (i in names(data_set$mat)) {
         unlist_data_set[[i]] = unlist(data_set$mat[[i]]);
     }
     unlist_data_set = as.data.frame(unlist_data_set);
-    data_set$subseted_data = subset(unlist_data_set, !is.nan(unlist_data_set$eccentricity) & 
-        unlist_data_set$eccentricity >= min.eccen);
+    data_set$subseted_data = subset(unlist_data_set, !is.nan(unlist_data_set$ratio) & 
+        unlist_data_set$ratio >= min.ratio);
     
     return(data_set);
 }
 
-find_per_image_dom_angle <- function(mat_data, min.eccen=3) {
+find_per_image_dom_angle <- function(mat_data, min.ratio=3) {
     best_angles = c()
     for (i_num in 1:dim(mat_data$orientation)[2]) {
         this_orientation = mat_data$orientation[,i_num];
-        this_eccen = mat_data$eccentricity[,i_num];
+        this_ratio = mat_data$ratio[,i_num];
 
-        good_rows = !is.na(this_orientation) & this_eccen >= min.eccen;
+        good_rows = !is.na(this_orientation) & this_ratio >= min.ratio;
         
         angle_search = test_dom_angles(this_orientation[good_rows]);
         best_angle = find_best_alignment_angle(angle_search)
@@ -160,24 +160,24 @@ apply_new_orientation <- function(orientation_data,angle) {
     return(orientation_data)
 }
 
-analyze_single_adhesions <- function(align_data, min.data.points = 5, min.eccen = 3) {
+analyze_single_adhesions <- function(align_data, min.data.points = 5, min.ratio = 3) {
     orientations = as.matrix(align_data$mat$orientation);
-    eccentricities = as.matrix(align_data$mat$eccentricity);
+    ratio = as.matrix(align_data$mat$ratio);
 
-    num_above_eccen_limit = apply(eccentricities,1,function(x) sum(! is.na(x) & x >= min.eccen));
+    num_above_ratio_limit = apply(ratio,1,function(x) sum(! is.na(x) & x >= min.ratio));
 
-    passed_ad_nums = which(num_above_eccen_limit >= min.data.points);
+    passed_ad_nums = which(num_above_ratio_limit >= min.data.points);
     
     single_ad_data = list()
     single_ad_data$ad_nums = passed_ad_nums
 
     time = 0:(dim(orientations)[2]-1)
     for (ad_num in passed_ad_nums) {
-        this_ad_filter = ! is.na(eccentricities[ad_num,]) & eccentricities[ad_num,] >= min.eccen;
+        this_ad_filter = ! is.na(ratio[ad_num,]) & ratio[ad_num,] >= min.ratio;
 
         these_angles = orientations[ad_num,this_ad_filter];
-        these_eccen = eccentricities[ad_num,this_ad_filter];
-        stopifnot(length(these_angles) == num_above_eccen_limit[ad_num])
+        these_ratio = ratio[ad_num,this_ad_filter];
+        stopifnot(length(these_angles) == num_above_ratio_limit[ad_num])
         
         angle_search = test_dom_angles(these_angles);
         best_angle = find_best_alignment_angle(angle_search);
@@ -198,19 +198,20 @@ analyze_single_adhesions <- function(align_data, min.data.points = 5, min.eccen 
 # Processing Single Adhesion Data
 ###########################################################
 
-filter_alignment_data <- function(align_data, min.data.points = 10, min.eccen = 3, 
+filter_alignment_data <- function(align_data, min.data.points = 10, min.ratio = 3, 
 	min.area = 60) {
     
     orientation = as.matrix(align_data$mat$orientation);
-    eccentricity = as.matrix(align_data$mat$eccentricity);
+    ratio = as.matrix(align_data$mat$ratio);
     area = as.matrix(align_data$mat$area);
     
-    above_eccen_limit = ! is.na(eccentricity) & eccentricity >= min.eccen
+    above_ratio_limit = ! is.na(ratio) & ratio >= min.ratio
     above_area_limit = ! is.na(area) & area >= min.area
 
-    above_all_limits = above_eccen_limit & above_area_limit;
-	conse_above_limits = apply(above_all_limits,1,number_consecutive_trues)
-    passed_ad_nums = which(conse_above_limits >= min.data.points)
+    above_all_limits = above_ratio_limit & above_area_limit;
+    num_above_limits = rowSums(above_all_limits)
+	# conse_above_limits = apply(above_all_limits,1,number_consecutive_trues)
+    passed_ad_nums = which(num_above_limits >= min.data.points)
 
     if (any(names(align_data) == "lineage_data")) {
 		if (any(names(align_data$lineage_data) == "split_count")) {
@@ -237,16 +238,16 @@ filter_alignment_data <- function(align_data, min.data.points = 10, min.eccen = 
 }
 
 plot_single_adhesion_orientations <- function(align_data, min.data.points = 20,
- 	max.data.points=Inf, min.eccen = 3, dominant.angle = 0, which.ads=NA, 
+ 	max.data.points=Inf, min.ratio = 3, dominant.angle = 0, which.ads=NA, 
  	min.area = 100,main=NA,with.tags=F) {
 
     orientations = as.matrix(align_data$mat$orientation);
-    eccentricities = as.matrix(align_data$mat$eccentricity);
+    ratio = as.matrix(align_data$mat$ratio);
     area = as.matrix(align_data$mat$area);
  
     align_data = build_single_orientation_filters(align_data,
         min.data.points = min.data.points, max.data.points=max.data.points,
-        min.eccen = min.eccen, min.area = min.area)
+        min.ratio = min.ratio, min.area = min.area)
 	
 	passed_ad_nums = which(rowSums(! is.na(aligned_data$mat$filtered_orientations)) != 0)
 	
@@ -327,8 +328,8 @@ plot_single_adhesion_orientations <- function(align_data, min.data.points = 20,
     print(count)
 }
 
-adhesion_angle_deviance <- function(orientations) {
-	passed_ads = which(rowSums(! is.na(orientations)) >= 2)
+adhesion_angle_deviance <- function(orientations,min.data.points) {
+	passed_ads = which(rowSums(! is.na(orientations)) >= 1)
 	mean_dev = c()
 	for (ad_num in passed_ads) {
 		or_set = orientations[ad_num,];
@@ -376,10 +377,9 @@ stopifnot(number_consecutive_trues(c(rep(F,10),rep(T,10),rep(F,50),rep(T,20))) =
 stopifnot(number_consecutive_trues(c(rep(T,25),rep(F,10),rep(T,10),rep(F,50),rep(T,20))) == 25)
 stopifnot(number_consecutive_trues(rep(T,20)) == 20)
 
-gather_all_single_adhesion_deviances <- function(align_files, lin_files, min.area=60, min.data.points=10) {
+gather_all_single_adhesion_deviances <- function(align_files, lin_files, min.area=-Inf, min.data.points=2) {
 	all_dev_data = list();
 	for (i in 1:length(align_files)) {
-        print(paste('Done with ',i,'/',length(align_files),sep=''));
 		sample_data = get(load(align_files[i]))
 		sample_data$lineage_data <- read.table(lin_files[i],sep=',',header=T);
 		
@@ -387,10 +387,99 @@ gather_all_single_adhesion_deviances <- function(align_files, lin_files, min.are
 			min.area=min.area, min.data.points=min.data.points);
 		overall_dev = adhesion_angle_deviance(sample_data_filtered$mat$filtered_orientation);
 		overall_dev$exp_num = rep(i,dim(overall_dev)[1])
+		overall_dev$longevity = sample_data$lineage_data$longevity[overall_dev$ad_num];
 
 		all_dev_data = rbind(all_dev_data, overall_dev);
+        print(paste('Done with ',i,'/',length(align_files),sep=''));
 	}
     return(all_dev_data)
+}
+
+get_mean_major_minor_ratio <- function(lin_ts_folder,min.longevity = 10) {
+    major_file = Sys.glob(file.path(lin_ts_folder, 'Major*'))
+    minor_file = Sys.glob(file.path(lin_ts_folder, 'Minor*'))
+
+    exp_props = read.csv(file.path(lin_ts_folder, '../single_lin.csv'))
+    filt = ! exp_props$split_birth_status & exp_props$death_status
+
+    major = as.matrix(read.csv(major_file,header=F));
+    minor = as.matrix(read.csv(minor_file,header=F));
+
+    ratio = major / minor
+
+    longevity = rowSums(! is.na(ratio));
+
+    ratio = ratio[longevity > min.longevity & filt,];
+    
+    return(rowMeans(ratio,na.rm=T))
+}
+
+get_mean_eccen <- function(lin_ts_folder,min.longevity = 10) {
+    major_file = Sys.glob(file.path(lin_ts_folder, 'Major*'))
+    minor_file = Sys.glob(file.path(lin_ts_folder, 'Minor*'))
+
+    exp_props = read.csv(file.path(lin_ts_folder, '../single_lin.csv'))
+    filt = ! exp_props$split_birth_status & exp_props$death_status
+
+    major = as.matrix(read.csv(major_file,header=F));
+    minor = as.matrix(read.csv(minor_file,header=F));
+    
+    ratio = (minor/2)/(major/2)
+    
+    eccen = sqrt(1-ratio^2)
+
+    longevity = rowSums(! is.na(eccen));
+
+    eccen = eccen[longevity > min.longevity & filt,];
+    # eccen = eccen[longevity > min.longevity,];
+    
+    return(rowMeans(eccen,na.rm=T))
+}
+
+###########################################################
+# Spatial
+###########################################################
+
+determine_mean_dist_between <- function(centroid_x,centroid_y,min.overlap=1) {
+    dists = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
+    overlap_counts = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
+    
+    ad_present = ! is.na(centroid_x);
+    
+    for (ad_num in 1:(dim(centroid_x)[1]-1)) {
+        for (other_ad_num in (ad_num+1):dim(centroid_x)[1]) {
+            overlap_count = sum(ad_present[ad_num,] & ad_present[other_ad_num,]);
+            overlap_counts[ad_num,other_ad_num] = overlap_count;
+            if (overlap_count >= min.overlap) {
+                data_1 = rbind(centroid_x[ad_num,],centroid_y[ad_num,]);
+                data_2 = rbind(centroid_x[other_ad_num,],centroid_y[other_ad_num,]);
+                
+                mean_dist = find_mean_dist(data_1,data_2);
+                dists[ad_num,other_ad_num] = mean_dist;
+            }
+        }
+    }
+    return(list(dists = dists,overlap_counts = overlap_counts));
+}
+
+find_mean_dist <- function(data_1,data_2) {
+    mean_dist = NA;
+   
+    overlap_indexes = !is.na(data_1[1,]) & !is.na(data_2[1,]);
+    if (all(! overlap_indexes)) {
+        return(mean_dist);
+    }
+
+    data_1 = data_1[,overlap_indexes];
+    data_2 = data_2[,overlap_indexes];
+    
+    dists = c()
+    for (i in 1:dim(data_1)[2]) {
+        dists = c(dists, sqrt((data_1[1,i]-data_2[1,i])^2+(data_1[2,i]-data_2[2,i])^2))
+    }
+    
+    mean_dist = mean(dists);
+    return(mean_dist);
 }
 
 ###########################################################
@@ -520,12 +609,12 @@ if (length(args) != 0) {
             diagnostic.figure=T);
 
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
-            min.eccen=2,output_file='FA_orientation_eccen2.Rdata');
+            min.ratio=2,output_file='FA_orientation_ratio2.Rdata');
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
-            min.eccen=4,output_file='FA_orientation_eccen4.Rdata');
+            min.ratio=4,output_file='FA_orientation_ratio4.Rdata');
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
-            min.eccen=5,output_file='FA_orientation_eccen5.Rdata');
+            min.ratio=5,output_file='FA_orientation_ratio5.Rdata');
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
-            min.eccen=6,output_file='FA_orientation_eccen6.Rdata');
+            min.ratio=6,output_file='FA_orientation_ratio6.Rdata');
     }
 }
