@@ -177,8 +177,14 @@ sub move_uploaded_data {
     }
 
     print "Moving $data_file to $exp_data_dir\n";
-    copy($data_file,$exp_data_dir);
-    copy($cfg_file,$exp_data_dir);
+    if ($opt{debug}) {
+        copy($data_file,$exp_data_dir);
+        copy($cfg_file,$exp_data_dir);
+    } else {
+        move($data_file,$exp_data_dir);
+        move($cfg_file,$exp_data_dir);
+    }
+
     $cfg_file = "$exp_data_dir/$exp_name.cfg";
     system("echo '<<include ../config/FAAI_default.cfg>>' >> $cfg_file");
 
