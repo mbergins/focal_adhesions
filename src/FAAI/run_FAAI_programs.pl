@@ -181,8 +181,8 @@ sub move_uploaded_data {
         copy($data_file,$exp_data_dir);
         copy($cfg_file,$exp_data_dir);
     } else {
-        move($data_file,$exp_data_dir);
-        move($cfg_file,$exp_data_dir);
+        move($data_file,$exp_data_dir) or die $!;
+        move($cfg_file,$exp_data_dir) or die $!;
     }
 
     $cfg_file = "$exp_data_dir/$exp_name.cfg";
