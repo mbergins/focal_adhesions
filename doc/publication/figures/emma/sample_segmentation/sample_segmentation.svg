@@ -14,8 +14,8 @@
    id="svg2"
    version="1.0"
    inkscape:version="0.46"
-   sodipodi:docname="sample_segmentation_letters.svg"
-   inkscape:export-filename="/home/mbergins/Documents/Projects/focal_adhesions/trunk/doc/publication/figures/emma/sample_segmentation/sample_segmentation_letters.png"
+   sodipodi:docname="sample_segmentation.svg"
+   inkscape:export-filename="/Users/mbergins/Documents/Projects/focal_adhesions/trunk/doc/publication/figures/emma/sample_segmentation/sample_segmentation.png"
    inkscape:export-xdpi="200"
    inkscape:export-ydpi="200"
    sodipodi:version="0.32"
@@ -248,10 +248,10 @@
      pagecolor="#ffffff"
      bordercolor="#666666"
      borderopacity="1.0"
-     inkscape:pageopacity="0.0"
+     inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="0.96269602"
-     inkscape:cx="265.15617"
+     inkscape:cx="308.78365"
      inkscape:cy="321.76248"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
@@ -1456,6 +1456,6 @@
          sodipodi:role="line"
          id="tspan2718"
          x="-132.56615"
-         y="-37.944393">S4</tspan></text>
+         y="-37.944393">S5</tspan></text>
   </g>
 </svg>
