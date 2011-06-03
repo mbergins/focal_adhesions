@@ -79,7 +79,7 @@ if (defined $lightweight_fh) {
                      -action=>basename($0),
                      -enctype=>"multipart/form-data");
     print $q->h2('Required Options');
-    print $q->h3('Adhesion Image Zip File'), 
+    print $q->h3('Adhesion Image File'), 
           $q->filefield('uploaded_file','',50,80);
     print $q->h3('Your Email Address'),
           $q->textfield('email_address','',50,80);
@@ -107,29 +107,64 @@ if (defined $lightweight_fh) {
 
     print $q->hr;
 
+    print "Thank you for helping to test the Focal Adhesion Alignment Index
+    server, please email me with any questions that come up as you interact with
+    the website and files produced. I can be reached at mbergins (AT) unc.edu.";
+    
     print $q->h1('Instructions');
+ 
+    print $q->h2('Required Options');
     
-    print $q->h2('Adhesion Image Zip File');
+    print $q->h3('Adhesion Image Zip File');
 
-    print "The program expects that you will submit a single zip file. Inside
-    the zip file will be one folder containing all the images in your
-    experiment.  The images can be in a single stack or in separate files.";
+    print "The program expects that you will submit a set of images in either a
+    zip file or a tiff stack. If submitted as a zip file, the programs expect to
+    find a single folder when unzipped that contains all the images from the
+    experiment.";    
     
-    print $q->p;
-
-    print $q->h2('Email Address');
+    print $q->h3('Email Address');
 
     print "After you submit your files, notification of where to download the
-    results will be sent through email.";
+    results will be sent through email. If you don't know email is, how did you
+    manage to get to this website?";
 
-    print $q->h2('Note to Self About Experiment');
+    print $q->h3('Note to Self About Experiment');
 
     print "Whatever you put in this box will be send back to you in any email
     the system sends concerning your experiment. It is limited to 80
     characters.";
     
-    if ($q->param('advanced') == 1) {
-    }
+    print $q->h2('Segmentation Options');
+    
+    print $q->h3('Identification Threshold');
+    
+    print "This threshold determines how strigent the segmentation algorithm is
+    when selecting which pixels are adhesions and which are not.";
+    
+    print $q->h3('Minimum Adhesion Size');
+    
+    print "The segmentation algorithms can automatically discard identified
+    adhesions objects that are below the specified size. Since the alignment
+    index is only calculated based on adhesions that have a major to minor axis
+    ratio of at least three and objects below three pixels can't have a ratio
+    past this threshold, a size threshold of two or three is advisable.";
+    
+    print $q->h3('Minimum Major/Minor Axis Ratio');
+    
+    print "In order to determine a single adhesion's angle an oval is fit to
+    each adhesion. We use the ratio of the major/minor axes as filter to select
+    which adhesions to include in the index calculations, with adhesions below
+    the specified ratio being excluded. We include this filter because adhesions
+    that are round, or nearly round, show no particular alignment, so their
+    alignments can not be determined.";
+    
+    print $q->h2('Miscelleous Options');
+
+    print $q->h3('Are You Color Blind?');
+    
+    print "One of the visualizations produced by the software uses green-red
+    differences. If this box is checked, the visualization will be produced with
+    blue-yellow differences.";
 }
 
 print $q->end_html;
