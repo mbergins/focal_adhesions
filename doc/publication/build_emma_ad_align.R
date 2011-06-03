@@ -171,36 +171,9 @@ plot_signif_bracket(c(5,p_size[4]*0.97),c(6,p_size[4]*0.965),
     over_text=paste('p<',Vin_p$p.value[1],sep=''))
 graphics.off()
 
-#######################################
-# Single Adhesion Stability
-#######################################
-
-source('FA_alignment_search.R')
-align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_1ug_trial_2/WT_*/*/FA_orientation.Rdata'));
-lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_1ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
-ad_dev_1ug = gather_all_single_adhesion_deviances(align_files,lin_files);
-
-source('FA_alignment_search.R')
-align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_10ug_trial_2/WT_*/*/FA_orientation.Rdata'));
-lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_10ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
-ad_dev_10ug = gather_all_single_adhesion_deviances(align_files,lin_files);
-
-source('FA_alignment_search.R')
-align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/*/FA_orientation.Rdata'));
-lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
-ad_dev_100ug = gather_all_single_adhesion_deviances(align_files,lin_files,min.area=-Inf, min.data.points=2);
-
-svg(file.path(out_folder,'FAAI','single_ad_stability.svg'));
-par(bty='n',mar=c(2.8,2.6,0.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
-hist_100ug = hist(ad_dev_100ug$mean_dev,xlab='Average Deviance from Start (degrees)',
-	ylab='# of Focal Adhesions',main='',axis=F)
-axis(1,lwd=3)
-axis(2,lwd=3)
-graphics.off()
-
-#######################################
-# Simple FAAI figure hist
-#######################################
+###########################################################
+# Simple FAAI Figure hist
+###########################################################
 
 fibro_100ug_10 = get(load('../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_10/adhesion_props/FA_orientation.Rdata'));
 
@@ -216,12 +189,11 @@ FAAI = find_FAAI_from_orientation(fibro_100ug_10$corrected);
 text(pl_size[2],pl_size[4],paste('FAAI=',sprintf('%.1f',FAAI),sep=''),pos=2)
 graphics.off()
 
-#######################################
+###########################################################
 # Sample FAAI plots
-#######################################
+###########################################################
 
-var_name = load(as.character(fibro_100ug$align_file[1]))
-high_FAAI_data = get(var_name)
+high_FAAI_data = get(load('../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_01/adhesion_props/FA_orientation.Rdata'));
 
 svg(file.path(out_folder,'FAAI','sample_high_FAAI.svg'));
 par(bty='n',mar=c(2.8,2.6,0.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
@@ -246,55 +218,128 @@ pl_size = par("usr");
 text(pl_size[2],pl_size[4],paste('FAAI=',sprintf('%.1f',fibro_1ug$best_FAAI[8]),sep=''),pos=2)
 graphics.off()
 
-#######################################
-# Sample FA orientation cartoon
-#######################################
+###########################################################
+# Single Adhesion Stability
+###########################################################
 
-# load("../../results/emma/Fibro_100ug/WT_02/adhesion_props/FA_orientation.Rdata"); 
-# angle_search = test_dom_angles(data_set$subseted_data$orientation);
-# best_angle = find_best_alignment_angle(angle_search)
-# corrected_orientation = apply_new_orientation(data_set$subseted_data$orientation,best_angle)
+source('FA_alignment_search.R')
+align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_1ug_trial_2/WT_*/*/FA_orientation.Rdata'));
+lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_1ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
+ad_dev_1ug_no_filt = gather_all_single_adhesion_deviances(align_files,lin_files,min.area=-Inf,min.data.points=2);
+save(ad_dev_1ug_no_filt,file='../../results/emma/processed_2stdev/Fibro_1ug_trial_2/WT_01/adhesion_props/all_1ug_sing_ad_dev.Rdata')
+
+source('FA_alignment_search.R')
+align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_10ug_trial_2/WT_*/*/FA_orientation.Rdata'));
+lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_10ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
+ad_dev_10ug_no_filt = gather_all_single_adhesion_deviances(align_files,lin_files,min.area=-Inf,min.data.points=2);
+save(ad_dev_10ug_no_filt,file='../../results/emma/processed_2stdev/Fibro_10ug_trial_2/WT_01/adhesion_props/all_10ug_sing_ad_dev.Rdata')
+system('notify-send "done with R"')
+
+source('FA_alignment_search.R')
+align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/*/FA_orientation.Rdata'));
+lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
+ad_dev_100ug = gather_all_single_adhesion_deviances(align_files,lin_files);
+system('notify-send "done with R"')
+
+save(ad_dev_100ug,file='../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_01/adhesion_props/all_100ug_sing_ad_dev.Rdata');
+
+svg(file.path(out_folder,'FAAI','single_ad_stability_wide.svg'), width=10);
+par(bty='n',mar=c(2.8,2.6,.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
+hist(ad_dev_100ug$mean_dev,xlab='Average Deviance from Start (degrees)',
+	ylab='# of Focal Adhesions',main='',axes=F, lwd=3,ylim=c(0,2500))
+axis(2,at=seq(0,2500,by=500),lwd=3)
+axis(1,lwd=3)
+graphics.off()
+
+svg(file.path(out_folder,'FAAI','single_ad_stability_wide_w_count.svg'), width=10);
+par(bty='n',mar=c(2.8,2.6,.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
+hist(ad_dev_100ug$mean_dev,xlab='Average Deviance from Start (degrees)',
+	ylab='# of Focal Adhesions',main='',axes=F, lwd=3,ylim=c(0,2500))
+axis(2,at=seq(0,2500,by=500),lwd=3)
+axis(1,lwd=3)
+text(20,200,paste('n=',dim(ad_dev_100ug)[1]),pos=4)
+graphics.off()
+
+###########################################################
+# Spatial
+###########################################################
+
+centroid_x = read.csv(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_01/adhesion_props/lin_time_series/Centroid_x.csv'),header=F)
+centroid_y = read.csv(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_01/adhesion_props/lin_time_series/Centroid_y.csv'),header=F)
+
+# major = read.csv(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_01/adhesion_props/lin_time_series/MajorAxisLength.csv'),header=F)
+# minor = read.csv(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_01/adhesion_props/lin_time_series/MinorAxisLength.csv'),header=F)
+# orientation = read.csv(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_01/adhesion_props/lin_time_series/Orientation.csv'),header=F)
 # 
-# per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min_eccen=3)
-# 
-# deg_45_orientation = apply_new_orientation(data_set$subseted_data$orientation,45)
-# deg_90_orientation = apply_new_orientation(data_set$subseted_data$orientation,90)
-# deg_135_orientation = apply_new_orientation(data_set$subseted_data$orientation,135)
-# deg_179_orientation = apply_new_orientation(data_set$subseted_data$orientation,179)
-# 
-# or_data_cartoon = list(data = rbind(data_set$subseted_data$orientation,
-#     deg_45_orientation,deg_90_orientation,deg_135_orientation),
-#     filenames = c('deg_0_hist.svg','deg_45_hist.svg','deg_90_hist.svg','deg_135_hist.svg'));
-# 
-# for (i in 1:length(or_data_cartoon$filenames)) {
-#     svg(file.path(out_folder,'orientation_cartoon',or_data_cartoon$filenames[i]),pointsize=36)
-#     par(bty='n',mar=c(2.5,2.25,0.0,0.5), mgp=c(1.4,0.5,0))
-#     hist(or_data_cartoon$data[i,],breaks=seq(-90,90,by=10),xlim=c(-90,90),axes=F,main='',
-#         xlab='Adhesion Angle',col='black')
-#     axis(2,lwd=3)
-#     axis(1,at=c(-90,0,90),lwd=3)
-#     if (i < 3) {
-#         text(-90,550,paste('FAAI=',sprintf('%.1f',90-sd(or_data_cartoon$data[i,]))),col='red',pos=4)
-#     } else {
-#         text(90,550,paste('FAAI=',sprintf('%.1f',90-sd(or_data_cartoon$data[i,]))),col='red',pos=2)
-#     }
-#     graphics.off()
-# }
-# 
-# svg(file.path(out_folder,'orientation_cartoon','full_FAAI_plot.svg'),height=4,width=14,pointsize=24)
-# 
-# par(bty='n',mar=c(2.5,2.25,0.8,0.5), mgp=c(1.4,0.5,0))
-# plot(angle_search$test_angles,angle_search$angle_FAAI,typ='l',lwd=3,xlab='Alignment Angles (degrees)',ylab='Alignment Index',axes=F)
-# axis(2,lwd=3)
-# axis(1,lwd=3,at=seq(0,180,by=20))
-# 
-# highlight_points = c(0,45,90,135);
-# for (angle in highlight_points) {
-#     degree_index = which(angle_search$test_angles == angle)
-#     points(angle_search$test_angles[degree_index],
-#         angle_search$angle_FAAI[degree_index],col='red',pch=19)
-# }
-# 
-# points(best_angle, 90-sd(corrected_orientation),col='green',pch=19)
-# 
-# graphics.off()
+# eccen = major/minor;
+# high_eccen = !is.na(eccen) & eccen > 3;
+
+# centroid_x[!high_eccen] = NaN
+# centroid_y[!high_eccen] = NaN
+# orientation[!high_eccen] = NaN
+ 
+source('FA_alignment_search.R');
+start_time = proc.time()
+dist_data = determine_mean_dist_between(centroid_x,centroid_y,min.overlap=2)
+save(dist_data,file='full_dist_mat.Rdata')
+end_time = proc.time()
+end_time - start_time
+
+###########################################################
+# Sample FA orientation cartoon
+###########################################################
+
+cartoon_data = get(load("../../results/emma/processed_2stdev/Fibro_100ug/WT_02/adhesion_props/FA_orientation.Rdata")); 
+angle_search = test_dom_angles(cartoon_data$subseted_data$orientation);
+best_angle = find_best_alignment_angle(angle_search)
+corrected_orientation = apply_new_orientation(cartoon_data$subseted_data$orientation,best_angle)
+
+per_image_dom_angle = find_per_image_dom_angle(cartoon_data$mat, min_eccen=3)
+
+deg_45_orientation = apply_new_orientation(cartoon_data$subseted_data$orientation,45)
+deg_90_orientation = apply_new_orientation(cartoon_data$subseted_data$orientation,90)
+deg_135_orientation = apply_new_orientation(cartoon_data$subseted_data$orientation,135)
+deg_179_orientation = apply_new_orientation(cartoon_data$subseted_data$orientation,179)
+
+or_data_cartoon = list(data = rbind(cartoon_data$subseted_data$orientation,
+    deg_45_orientation,deg_90_orientation,deg_135_orientation),
+    filenames = c('deg_0_hist.svg','deg_45_hist.svg','deg_90_hist.svg','deg_135_hist.svg'));
+
+for (i in 1:length(or_data_cartoon$filenames)) {
+    svg(file.path(out_folder,'orientation_cartoon',or_data_cartoon$filenames[i]),pointsize=36)
+    par(bty='n',mar=c(2.5,2.25,0.0,0.5), mgp=c(1.4,0.5,0))
+    hist(or_data_cartoon$data[i,],breaks=seq(-90,90,by=10),xlim=c(-90,90),axes=F,main='',
+        xlab='Adhesion Angle',col='black')
+    axis(2,lwd=3)
+    axis(1,at=c(-90,0,90),lwd=3)
+    if (i == 1) {
+        text(-90,550,'FAAI=90-SD',col='red',pos=4)
+        text(-90,490,paste('FAAI=',sprintf('%.1f',90-sd(or_data_cartoon$data[i,]))),col='red',pos=4)
+    } else if (i == 2 || i == 3) {
+        text(-90,550,paste('FAAI=',sprintf('%.1f',90-sd(or_data_cartoon$data[i,]))),col='red',pos=4)
+    } else {
+        text(90,550,paste('FAAI=',sprintf('%.1f',90-sd(or_data_cartoon$data[i,]))),col='red',pos=2)
+    }
+    graphics.off()
+}
+
+svg(file.path(out_folder,'orientation_cartoon','full_FAAI_plot.svg'),height=4,width=14,pointsize=24)
+
+par(bty='n',mar=c(2.5,2.25,0.8,0.5), mgp=c(1.4,0.5,0))
+plot(angle_search$test_angles,angle_search$angle_FAAI,typ='l',lwd=3,xlab='Alignment Angles (degrees)',ylab='Alignment Index',axes=F)
+y_axis = axis(2,lwd=3)
+axis(1,lwd=3,at=seq(0,180,by=20))
+p_limits = par("usr");
+lines(angle_search$test_angles,abs(angle_search$mean_angle)+20)
+
+
+highlight_points = c(0,45,90,135);
+for (angle in highlight_points) {
+    degree_index = which(angle_search$test_angles == angle)
+    points(angle_search$test_angles[degree_index],
+        angle_search$angle_FAAI[degree_index],col='red',pch=19)
+}
+
+points(best_angle, 90-sd(corrected_orientation),col='green',pch=19)
+
+graphics.off()
