@@ -331,6 +331,7 @@ plot_single_adhesion_orientations <- function(align_data, min.data.points = 20,
 adhesion_angle_deviance <- function(orientations,min.data.points) {
 	passed_ads = which(rowSums(! is.na(orientations)) >= 1)
 	mean_dev = c()
+    num_pass_filter = c()
 	for (ad_num in passed_ads) {
 		or_set = orientations[ad_num,];
 		or_set = na.omit(or_set);
@@ -342,8 +343,9 @@ adhesion_angle_deviance <- function(orientations,min.data.points) {
 
 		diffs = abs(or_set[2:length(or_set)] - or_set[1]);
 		mean_dev = c(mean_dev,mean(diffs));
+        num_pass_filter = c(num_pass_filter,length(or_set));
 	}
-	return(data.frame(mean_dev = mean_dev, ad_num=passed_ads))
+	return(data.frame(mean_dev = mean_dev, ad_num=passed_ads, num_pass_filter=num_pass_filter))
 }
 
 number_consecutive_trues <- function(logical_seq) {
@@ -431,7 +433,6 @@ get_mean_eccen <- function(lin_ts_folder,min.longevity = 10) {
     longevity = rowSums(! is.na(eccen));
 
     eccen = eccen[longevity > min.longevity & filt,];
-    # eccen = eccen[longevity > min.longevity,];
     
     return(rowMeans(eccen,na.rm=T))
 }
@@ -440,26 +441,93 @@ get_mean_eccen <- function(lin_ts_folder,min.longevity = 10) {
 # Spatial
 ###########################################################
 
-determine_mean_dist_between <- function(centroid_x,centroid_y,min.overlap=1) {
+find_dist_overlaps_and_orientations <- function(lin_ts_folder,min.ratio=3,min.overlap=10) {
+    centroid_x = read.csv(file.path(lin_ts_folder,'Centroid_x.csv'),header=F)
+    centroid_y = read.csv(file.path(lin_ts_folder,'Centroid_y.csv'),header=F)
+
+    major = read.csv(file.path(lin_ts_folder,'MajorAxisLength.csv'),header=F)
+    minor = read.csv(file.path(lin_ts_folder,'MinorAxisLength.csv'),header=F)
+    orientation = read.csv(file.path(lin_ts_folder,'Orientation.csv'),header=F)
+
+    ratio = major/minor;
+    low_ratio = !is.na(ratio) & ratio < min.ratio;
+
+    centroid_x[low_ratio] = NaN;
+    centroid_y[low_ratio] = NaN;
+    orientation[low_ratio] = NaN;
+
+    dist_data = determine_mean_dist_between(centroid_x,centroid_y,orientation,min.overlap=min.overlap);
+    
+    data_points = which(!is.na(dist_data$dists),arr.ind=T);
+    data_summary = list()
+    for (row in 1:dim(data_points)[1]) {
+        ad_1 = data_points[row,1]
+        ad_2 = data_points[row,2]
+        data_summary$ad_1 = c(data_summary$ad_1,ad_1);
+        data_summary$ad_2 = c(data_summary$ad_2,ad_2);
+
+        data_summary$mean_dist = c(data_summary$mean_dist,dist_data$dists[ad_1,ad_2]);
+        data_summary$overlap_count = c(data_summary$overlap_count,
+            dist_data$overlap_count[ad_1,ad_2]);
+        data_summary$or_diff = c(data_summary$or_diff,
+            dist_data$data_diff[ad_1,ad_2]);
+    }
+    data_summary = as.data.frame(data_summary)
+
+    save(data_summary,file=file.path(lin_ts_folder,'..','FA_dist_orientation.Rdata'));
+    return(data_summary);
+}
+
+determine_mean_dist_between <- function(centroid_x,centroid_y,data_set,min.overlap=2) {
     dists = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
+    data_diff = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
     overlap_counts = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
     
     ad_present = ! is.na(centroid_x);
     
+    #only adhesions which are alive for at least the minimum overlap period
+    #could pass the overlap requirement, so we find a list of those adhesions
+    #here
+    possible_ads = which(rowSums(ad_present) >= min.overlap);
+    print(paste('Found', length(possible_ads), 'eligible adhesions.'))
+    print('Starting Adhesions Comparisons')
+    
+    hits = 0;
     for (ad_num in 1:(dim(centroid_x)[1]-1)) {
+        if (ad_num %% 100 == 0) {
+            print(paste('Working on ',ad_num,'/',dim(centroid_x)[1]));
+        }
+        if (! any(possible_ads == ad_num)) {
+            next;
+        }
         for (other_ad_num in (ad_num+1):dim(centroid_x)[1]) {
+            if (! any(possible_ads == other_ad_num)) {
+                next;
+            }
             overlap_count = sum(ad_present[ad_num,] & ad_present[other_ad_num,]);
             overlap_counts[ad_num,other_ad_num] = overlap_count;
             if (overlap_count >= min.overlap) {
                 data_1 = rbind(centroid_x[ad_num,],centroid_y[ad_num,]);
                 data_2 = rbind(centroid_x[other_ad_num,],centroid_y[other_ad_num,]);
                 
-                mean_dist = find_mean_dist(data_1,data_2);
-                dists[ad_num,other_ad_num] = mean_dist;
+                dists[ad_num,other_ad_num] = find_mean_dist(data_1,data_2);
+                
+                orientation_1 = as.numeric(data_set[ad_num,]);
+                orientation_2 = as.numeric(data_set[other_ad_num,]);
+                
+                dom_angles = test_dom_angles(c(orientation_1,orientation_2));
+                best_angle = find_best_alignment_angle(dom_angles);
+                
+                orientation_1 = apply_new_orientation(orientation_1,best_angle);
+                orientation_2 = apply_new_orientation(orientation_2,best_angle);
+                
+                data_diff[ad_num,other_ad_num] = mean(abs(orientation_1 - orientation_2),na.rm=T)
+                hits = hits + 1;
             }
         }
     }
-    return(list(dists = dists,overlap_counts = overlap_counts));
+    print(paste('Examined', hits,'overlapping adhesions.'))
+    return(list(dists = dists,overlap_counts = overlap_counts,data_diff=data_diff));
 }
 
 find_mean_dist <- function(data_1,data_2) {
@@ -605,16 +673,15 @@ if (length(args) != 0) {
 	
     class(fixed_best_angle) <- "numeric";
     if (exists('time_series_dir')) {
+        start_time = proc.time();
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle, 
             diagnostic.figure=T);
-
-        temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
-            min.ratio=2,output_file='FA_orientation_ratio2.Rdata');
-        temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
-            min.ratio=4,output_file='FA_orientation_ratio4.Rdata');
-        temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
-            min.ratio=5,output_file='FA_orientation_ratio5.Rdata');
-        temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle,
-            min.ratio=6,output_file='FA_orientation_ratio6.Rdata');
+        end_time = proc.time();
+        print(paste('FA Orientation Runtime:',end_time - start_time))
+        
+        start_time = proc.time();
+        temp = find_dist_overlaps_and_orientations(time_series_dir);
+        end_time = proc.time();
+        print(paste('FA Dists/Orientation Runtime:',end_time - start_time))
     }
 }

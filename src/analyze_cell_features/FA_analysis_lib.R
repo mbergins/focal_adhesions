@@ -437,6 +437,20 @@ add_labels_with_sub <- function(data_sets,names,at,subtitle=NA,...) {
     }
 }
 
+plot_rates_vs_time <- function(before, after) {
+    plot(slope ~ birth_i_num, data=before$assembly,main='Assembly')
+    abline(lm(slope ~ birth_i_num, data=before$assembly),col='red',lwd=2)
+
+    plot(slope ~ birth_i_num, data=after$assembly,main='Assembly')
+    abline(lm(slope ~ birth_i_num, data=after$assembly),col='red',lwd=2)
+
+    plot(slope ~ death_i_num, data=before$dis,main='Disassembly')
+    abline(lm(slope ~ death_i_num, data=before$dis),col='red',lwd=2)
+
+    plot(slope ~ death_i_num, data=after$dis,main='Disassembly')
+    abline(lm(slope ~ death_i_num, data=after$dis),col='red',lwd=2)
+}
+
 ########################################
 #Data Summary functions
 ########################################
@@ -467,7 +481,7 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         this_assem_data = list()
         this_assem_data = res$assembly[assembly_filt,]
         these_props = subset(res$exp_props,
-            select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num','mean_area'))
+            select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num','death_i_num','mean_area'))
         this_assem_data = cbind(this_assem_data,these_props[assembly_filt,])
         this_assem_data$exp_num = c(this_assem_data$exp_num, rep(i,length(which(assembly_filt))));
         this_assem_data$lin_num = c(this_assem_data$lin_num, which(assembly_filt));
@@ -481,7 +495,7 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         this_dis_data = list()
         this_dis_data = res$disassembly[disassembly_filt,]
         these_props = subset(res$exp_props,
-            select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num','mean_area'))
+            select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num','death_i_num','mean_area'))
         this_dis_data = cbind(this_dis_data,these_props[disassembly_filt,])
         this_dis_data$exp_num = c(this_dis_data$exp_num, rep(i,length(which(disassembly_filt))));
         this_dis_data$lin_num = c(this_dis_data$lin_num, which(disassembly_filt));
