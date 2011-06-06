@@ -677,11 +677,11 @@ if (length(args) != 0) {
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle, 
             diagnostic.figure=T);
         end_time = proc.time();
-        print(paste('FA Orientation Runtime:',end_time - start_time))
+        print(paste('FA Orientation Runtime:',(end_time - start_time)[3]))
         
         start_time = proc.time();
         temp = find_dist_overlaps_and_orientations(time_series_dir);
         end_time = proc.time();
-        print(paste('FA Dists/Orientation Runtime:',end_time - start_time))
+        print(paste('FA Dists/Orientation Runtime:',(end_time - start_time)[3]))
     }
 }
