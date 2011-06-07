@@ -441,7 +441,9 @@ get_mean_eccen <- function(lin_ts_folder,min.longevity = 10) {
 # Spatial
 ###########################################################
 
-find_dist_overlaps_and_orientations <- function(lin_ts_folder,min.ratio=3,min.overlap=10) {
+find_dist_overlaps_and_orientations <- function(lin_ts_folder,min.ratio=3,
+    min.overlap=10,output_file='FA_dist_orientation.Rdata') {
+
     centroid_x = read.csv(file.path(lin_ts_folder,'Centroid_x.csv'),header=F)
     centroid_y = read.csv(file.path(lin_ts_folder,'Centroid_y.csv'),header=F)
 
@@ -455,34 +457,26 @@ find_dist_overlaps_and_orientations <- function(lin_ts_folder,min.ratio=3,min.ov
     centroid_x[low_ratio] = NaN;
     centroid_y[low_ratio] = NaN;
     orientation[low_ratio] = NaN;
-
-    dist_data = determine_mean_dist_between(centroid_x,centroid_y,orientation,min.overlap=min.overlap);
     
-    data_points = which(!is.na(dist_data$dists),arr.ind=T);
-    data_summary = list()
-    for (row in 1:dim(data_points)[1]) {
-        ad_1 = data_points[row,1]
-        ad_2 = data_points[row,2]
-        data_summary$ad_1 = c(data_summary$ad_1,ad_1);
-        data_summary$ad_2 = c(data_summary$ad_2,ad_2);
+    print('Done loading and filtering position/orientation data')
 
-        data_summary$mean_dist = c(data_summary$mean_dist,dist_data$dists[ad_1,ad_2]);
-        data_summary$overlap_count = c(data_summary$overlap_count,
-            dist_data$overlap_count[ad_1,ad_2]);
-        data_summary$or_diff = c(data_summary$or_diff,
-            dist_data$data_diff[ad_1,ad_2]);
+    data_summary = determine_mean_dist_between(centroid_x,centroid_y,orientation,min.overlap=min.overlap);
+    if (! is.na(output_file)) {
+        save(data_summary,file=file.path(lin_ts_folder,'..',output_file));
     }
-    data_summary = as.data.frame(data_summary)
-
-    save(data_summary,file=file.path(lin_ts_folder,'..','FA_dist_orientation.Rdata'));
     return(data_summary);
 }
 
 determine_mean_dist_between <- function(centroid_x,centroid_y,data_set,min.overlap=2) {
-    dists = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
-    data_diff = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
-    overlap_counts = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
-    
+    # dists = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
+    # data_diff = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
+    # overlap_counts = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
+    ad_1 = c()
+    ad_2 = c()
+    dists = c()
+    or_diff = c()
+    overlap_counts = c()
+
     ad_present = ! is.na(centroid_x);
     
     #only adhesions which are alive for at least the minimum overlap period
@@ -493,24 +487,26 @@ determine_mean_dist_between <- function(centroid_x,centroid_y,data_set,min.overl
     print('Starting Adhesions Comparisons')
     
     hits = 0;
-    for (ad_num in 1:(dim(centroid_x)[1]-1)) {
-        if (ad_num %% 100 == 0) {
-            print(paste('Working on ',ad_num,'/',dim(centroid_x)[1]));
+    for (i in 1:length(possible_ads)) {
+        ad_num = possible_ads[i];
+        
+        #progress message
+        if (any(i == round(seq(1,length(possible_ads),length=10)))) {
+            print(paste('Done with ',i-1,'/',length(possible_ads)));
         }
-        if (! any(possible_ads == ad_num)) {
-            next;
-        }
-        for (other_ad_num in (ad_num+1):dim(centroid_x)[1]) {
-            if (! any(possible_ads == other_ad_num)) {
-                next;
-            }
+
+        comparison_ads = possible_ads[possible_ads > ad_num];
+        for (other_ad_num in comparison_ads) {
             overlap_count = sum(ad_present[ad_num,] & ad_present[other_ad_num,]);
-            overlap_counts[ad_num,other_ad_num] = overlap_count;
             if (overlap_count >= min.overlap) {
+                ad_1 = c(ad_1,ad_num);
+                ad_2 = c(ad_2,other_ad_num);
+                overlap_counts = c(overlap_counts,overlap_count);
+
                 data_1 = rbind(centroid_x[ad_num,],centroid_y[ad_num,]);
                 data_2 = rbind(centroid_x[other_ad_num,],centroid_y[other_ad_num,]);
                 
-                dists[ad_num,other_ad_num] = find_mean_dist(data_1,data_2);
+                dists = c(dists,find_mean_dist(data_1,data_2));
                 
                 orientation_1 = as.numeric(data_set[ad_num,]);
                 orientation_2 = as.numeric(data_set[other_ad_num,]);
@@ -521,13 +517,16 @@ determine_mean_dist_between <- function(centroid_x,centroid_y,data_set,min.overl
                 orientation_1 = apply_new_orientation(orientation_1,best_angle);
                 orientation_2 = apply_new_orientation(orientation_2,best_angle);
                 
-                data_diff[ad_num,other_ad_num] = mean(abs(orientation_1 - orientation_2),na.rm=T)
+                or_diff = c(or_diff,mean(abs(orientation_1 - orientation_2),na.rm=T))
                 hits = hits + 1;
             }
         }
     }
     print(paste('Examined', hits,'overlapping adhesions.'))
-    return(list(dists = dists,overlap_counts = overlap_counts,data_diff=data_diff));
+    
+    return(data.frame(ad_1=ad_1,ad_2=ad_2,dists = dists,
+        overlap_counts = overlap_counts,
+        or_diff=or_diff));
 }
 
 find_mean_dist <- function(data_1,data_2) {
