@@ -5,6 +5,7 @@ library(Hmisc)
 source('FA_analysis_lib.R')
 source('bilinear_modeling.R')
 source('FA_alignment_search.R')
+source('../../doc/publication/errbar.s')
 
 ###############################################################################
 # Results Gathering
@@ -76,9 +77,9 @@ out_folder = '../../doc/publication/figures/emma/'
 # fibro_1_100_p = determine_mean_p_value(fibro_1ug$best_FAAI,fibro_100ug$best_FAAI)
 # fibro_10_100_p = determine_mean_p_value(fibro_10ug$best_FAAI,fibro_100ug$best_FAAI)
 # 
-# FAK_p = determine_mean_p_value(IA32_FAK$best_FAAI,KD_FAK$best_FAAI)
-# Pax_p = determine_mean_p_value(IA32_Pax$best_FAAI,KD_Pax$best_FAAI)
-# Vin_p = determine_mean_p_value(IA32_Vin$best_FAAI,KD_Vin$best_FAAI)
+Pax_p = determine_mean_p_value(IA32_Pax$best_FAAI,KD_Pax$best_FAAI)
+FAK_p = determine_mean_p_value(IA32_FAK$best_FAAI,KD_FAK$best_FAAI)
+Vin_p = determine_mean_p_value(IA32_Vin$best_FAAI,KD_Vin$best_FAAI)
 
 stop()
 ###############################################################################
@@ -131,7 +132,7 @@ svg(file.path(out_folder,'FAAI','tagged_ads_100ug_comparisons.svg'),width=7,heig
 
 #the xpd=T part allows us to draw lines outside the plotting area, this is
 #needed to get the lines under the lables
-par(bty='n',mar=c(2.6,2.6,0,0), mgp=c(1.6,0.5,0),xpd=T)
+par(bty='n',mar=c(2.6,2.6,0.3,0), mgp=c(1.6,0.5,0),xpd=T)
 
 #skip drawing axes
 boxplot_with_points(list(IA32_Pax$best_FAAI,KD_Pax$best_FAAI,
@@ -241,7 +242,7 @@ lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/adhes
 ad_dev_100ug = gather_all_single_adhesion_deviances(align_files,lin_files);
 system('notify-send "done with R"')
 
-save(ad_dev_100ug,file='../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_01/adhesion_props/all_100ug_sing_ad_dev.Rdata');
+save(ad_dev_100ug,file='../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_01/adhesion_props/all_100ug_single_ad_dev.Rdata');
 
 svg(file.path(out_folder,'FAAI','single_ad_stability_wide.svg'), width=10);
 par(bty='n',mar=c(2.8,2.6,.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
@@ -264,26 +265,200 @@ graphics.off()
 # Spatial
 ###########################################################
 
-centroid_x = read.csv(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_01/adhesion_props/lin_time_series/Centroid_x.csv'),header=F)
-centroid_y = read.csv(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_01/adhesion_props/lin_time_series/Centroid_y.csv'),header=F)
+#######################################
+# Fibronectin Concentrations
+#######################################
 
-# major = read.csv(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_01/adhesion_props/lin_time_series/MajorAxisLength.csv'),header=F)
-# minor = read.csv(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_01/adhesion_props/lin_time_series/MinorAxisLength.csv'),header=F)
-# orientation = read.csv(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_01/adhesion_props/lin_time_series/Orientation.csv'),header=F)
-# 
-# eccen = major/minor;
-# high_eccen = !is.na(eccen) & eccen > 3;
+spatial_files = Sys.glob(file.path(raw_data_base_dir,'Fibro*trial_2/*/*/FA_dist_orientation.Rdata'))
+all_spatial = list();
 
-# centroid_x[!high_eccen] = NaN
-# centroid_y[!high_eccen] = NaN
-# orientation[!high_eccen] = NaN
- 
+for (file in spatial_files) {
+    this_data = get(load(file));
+    if (regexpr('100ug',file) != -1) {
+        print(paste(file,'100ug'));
+        this_data$concen = rep('ug_100',dim(this_data)[1]);
+    } else if (regexpr('10ug',file) != -1) {
+        print(paste(file,'10ug'));
+        this_data$concen = rep('ug_10',dim(this_data)[1]);
+    } else if (regexpr('1ug',file) != -1) {
+        print(paste(file,'1ug'));
+        this_data$concen = rep('ug_1',dim(this_data)[1]);
+    } else {
+        print(paste('Couldnt find appropriate concentration',file))
+    }
+    all_spatial = rbind(all_spatial,this_data);
+}
+
+all_spatial$class = floor(all_spatial$dists/20);
+concen_summary = list();
+for (this_concen in unique(all_spatial$concen)) {
+    temp = list();
+    sum = 0;
+    for (class_num in seq(0,20)) {
+        this_class_set = subset(all_spatial,class==class_num & concen == this_concen);
+        sum = sum+dim(this_class_set)[1]
+
+        temp$dist = c(temp$dist, mean(this_class_set$dist));
+        temp$n_count = c(temp$n_count, length(this_class_set$dist));
+        temp$or_mean = c(temp$or_mean,mean(this_class_set$or_diff));
+        temp$or_plus = c(temp$or_plus,t.test(this_class_set$or_diff,conf.level=0.95)$conf[2]);
+        temp$or_minus = c(temp$or_minus,t.test(this_class_set$or_diff,conf.level=0.95)$conf[1]);
+    }
+    concen_summary[[this_concen]]=temp;
+    print(sum)
+}
+
+svg(file.path(out_folder,'spatial','fibro_dist_vs_orientation.svg'),width=8,height=4);
+layout(cbind(1,2))
+par(bty='n',mar=c(2.7,2.6,0.6,0.2), mgp=c(1.6,0.5,0),xpd=T)
+errbar(concen_summary$ug_1$dist, concen_summary$ug_1$or_mean,
+    concen_summary$ug_1$or_plus,concen_summary$ug_1$or_minus,
+    col='green',xlab='Distance Between Adhesions',ylab='Mean Angle Difference',ylim=c(0,40))
+lines(lowess(concen_summary$ug_1$dist,concen_summary$ug_1$or_mean),col='green',lwd=3)
+
+errbar(concen_summary$ug_100$dist, concen_summary$ug_100$or_mean,
+    concen_summary$ug_100$or_plus,concen_summary$ug_100$or_minus,
+    add=T)
+lines(lowess(concen_summary$ug_100$dist,concen_summary$ug_100$or_mean),lwd=3)
+
+errbar(concen_summary$ug_10$dist, concen_summary$ug_10$or_mean,
+    concen_summary$ug_10$or_plus,concen_summary$ug_10$or_minus,
+    add=T,col='red')
+lines(lowess(concen_summary$ug_10$dist,concen_summary$ug_10$or_mean),col='red',lwd=3)
+
+legend('bottomright',c('100ug','10ug','1ug'),fill=c('black','red','green'),inset=.01)
+
+plot(concen_summary$ug_100$dist, concen_summary$ug_100$n_count,
+    ylim=c(0,max(concen_summary$ug_100$n_count)),xlab='Distance Between Adhesions',
+    ylab='Adhesion Count')
+lines(concen_summary$ug_100$dist, concen_summary$ug_100$n_count)
+points(concen_summary$ug_10$dist, concen_summary$ug_10$n_count,col='red')
+lines(concen_summary$ug_10$dist, concen_summary$ug_10$n_count,col='red')
+points(concen_summary$ug_1$dist, concen_summary$ug_1$n_count,col='green')
+lines(concen_summary$ug_1$dist, concen_summary$ug_1$n_count,col='green')
+graphics.off()
+
+#######################################
+# Different Adhesion Tags
+#######################################
+spatial_files = Sys.glob(file.path(raw_data_base_dir,'100ug*/*/*/FA_dist_orientation.Rdata'))
+tag_spatial = list();
+
+for (file in spatial_files) {
+    this_data = get(load(file));
+    
+    output_str = c(file)
+    if (regexpr('Pax',file) != -1) {
+        this_data$tag = rep('Pax',dim(this_data)[1]);
+        output_str = paste(output_str,'Pax');
+    } else if (regexpr('Vin',file) != -1) {
+        this_data$tag = rep('Vin',dim(this_data)[1]);
+        output_str = paste(output_str,'Vin');
+    } else if (regexpr('FAK',file) != -1) {
+        this_data$tag = rep('FAK',dim(this_data)[1]);
+        output_str = paste(output_str,'FAK');
+    } else {
+        print(paste('Cant find tag type',file))
+    }
+    
+    if (regexpr('KD',file) != -1) {
+        this_data$cell_type = rep('KD',dim(this_data)[1]);
+        output_str = paste(output_str,'KD');
+    } else if (regexpr('IA32',file) != -1) {
+        this_data$cell_type = rep('IA32',dim(this_data)[1]);
+        output_str = paste(output_str,'IA32');
+    } else {
+        print(paste('Couldnt find appropriate cell type',file))
+    }
+    tag_spatial = rbind(tag_spatial,this_data);
+    print(output_str)
+}
+
+tag_spatial$class = floor(tag_spatial$dists/20);
+tag_summary = list();
+for (this_tag in unique(tag_spatial$tag)) {
+    for (this_cell_type in unique(tag_spatial$cell_type)) {
+        temp = list();
+        sum = 0;
+        for (class_num in seq(0,20)) {
+            this_class_set = subset(tag_spatial,
+                class==class_num & tag == this_tag & cell_type == this_cell_type);
+            sum = sum+dim(this_class_set)[1]
+
+            temp$dist = c(temp$dist, mean(this_class_set$dist));
+            temp$n_count = c(temp$n_count, length(this_class_set$dist));
+            temp$or_mean = c(temp$or_mean,mean(this_class_set$or_diff));
+            temp$or_plus = c(temp$or_plus,t.test(this_class_set$or_diff,conf.level=0.95)$conf[2]);
+            temp$or_minus = c(temp$or_minus,t.test(this_class_set$or_diff,conf.level=0.95)$conf[1]);
+        }
+        print(sum)
+        tag_summary[[this_tag]][[this_cell_type]]=temp;
+    }
+}
+
+svg(file.path(out_folder,'spatial','tags_dist_vs_orientation.svg'),width=8,height=12);
+layout(rbind(c(1,2),c(3,4),c(5,6)))
+for (tag_type in c('Pax','Vin','FAK')) {
+    par(bty='n',mar=c(2.7,2.6,3,0.2), mgp=c(1.6,0.5,0),xpd=F)
+    errbar(tag_summary[[tag_type]]$KD$dist, tag_summary[[tag_type]]$KD$or_mean,
+        tag_summary[[tag_type]]$KD$or_plus,tag_summary[[tag_type]]$KD$or_minus,
+        col='red',xlab='Distance Between Adhesions',ylab='Mean Angle Difference',
+        ylim=c(0,max(tag_summary[[tag_type]]$KD$or_plus)),xlim=c(0,410))
+    lines(lowess(tag_summary[[tag_type]]$KD$dist,tag_summary[[tag_type]]$KD$or_mean),col='red',lwd=3)
+    title(main=tag_type)
+
+    errbar(tag_summary[[tag_type]]$IA32$dist, tag_summary[[tag_type]]$IA32$or_mean,
+        tag_summary[[tag_type]]$IA32$or_plus,tag_summary[[tag_type]]$IA32$or_minus,
+        col='green',xlab='Distance Between Adhesions',ylab='Mean Angle Difference',add=T)
+    lines(lowess(tag_summary[[tag_type]]$IA32$dist,tag_summary[[tag_type]]$IA32$or_mean),col='green',lwd=3)
+
+    plot(tag_summary[[tag_type]]$IA32$dist, tag_summary[[tag_type]]$IA32$n_count,
+        ylim=c(0,max(tag_summary[[tag_type]]$IA32$n_count)),xlab='Distance Between Adhesions',
+        ylab='Adhesion Count', col='green',main=tag_type)
+    lines(tag_summary[[tag_type]]$IA32$dist, tag_summary[[tag_type]]$IA32$n_count, col='green')
+    points(tag_summary[[tag_type]]$KD$dist, tag_summary[[tag_type]]$KD$n_count,col='red')
+    lines(tag_summary[[tag_type]]$KD$dist, tag_summary[[tag_type]]$KD$n_count,col='red')
+}
+graphics.off()
+
+errbar(tag_summary$Vin$KD$dist, tag_summary$Vin$KD$or_mean,
+    tag_summary$Vin$KD$or_plus,tag_summary$Vin$KD$or_minus,
+    col='red',xlab='Distance Between Adhesions',ylab='Mean Angle Difference',
+    ylim=c(0,max(tag_summary$Vin$KD$or_plus)))
+lines(lowess(tag_summary$Vin$KD$dist,tag_summary$Vin$KD$or_mean),col='red',lwd=3,lty=3)
+
+errbar(tag_summary$Vin$IA32$dist, tag_summary$Vin$IA32$or_mean,
+    tag_summary$Vin$IA32$or_plus,tag_summary$Vin$IA32$or_minus,
+    col='red',xlab='Distance Between Adhesions',ylab='Mean Angle Difference',add=T)
+lines(lowess(tag_summary$Vin$IA32$dist,tag_summary$Vin$IA32$or_mean),col='red',lwd=3)
+
+errbar(tag_summary$FAK$KD$dist, tag_summary$FAK$KD$or_mean,
+    tag_summary$FAK$KD$or_plus,tag_summary$FAK$KD$or_minus,
+    col='green',xlab='Distance Between Adhesions',ylab='Mean Angle Difference',
+    add=T)
+lines(lowess(tag_summary$FAK$KD$dist,tag_summary$FAK$KD$or_mean),col='green',lwd=3,lty=3)
+
+errbar(tag_summary$FAK$IA32$dist, tag_summary$FAK$IA32$or_mean,
+    tag_summary$FAK$IA32$or_plus,tag_summary$FAK$IA32$or_minus,
+    col='green',xlab='Distance Between Adhesions',ylab='Mean Angle Difference',add=T)
+lines(lowess(tag_summary$FAK$IA32$dist,tag_summary$FAK$IA32$or_mean),col='green',lwd=3)
+
+errbar(tag_summary$Pax$KD$dist, tag_summary$Pax$KD$or_mean,
+    tag_summary$Pax$KD$or_plus,tag_summary$Pax$KD$or_minus,
+    xlab='Distance Between Adhesions',ylab='Mean Angle Difference',
+    add=T) 
+lines(lowess(tag_summary$Pax$KD$dist,tag_summary$Pax$KD$or_mean),lwd=3,lty=3)
+
+errbar(tag_summary$Pax$IA32$dist, tag_summary$Pax$IA32$or_mean,
+    tag_summary$Pax$IA32$or_plus,tag_summary$Pax$IA32$or_minus,
+    xlab='Distance Between Adhesions',ylab='Mean Angle Difference',add=T)
+lines(lowess(tag_summary$Pax$IA32$dist,tag_summary$Pax$IA32$or_mean),lwd=3)
+
 source('FA_alignment_search.R');
 start_time = proc.time()
-dist_data = determine_mean_dist_between(centroid_x,centroid_y,min.overlap=2)
-save(dist_data,file='full_dist_mat.Rdata')
-end_time = proc.time()
-end_time - start_time
+data_summary = find_dist_overlaps_and_orientations(a,min.overlap=10,output_file=NA);
+# end_time = proc.time()
+# end_time - start_time
 
 ###########################################################
 # Sample FA orientation cartoon
