@@ -31,6 +31,7 @@ i_p.addRequired('pixel_size',@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('bar_size',10,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('position_code',2,@(x)isnumeric(x) && x > 0 && x < 4);
 i_p.addParamValue('bar_color',1,@(x)isnumeric(x) && x >= 0 && x <=1 );
+i_p.addParamValue('edge_offset',3,@(x)isnumeric(x) && x >= 1);
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
 i_p.parse(image_no_bar,pixel_size,varargin{:});
@@ -39,6 +40,7 @@ i_p.parse(image_no_bar,pixel_size,varargin{:});
 debug = i_p.Results.debug;
 bar_size = i_p.Results.bar_size;
 position_code = round(i_p.Results.position_code);
+edge_offset = i_p.Results.edge_offset;
 
 offset_standard = 0.02;
 
@@ -49,7 +51,7 @@ offset_standard = 0.02;
 [image_height image_width image_depth] = size(image_no_bar);
 
 bar_width = round(bar_size/pixel_size);
-bar_height = round(0.01*image_height);
+bar_height = round(0.04*image_height);
 if (bar_height < 2)
     bar_height = 2;
 end
@@ -89,8 +91,10 @@ image_with_bar = image_no_bar;
 for i=1:image_depth
     switch position_code
         case 1
-            bar_rows = ceil(row_offset*image_height):ceil(row_offset*image_height)-1+bar_size(1);
-            bar_cols = ceil(col_offset*image_width)-bar_size(2):ceil(col_offset*image_width)-1;
+%             bar_rows = ceil(row_offset*image_height):ceil(row_offset*image_height)-1+bar_size(1);
+%             bar_cols = ceil(col_offset*image_width)-bar_size(2):ceil(col_offset*image_width)-1;
+            bar_rows = edge_offset:(edge_offset+bar_size(1)-1);
+            bar_cols = (image_width - edge_offset - bar_size(2)+2):(image_width - edge_offset+1);
         case 2
             bar_rows = ceil(row_offset*image_height)-bar_size(1):ceil(row_offset*image_height)-1;
             bar_cols = ceil(col_offset*image_width)-bar_size(2):ceil(col_offset*image_width)-1;
@@ -101,7 +105,7 @@ for i=1:image_depth
             bar_rows = ceil(row_offset*image_height):ceil(row_offset*image_height)-1+bar_size(1);
             bar_cols = ceil(col_offset*image_width):ceil(col_offset*image_width)-1+bar_size(2);
         otherwise
-            error('ERROR: draw_scale_bar - unexpected position code, must be between 0-4');
+            error('ERROR: draw_scale_bar - unexpected position code, must be between 1-4');
     end
     image_with_bar(bar_rows,bar_cols,i) = bar;
 end

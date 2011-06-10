@@ -4,6 +4,17 @@ function write_montage_image_set(image_set,output_file,varargin)
 %                           the given output file
 %
 %   write_montage_image_set(i_set, out_f) 
+%   
+%   Options:
+%       -num_cols: number of columns to use
+%       -num_images: used in conjuction with phase to decide how many
+%       images to show for assembly or disassembly phases
+%       -phase: type of adhesion phase, either assembly or disassemlby
+%       -pixel_size: the size of each pixel in um, if unset, no scale bar
+%       will be drawn
+%       -bar_size: how large will be scale bar be
+%       -bar_position: where will be bar be drawn, see draw_scale_bar for
+%       codes
 
 i_p = inputParser;
 i_p.FunctionName = 'WRITE_MONTAGE_IMAGE_SET';

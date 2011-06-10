@@ -121,9 +121,6 @@ rows_to_examine = find(rows_to_examine);
 bounding_matrix = [Inf*ones(size(tracking_seq,1),1), Inf*ones(size(tracking_seq,1),1), ...
     -Inf*ones(size(tracking_seq,1),1), -Inf*ones(size(tracking_seq,1),1)];
 
-%i_seen will keep track of the number of images that have actually been
-%read into the program, we need to keep track of this due to skipped
-%frames, which will show up as missing files in the following loop
 i_seen = 0;
 
 for j = 1:max_image_num
@@ -257,7 +254,7 @@ for j = 1:max_image_num
                     image_counts = image_counts + 1;
                 end
                 
-                [folder, ad_file_name] = fileparts(i_p.Results.adhesion_file);
+                [~, ad_file_name] = fileparts(i_p.Results.adhesion_file);
                 if (not(isempty(regexpi(ad_file_name,'disassembly'))))
                     offset_type = 'disassembly';
                 elseif (not(isempty(regexpi(ad_file_name,'assembly'))))

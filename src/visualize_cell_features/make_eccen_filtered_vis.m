@@ -62,9 +62,11 @@ for i_num = 1:size(image_dirs)
     high_eccen_perim = ismember(this_data.adhesions_perim,high_eccen_ads);
     low_eccen_perim = ismember(this_data.adhesions_perim,low_eccen_ads);
     
-    highlight = create_highlighted_image(this_data.focal_norm,high_eccen_perim,'color_map',[0,1,0]);
-    highlight = create_highlighted_image(highlight,low_eccen_perim,'color_map',[1,0,0]);
-    highlight = add_centroid_mark(highlight,this_data.adhesion_centroid,[0,0,1]);
+    highlight = create_highlighted_image(this_data.focal_norm,high_eccen_perim,'color_map',[0,1,0],'mix_percent',0.5);
+    highlight = create_highlighted_image(highlight,low_eccen_perim,'color_map',[1,0,0],'mix_percent',0.5);
+    if (any(strcmp('adhesion_centroid',fieldnames(this_data))))
+        highlight = add_centroid_mark(highlight,this_data.adhesion_centroid,[0,0,1]);
+    end
     
     padded_i_num = sprintf('%04d',i_num);
     
