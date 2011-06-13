@@ -6,7 +6,9 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     min.ratio = 3,output_file = 'FA_orientation.Rdata',diagnostic.figure=F) {
 
     data_set = read_in_orientation_data(exp_dir, min.ratio=min.ratio);
+    print('Done reading in data set')
     data_set$angle_search = test_dom_angles(data_set$subseted_data$orientation);
+    print('Done searching potential dominant angles')
 
     if (is.na(fixed_best_angle)) {
         data_set$best_angle = find_best_alignment_angle(data_set$angle_search)
@@ -16,11 +18,15 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     }
     data_set$corrected_orientation = apply_new_orientation(data_set$subseted_data$orientation,
         data_set$best_angle)
+    print('Done finding best orientation')
     
-    per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min.ratio=min.ratio)
-    data_set$per_image_dom_angle = per_image_dom_angle
-
+    data_set$per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min.ratio=min.ratio)
+    write.table(t(data_set$per_image_dom_angle),file=file.path(exp_dir,'..','per_image_dom_angle.csv'),
+        row.names=F,col.names=F,sep=',')
+    print('Done searching for best angle in single images')
+    
     data_set$single_ads = analyze_single_adhesions(data_set)
+    print('Done analyzing single adhesions')
     
     save(data_set,file=file.path(exp_dir,'..',output_file))
     
@@ -54,7 +60,7 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
         xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''),
 		xlim=c(-100,100));
     
-    plot(per_image_dom_angle,xlab='Image Number',ylab='Dominant Angle',ylim=c(0,180));
+    plot(data_set$per_image_dom_angle,xlab='Image Number',ylab='Dominant Angle',ylim=c(0,180));
 
     hist(data_set$single_ads$best_angle,main='Single Adhesions - Best Angle',
         xlab=paste('Angle n=',length(data_set$single_ads$best_angle),sep=''),xlim=c(0,180));
@@ -139,8 +145,12 @@ find_best_alignment_angle <- function(test_angle_set) {
     # to select the best angle, find the angles with the maximum FAAI, from
     # those angles select the angle with the lowest (meaning closest to zero)
     # mean angle
-    max_FAAI = max(test_angle_set$angle_FAAI)
-    max_FAAI_indexes = which(max_FAAI == test_angle_set$angle_FAAI)
+    max_FAAI = max(test_angle_set$angle_FAAI)*0.9999
+    #the max FAAI value is reduced by 0.01% due to some strange numeric
+    #accuracy issues that elimnated some angles from the max FAAI index set
+    #despite having the same standard deviation, this seemed to be especially
+    #problematic with small data sets
+    max_FAAI_indexes = which(test_angle_set$angle_FAAI >= max_FAAI)
     
     abs_mean = abs(test_angle_set$mean_angle)[max_FAAI_indexes];
     sorted_abs_mean = sort(abs_mean,decreasing = F, index.return = T)
@@ -468,14 +478,10 @@ find_dist_overlaps_and_orientations <- function(lin_ts_folder,min.ratio=3,
 }
 
 determine_mean_dist_between <- function(centroid_x,centroid_y,data_set,min.overlap=2) {
-    # dists = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
-    # data_diff = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
-    # overlap_counts = matrix(NA,nrow=dim(centroid_x)[1],ncol=dim(centroid_x)[1]);
-    ad_1 = c()
-    ad_2 = c()
-    dists = c()
-    or_diff = c()
-    overlap_counts = c()
+    ad_1 = c(); ad_2 = c();
+    dists = c();
+    or_diff = c();
+    overlap_counts = c();
 
     ad_present = ! is.na(centroid_x);
     
@@ -491,7 +497,7 @@ determine_mean_dist_between <- function(centroid_x,centroid_y,data_set,min.overl
         ad_num = possible_ads[i];
         
         #progress message
-        if (any(i == round(seq(1,length(possible_ads),length=10)))) {
+        if (any(i == round(seq(length(possible_ads)/10,length(possible_ads),length=10)))) {
             print(paste('Done with ',i-1,'/',length(possible_ads)));
         }
 
@@ -547,6 +553,27 @@ find_mean_dist <- function(data_1,data_2) {
     
     mean_dist = mean(dists);
     return(mean_dist);
+}
+
+bin_distance_data <- function(dist_data,pixel_size = 0.1333) {
+    temp = list();
+    sum = 0;
+    for (this_dist_bin in sort(unique(dist_data$dist_bin))) {
+        this_dist_bin_set = subset(dist_data,dist_bin==this_dist_bin);
+        sum = sum+dim(this_dist_bin_set)[1]
+        
+        if (length(this_dist_bin_set$dists) <= 100) {
+            next;
+        }
+
+        temp$dist = c(temp$dist, mean(this_dist_bin_set$dists)*pixel_size);
+        temp$n_count = c(temp$n_count, length(this_dist_bin_set$dists));
+        temp$or_mean = c(temp$or_mean,mean(this_dist_bin_set$or_diff));
+        temp$or_plus = c(temp$or_plus,t.test(this_dist_bin_set$or_diff,conf.level=0.95)$conf[2]);
+        temp$or_minus = c(temp$or_minus,t.test(this_dist_bin_set$or_diff,conf.level=0.95)$conf[1]);
+    }
+    print(sum)
+    return(temp)
 }
 
 ###########################################################
