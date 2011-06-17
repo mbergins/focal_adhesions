@@ -12,3 +12,7 @@ data_set.focal_norm = (double(data_set.focal_image) - data_set.focal_image_range
 
 data_set.adhesions = imread(fullfile(this_dir,filenames.adhesions));
 data_set.adhesions_perim = imread(fullfile(this_dir,filenames.adhesions_perim));
+
+if (exist(fullfile(this_dir,'raw_data','Adhesion_centroid.csv'),'file'))
+    data_set.adhesion_centroid = csvread(fullfile(this_dir,'raw_data','Adhesion_centroid.csv'));
+end
