@@ -61,6 +61,11 @@ my @overall_command_seq = (
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script ../visualize_cell_features/make_eccen_filtered_vis" ], ],
 );
 
+if (defined $cfg{photo_bleach_correction} && $cfg{photo_bleach_correction}) {
+	unshift @overall_command_seq, 
+		[ [ "../find_cell_features", "./run_matlab_over_field.pl -script apply_bleaching_correction.m" ], ];
+}
+
 #some of the scripts only need to be run once for each experiment, this will
 #rely on being able to find an experiment with one of the following values in
 #it's name
