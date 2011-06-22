@@ -75,7 +75,7 @@ plot_ad_seq <- function (results,index,type='assembly',log.trans = TRUE, time.sp
 	}
 }
 
-plot_ad_intensity <- function (results,index,phase_lengths,R_sq,time.spacing=1, ...) {
+plot_ad_intensity <- function (results,index,phase_lengths,R_sq,y_limits,time.spacing=1, ...) {
     int_min_max = c(min(results$exp_data,na.rm=T), max(results$exp_data,na.rm=T))
     
 	ad_seq = as.vector(results$exp_data[index,])
@@ -83,7 +83,7 @@ plot_ad_intensity <- function (results,index,phase_lengths,R_sq,time.spacing=1, 
     ad_seq = na.omit(ad_seq)
     
     plot(time_points, ad_seq, xlab='Time (minutes)', ylab='Normalized Intensity',type="o", 
-        main=index);
+        main=index,ylim=y_limits);
     
     plot_limits = par("usr")
     segments(0,par("usr")[3],0,par("usr")[4])
@@ -464,7 +464,7 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
             print(paste("Working on Experiment #:",i,'/',length(results)));
         }
         res = results[[i]];
-
+        
         filter_sets = produce_rate_filters(res, model_count, min.r.sq = min.r.sq, max.p.val = max.p.val, 
             pos.slope = pos.slope,old.names=old.names)
         
@@ -480,12 +480,16 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         # each adhesion selected by filtering
         this_assem_data = list()
         this_assem_data = res$assembly[assembly_filt,]
-        these_props = subset(res$exp_props,
-            select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num','death_i_num','mean_area'))
+        prop_set = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num','death_i_num','mean_area')
+        if (any(names(res$exp_props) == 'drug_addition_time')) {
+            prop_set = c(prop_set, 'drug_addition_time');
+        }
+        these_props = subset(res$exp_props, select = prop_set)
+        # browser()
         this_assem_data = cbind(this_assem_data,these_props[assembly_filt,])
         this_assem_data$exp_num = c(this_assem_data$exp_num, rep(i,length(which(assembly_filt))));
         this_assem_data$lin_num = c(this_assem_data$lin_num, which(assembly_filt));
-        
+
         ad_data$assembly = rbind(ad_data$assembly,this_assem_data)
              
         #######################################################################
@@ -494,8 +498,7 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         
         this_dis_data = list()
         this_dis_data = res$disassembly[disassembly_filt,]
-        these_props = subset(res$exp_props,
-            select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num','death_i_num','mean_area'))
+        these_props = subset(res$exp_props, select = prop_set)
         this_dis_data = cbind(this_dis_data,these_props[disassembly_filt,])
         this_dis_data$exp_num = c(this_dis_data$exp_num, rep(i,length(which(disassembly_filt))));
         this_dis_data$lin_num = c(this_dis_data$lin_num, which(disassembly_filt));
@@ -520,6 +523,68 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
     ad_data$joint = as.data.frame(ad_data$joint);
 
     ad_data
+}
+
+filter_results_by_drug_addition <- function(data_set) {
+    assembly_filter = data_set$assembly$birth_i_num < data_set$assembly$drug_addition_time &
+        data_set$assembly$birth_i_num + data_set$assembly$length > data_set$assembly$drug_addition_time
+    
+    disassembly_filter = data_set$disassembly$death_i_num > data_set$disassembly$drug_addition_time &
+        data_set$disassembly$death_i_num - data_set$disassembly$length < data_set$disassembly$drug_addition_time
+    
+    assem_length = length(assembly_filter);
+    assem_filt_length = sum(assembly_filter);
+    disassem_length = length(disassembly_filter);
+    disassem_filt_length = sum(disassembly_filter);
+
+    percent_as_removed = sprintf('%.0f',assem_filt_length/assem_length*100)
+    percent_di_removed = sprintf('%.0f',disassem_filt_length/disassem_length*100)
+    print(paste('Removing', assem_filt_length, 
+        'assembly (',percent_as_removed,'%) and', length(which(disassembly_filter)), 
+        'disassembly (',percent_di_removed,'%) models'))
+
+    data_set$assembly = data_set$assembly[!assembly_filter,]
+    data_set$disassembly = data_set$disassembly[!disassembly_filter,]
+    return(data_set)
+}
+
+split_results_by_drug_addition <- function(data_set) {
+    assembly_filter = data_set$assembly$birth_i_num < data_set$assembly$drug_addition_time;
+    
+    disassembly_filter = data_set$disassembly$death_i_num < data_set$disassembly$drug_addition_time;
+
+    final_set = list()
+    final_set$assembly$before = data_set$assembly[assembly_filter,];
+    final_set$assembly$after = data_set$assembly[!assembly_filter,];
+    final_set$disassembly$before = data_set$disassembly[disassembly_filter,];
+    final_set$disassembly$after = data_set$disassembly[!disassembly_filter,];
+
+    return(final_set)
+}
+
+split_results_by_exp <- function(data_set) {
+    per_exp = list()
+    
+    exp_num = union(unique(data_set$assembly$before$exp_num),unique(data_set$assembly$after$exp_num))
+    temp = c() 
+    for (this_exp_num in exp_num) {
+        before = subset(data_set$assembly$before, exp_num==this_exp_num);
+        after = subset(data_set$assembly$after, exp_num==this_exp_num);
+        
+        temp = c(temp, mean(after$slope) - mean(before$slope))
+    }
+    per_exp$assembly = temp;
+    
+    exp_num = union(unique(data_set$disassembly$before$exp_num),unique(data_set$disassembly$after$exp_num))
+    temp = c() 
+    for (this_exp_num in exp_num) {
+        before = subset(data_set$disassembly$before, exp_num==this_exp_num);
+        after = subset(data_set$disassembly$after, exp_num==this_exp_num);
+        temp = c(temp, mean(after$slope) - mean(before$slope))
+    }
+    per_exp$disassembly = temp;
+
+    return(per_exp);
 }
 
 determine_death_rate <- function(lineage_time_series) {

@@ -101,20 +101,27 @@ draw_diagnostic_traces <- function(models,file.name) {
     ad_nums = sort(union(which(!is.na(models$assembly$slope)),
         which(!is.na(models$disassembly$slope))));
     
+    y_limits = c(min(models$assembly$min,models$disassembly$min,na.rm=T),
+        max(models$assembly$max,models$disassembly$max,na.rm=T));
+
     pdf(file.name)
     for (i in ad_nums) {
         phase_lengths = c(models$assembly$length[i],models$disassembly$length[i])
         R_sq = c(models$assembly$adj.r.squared[i],models$disassembly$adj.r.squared[i])
-        plot_ad_intensity(models,i,phase_lengths,R_sq);
+        plot_ad_intensity(models,i,phase_lengths,R_sq,y_limits);
     }
     graphics.off()
 }
 
 fit_all_possible_log_models <- function(time.series,min.phase.length=10) {
+    data_summary = list();
+    
+    data_summary$min.val = min(time.series$value,na.rm=T);
+    data_summary$max.val = max(time.series$value,na.rm=T);
+
     time.series$value = time.series$value/time.series$value[1];
     time.series$value[time.series$value < 0] = 1E-5;
 
-    data_summary = list();
 
     for (i in min.phase.length:length(time.series$value)) {
         this_model = lm(log(time.series$value[1:i]) ~ time.series$time[1:i]);
