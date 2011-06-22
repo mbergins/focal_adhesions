@@ -1,6 +1,4 @@
 function apply_bleaching_correction(exp_dir,varargin)
-% DETERMINE_BLEACHING_CORRECTION    searches through the gel images to
-%                                   determine the photobleaching correction
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Setup variables and parse command line
@@ -72,7 +70,6 @@ csvwrite(fullfile(exp_dir,'adhesion_props','mean_levels.csv'),expression_levels)
 csvwrite(fullfile(exp_dir,'adhesion_props','integrated_levels.csv'),sum_expression_levels)
 
 for i=1:length(single_image_folders)
-    
     dlmwrite(fullfile(image_dir, single_image_folders(i).name, filenames.photo_bleach_correction), ...
        expression_levels(1)/expression_levels(i));
 end

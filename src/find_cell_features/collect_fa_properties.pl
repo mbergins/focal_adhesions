@@ -92,10 +92,7 @@ sub create_all_matlab_commands {
         if (-f $protrusion_file) {
             $extra_opt .= ",'protrusion_file','$protrusion_file'";
         }
-        if (exists $cfg{photo_bleach_correction} && $cfg{photo_bleach_correction}) {
-			$extra_opt .= ",'photo_bleach_correction',1";
-		}
-
+        
         my $this_command = "find_adhesion_properties('$raw_image_file','$adhesion_image_file'";
         $this_command .= "$extra_opt);\n";
 
