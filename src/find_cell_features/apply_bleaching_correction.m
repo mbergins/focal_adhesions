@@ -62,7 +62,7 @@ for i=1:length(single_image_folders)
     
     movefile(base_image_file,uncorrected_image_file);
     
-    cor_image = image.*(expression_levels(1)/mean(image(:)));
+    cor_image = image.*(expression_levels(1)/expression_levels(i));
     imwrite(cor_image, base_image_file,'Bitdepth',16);
 end
 
