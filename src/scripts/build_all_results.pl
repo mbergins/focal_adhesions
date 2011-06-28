@@ -62,8 +62,9 @@ my @overall_command_seq = (
 );
 
 if (defined $cfg{photo_bleach_correction} && $cfg{photo_bleach_correction}) {
-	unshift @overall_command_seq, 
-		[ [ "../find_cell_features", "./run_matlab_over_field.pl -script apply_bleaching_correction.m" ], ];
+	@overall_command_seq = (@overall_command_seq[0..2], 
+		[ [ "../find_cell_features", "./run_matlab_over_field.pl -script apply_adhesion_bleaching_correction.m" ], ],
+		@overall_command_seq[3..$#overall_command_seq]);
 }
 
 #some of the scripts only need to be run once for each experiment, this will
