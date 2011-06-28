@@ -1,4 +1,4 @@
-function apply_bleaching_correction(exp_dir,varargin)
+function apply_adhesion_bleaching_correction(exp_dir,varargin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Setup variables and parse command line
@@ -46,30 +46,20 @@ single_image_folders = single_image_folders(3:end);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 expression_levels = zeros(1,length(single_image_folders));
-after_correction = zeros(1,length(single_image_folders));
-sum_expression_levels = zeros(1,length(single_image_folders));
 for i=1:length(single_image_folders)
     base_image_file = fullfile(image_dir,single_image_folders(i).name,filenames.focal_image);
-    uncorrected_image_file = fullfile(image_dir,single_image_folders(i).name,['uncorrected_',filenames.focal_image]);
-    if (exist(uncorrected_image_file,'file'))
-        disp('Found corrected image file, not applying correction.');
-        continue;
-    end
     
     image = imread(base_image_file);
+    adhesions = imread(fullfile(image_dir,single_image_folders(i).name,filenames.adhesions_binary));
     
-    expression_levels(i) = mean(image(:));
-    sum_expression_levels(i) = sum(image(:));
+    expression_levels(i) = mean(image(adhesions));
     
-    movefile(base_image_file,uncorrected_image_file);
+%     movefile(base_image_file,uncorrected_image_file);
     
     cor_image = image.*(expression_levels(1)/expression_levels(i));
-    after_correction(i) = mean(cor_image(:));
     imwrite(cor_image, base_image_file,'Bitdepth',16);
 end
 
-csvwrite(fullfile(exp_dir,'adhesion_props','mean_levels.csv'),expression_levels)
-csvwrite(fullfile(exp_dir,'adhesion_props','after_p_correction.csv'),expression_levels)
-csvwrite(fullfile(exp_dir,'adhesion_props','integrated_levels.csv'),sum_expression_levels)
+csvwrite(fullfile(exp_dir,'adhesion_props','adhesion_mean_levels.csv'),expression_levels)
 
 toc;
