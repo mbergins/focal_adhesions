@@ -555,14 +555,14 @@ find_mean_dist <- function(data_1,data_2) {
     return(mean_dist);
 }
 
-bin_distance_data <- function(dist_data,pixel_size = 0.1333) {
+bin_distance_data <- function(dist_data,pixel_size = 0.1333,min.data.points=50) {
     temp = list();
     sum = 0;
     for (this_dist_bin in sort(unique(dist_data$dist_bin))) {
         this_dist_bin_set = subset(dist_data,dist_bin==this_dist_bin);
         sum = sum+dim(this_dist_bin_set)[1]
         
-        if (length(this_dist_bin_set$dists) <= 100) {
+        if (length(this_dist_bin_set$dists) < min.data.points) {
             next;
         }
 
