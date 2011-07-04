@@ -34,18 +34,32 @@ if (max(size(imfinfo(I_file))) > 1)
     if (any(strcmp('I_num',i_p.UsingDefaults)))
         error(['ERROR: ',i_p.FunctionName,' - Image file specified has more than one image embedded, must specify an ''I_num'' parameter']);
     end
-    input_image = imread(I_file,i_p.Results.I_num);
+    input_image = uint16(imread(I_file,i_p.Results.I_num));
 else
-    input_image = imread(I_file);
+    input_image = uint16(imread(I_file));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+orig_image_dim = length(size(input_image));
+if (orig_image_dim == 3)
+    if (all(all(input_image(:,:,1) == input_image(:,:,2))) && ...
+        all(all(input_image(:,:,2) == input_image(:,:,3))))
+        input_image = input_image(:,:,1);
+    else
+        warning('Found an image with three layers, but each layer is different?!'); %#ok<WNTAG>
+    end
+end
+
 imwrite(input_image,out_file,'Bitdepth',16);
 
 temp = imread(out_file);
-assert(all(all(input_image == temp)))
+if (orig_image_dim == 3)
+    assert(all(all(input_image == temp(:,:,1))))
+else
+    assert(all(all(input_image == temp)))
+end
 
 end

@@ -120,7 +120,9 @@ if (isempty(strmatch('protrusion_data',i_p.UsingDefaults)))
     protrusion_data = i_p.Results.protrusion_data;
 end
 
-adhesion_props = regionprops(labeled_adhesions,'all');
+adhesion_props = regionprops(labeled_adhesions,'Area','Centroid', ... 
+    'Eccentricity','MajorAxisLength','MinorAxisLength','Orientation', ... 
+    'PixelIdxList','Solidity');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program

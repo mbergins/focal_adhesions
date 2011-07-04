@@ -32,7 +32,7 @@ all_images = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
 all_high_passed = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
 
 for i_num = 1:size(image_dirs,1)
-    puncta_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
+    puncta_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));            
     
     I_filt = fspecial('disk',11);
     blurred_image = imfilter(puncta_image,I_filt,'same',mean(puncta_image(:)));
@@ -44,10 +44,13 @@ for i_num = 1:size(image_dirs,1)
         disp([i_num,size(image_dirs,1)])
     end
 end
-min_max = [min(all_images(:)),max(all_images(:))];
+sorted_pix_vals = sort(all_images(:));
+remove_limit = round(length(sorted_pix_vals)/100000);
+sorted_pix_vals = sorted_pix_vals(remove_limit:(length(sorted_pix_vals)-remove_limit));
+min_max = [min(sorted_pix_vals),max(sorted_pix_vals)];
 
 output_file = fullfile(base_dir,image_dirs(1).name,filenames.focal_image_min_max);
-[output_folder,temp,temp_ext] = fileparts(output_file); %#ok<NASGU>
+[output_folder,~,~] = fileparts(output_file);
 if (not(exist(output_folder,'dir')))
     mkdir(output_folder);
 end
