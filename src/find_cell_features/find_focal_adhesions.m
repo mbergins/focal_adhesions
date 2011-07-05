@@ -54,13 +54,14 @@ addpath('matlab_scripts');
 addpath(genpath('..'));
 
 %read in the cell mask image if defined in parameter set
-if (isempty(strmatch('cell_mask', i_p.UsingDefaults)))
+if (isempty(strncmp('cell_mask', i_p.UsingDefaults)))
     cell_mask = imread(i_p.Results.cell_mask);
 end
 
 filenames = add_filenames_to_struct(struct());
 
 filter_thresh = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
+filter_thresh = [339.48, 4*(452.83-339.48)+339.48];
 
 %read in and normalize the input focal adhesion image
 focal_image  = double(imread(I_file));
@@ -77,11 +78,13 @@ focal_normed = (focal_image - image_set_min_max(1))/(range(image_set_min_max));
 I_filt = fspecial('disk',i_p.Results.filter_size);
 blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
 high_passed_image = focal_image - blurred_image;
-threshed_image = high_passed_image > filter_thresh;
 
+threshed_image = find_threshed_image(high_passed_image,filter_thresh);
 
 %identify and remove adhesions on the immediate edge of the image
 threshed_image = remove_edge_adhesions(threshed_image);
+
+imshow(create_highlighted_image(focal_normed,bwperim(bwlabel(threshed_image,4)),'mix_percent',0.5))
 
 %filter out small adhesions if requested
 if (i_p.Results.min_adhesion_size > 1)
@@ -212,4 +215,23 @@ end
 if (nargout > 0)
     varargout{1} = struct('adhesions',im2bw(ad_zamir,0),'ad_zamir',ad_zamir);
 end
-if(i_p.Results.status_messages), toc; end
+toc;
+
+function threshed_image = find_threshed_image(high_passed_image, filter_thresh)
+
+if (length(filter_thresh) == 1)
+    threshed_image = high_passed_image >= filter_thresh;
+else
+    high_threshed_image = high_passed_image >= filter_thresh(2);
+    high_threshed_image = remove_edge_adhesions(high_threshed_image);
+    
+    low_threshed_image = high_passed_image >= filter_thresh(1);
+    low_thresh_bwlabel = bwlabel(low_threshed_image,4);
+    
+    overlap_labels = unique(low_thresh_bwlabel.*high_threshed_image);
+    if (overlap_labels(1) == 0)
+        overlap_labels = overlap_labels(2:end);
+    end
+    
+    threshed_image = ismember(low_thresh_bwlabel,overlap_labels);
+end
