@@ -93,6 +93,14 @@ if (i_p.Results.min_adhesion_size > 1)
     threshed_image = labeled_thresh > 0;
 end
 
+%adding a check for finding adhesions, if didn't find any, output error
+%file
+if (sum(sum(threshed_image)) == 0)
+    no_ad_found_file = fullfile(i_p.Results.output_dir, 'no_ads_found.txt');
+    system(['touch ', no_ad_found_file]);
+    error('Didn''t find any adhesions');
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Adhesion Segmentation
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
