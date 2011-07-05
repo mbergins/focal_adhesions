@@ -54,14 +54,13 @@ addpath('matlab_scripts');
 addpath(genpath('..'));
 
 %read in the cell mask image if defined in parameter set
-if (isempty(strncmp('cell_mask', i_p.UsingDefaults)))
+if (not(any(strcmp('cell_mask', i_p.UsingDefaults))))
     cell_mask = imread(i_p.Results.cell_mask);
 end
 
 filenames = add_filenames_to_struct(struct());
 
 filter_thresh = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
-filter_thresh = [339.48, 4*(452.83-339.48)+339.48];
 
 %read in and normalize the input focal adhesion image
 focal_image  = double(imread(I_file));
@@ -83,8 +82,6 @@ threshed_image = find_threshed_image(high_passed_image,filter_thresh);
 
 %identify and remove adhesions on the immediate edge of the image
 threshed_image = remove_edge_adhesions(threshed_image);
-
-imshow(create_highlighted_image(focal_normed,bwperim(bwlabel(threshed_image,4)),'mix_percent',0.5))
 
 %filter out small adhesions if requested
 if (i_p.Results.min_adhesion_size > 1)
