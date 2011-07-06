@@ -43,7 +43,8 @@ for i_num = 1:size(image_dirs)
 end
 
 max_image_projection = double(max(all_images,[],3));
-max_image_projection = (max_image_projection - min(max_image_projection(:)))/range(max_image_projection(:));
+image_set_min_max = csvread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image_min_max));
+max_image_projection = (max_image_projection - image_set_min_max(1))/range(image_set_min_max);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Gather the adhesion data
@@ -52,7 +53,7 @@ max_image_projection = (max_image_projection - min(max_image_projection(:)))/ran
 %wrap the following reads in trys because the files will sometimes be
 %missing, if they are, there weren't any significant events of that class,
 %so define placeholder variables
-try 
+try
     assembly_rows = csvread(fullfile(base_dir,image_dirs(1).name,filenames.assembly_rows));
 catch %#ok<CTCH>
     assembly_rows = zeros(0,2);
@@ -82,6 +83,12 @@ max_image_projection = add_adhesion_marks(max_image_projection,ad_data_set,only_
 
 imwrite(max_image_projection,fullfile(base_dir,image_dirs(1).name,filenames.max_intensity));
 
+all_rows = union(assembly_rows(:,1),disassembly_rows(:,1));
+
+image_size = size(max_image_projection);
+
+add_adhesion_number(fullfile(base_dir,image_dirs(1).name,filenames.max_intensity), ...
+    ad_data_set,all_rows,image_size);
 toc;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -102,4 +109,27 @@ for i=1:length(row_nums)
     binary = imdilate(binary,dilation_element);
     
     image = create_highlighted_image(image,binary,'color_map',color,'mix_percent',0.65);
+end
+
+function add_adhesion_number(image_file,ad_data_set,row_nums,image_size)
+
+for i=1:length(row_nums)
+    ad_num = row_nums(i);
+    x_pos = round(mean(ad_data_set.centroid_x(ad_num,not(isnan(ad_data_set.centroid_x(ad_num,:))))));
+    y_pos = round(mean(ad_data_set.centroid_y(ad_num,not(isnan(ad_data_set.centroid_y(ad_num,:))))));
+    
+    if (x_pos > image_size(1)*0.95)
+        x_pos = image_size(1)*0.95;
+    end
+    
+    if (y_pos > image_size(2)*0.95)
+        y_pos = image_size(2)*0.95;
+    end
+    
+    pos_str = [' +',num2str(y_pos),'+',num2str(x_pos)];
+    label_str = [' "',num2str(ad_num),'" '];
+    command_str = ['convert ', image_file, ' -font VeraSe.ttf -fill ''rgba(255,255,255)'' -annotate', ...
+        pos_str, label_str, ' ', image_file];
+    
+    system(command_str);
 end
