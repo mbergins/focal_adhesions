@@ -334,9 +334,17 @@ if (length(args) != 0) {
         model_five$exp_props = exp_props;
         model_five$exp_dir = data_dir;
         model_five$exp_data = data_set;
+ 
         R_model_file = sub(".csv$", "_length5.Rdata", model_file ,perl=T)
         output_file = file.path(output_folder,R_model_file);
         save(model_five,file = output_file)
+        
+        diagnostic_diagrams_file = sub(".csv$", "_length5.pdf", model_file ,perl=T)
+        output_file = file.path(output_folder,diagnostic_diagrams_file);
+        source('FA_analysis_lib.R')
+        draw_diagnostic_traces(model_five,output_file);
+        
+        ##############################################
 
         model = build_bilinear_models(data_set,exp_props, min.phase.length = min_length, 
             time.spacing = time_spacing);

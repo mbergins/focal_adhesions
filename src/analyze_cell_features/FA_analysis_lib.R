@@ -75,7 +75,7 @@ plot_ad_seq <- function (results,index,type='assembly',log.trans = TRUE, time.sp
 	}
 }
 
-plot_ad_intensity <- function (results,index,phase_lengths,R_sq,y_limits,time.spacing=1, ...) {
+plot_ad_intensity <- function (results,index,phase_lengths,R_sq,y_limits,slope,time.spacing=1, ...) {
     int_min_max = c(min(results$exp_data,na.rm=T), max(results$exp_data,na.rm=T))
     
 	ad_seq = as.vector(results$exp_data[index,])
@@ -101,6 +101,10 @@ plot_ad_intensity <- function (results,index,phase_lengths,R_sq,y_limits,time.sp
             text(plot_limits[1],plot_limits[4]*0.95,pos=4, 
                 paste('R-sq:', sprintf('%.2f',R_sq[1])))
         }
+        if (is.finite(slope[1])) {
+            text(plot_limits[1],plot_limits[4]*0.925,pos=4, 
+                paste('Rate:', sprintf('%.4f',slope[1])))
+        }
     }
     
     if (is.finite(phase_lengths[2])) {
@@ -113,6 +117,10 @@ plot_ad_intensity <- function (results,index,phase_lengths,R_sq,y_limits,time.sp
         if (is.finite(R_sq[2])) {
             text(plot_limits[2],plot_limits[4]*0.95,pos=2, 
                 paste('R-sq:', sprintf('%.2f',R_sq[2])))
+        }
+        if (is.finite(slope[2])) {
+            text(plot_limits[2],plot_limits[4]*0.925,pos=2, 
+                paste('Rate:', sprintf('%.4f',slope[2])))
         }
     }
 }
@@ -526,11 +534,18 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
 }
 
 filter_results_by_drug_addition <- function(data_set) {
-    assembly_filter = data_set$assembly$birth_i_num < data_set$assembly$drug_addition_time &
-        data_set$assembly$birth_i_num + data_set$assembly$length > data_set$assembly$drug_addition_time
-    
-    disassembly_filter = data_set$disassembly$death_i_num > data_set$disassembly$drug_addition_time &
-        data_set$disassembly$death_i_num - data_set$disassembly$length < data_set$disassembly$drug_addition_time
+    assembly_filter = data_set$as$birth_i_num <= data_set$as$drug_addition_time &
+        data_set$as$death_i_num >= data_set$as$drug_addition_time
+    assembly_filter[is.na(assembly_filter)] = FALSE
+
+    disassembly_filter = data_set$di$birth_i_num <= data_set$di$drug_addition_time &
+        data_set$di$death_i_num >= data_set$di$drug_addition_time
+    disassembly_filter[is.na(disassembly_filter)] = FALSE
+    # assembly_filter = data_set$assembly$birth_i_num < data_set$assembly$drug_addition_time &
+    #     (data_set$assembly$birth_i_num + data_set$assembly$length) > data_set$assembly$drug_addition_time
+    # 
+    # disassembly_filter = data_set$disassembly$death_i_num > data_set$disassembly$drug_addition_time &
+    #     (data_set$d$death_i_num - data_set$d$length) < data_set$disassembly$drug_addition_time
     
     assem_length = length(assembly_filter);
     assem_filt_length = sum(assembly_filter);
@@ -571,7 +586,7 @@ split_results_by_exp <- function(data_set) {
         before = subset(data_set$assembly$before, exp_num==this_exp_num);
         after = subset(data_set$assembly$after, exp_num==this_exp_num);
         
-        temp = c(temp, mean(after$slope) - mean(before$slope))
+        temp = c(temp, median(after$slope) - median(before$slope))
     }
     per_exp$assembly = temp;
     
@@ -580,7 +595,8 @@ split_results_by_exp <- function(data_set) {
     for (this_exp_num in exp_num) {
         before = subset(data_set$disassembly$before, exp_num==this_exp_num);
         after = subset(data_set$disassembly$after, exp_num==this_exp_num);
-        temp = c(temp, mean(after$slope) - mean(before$slope))
+
+        temp = c(temp, median(after$slope) - median(before$slope))
     }
     per_exp$disassembly = temp;
 
@@ -663,9 +679,9 @@ gather_barplot_properties <- function(data_sets, bootstrap.rep = 10000) {
 
 determine_mean_conf_int <- function(data, bootstrap.rep = 10000) {
 	require(boot);
-	boot_samp = boot(data, function(data,indexes) mean(data[indexes],na.rm=T), bootstrap.rep);
-		
-    conf_int = boot.ci(boot_samp, type="bca", conf=0.95)$percent[4:5]
+	
+    boot_samp = boot(data, function(data,indexes) mean(data[indexes],na.rm=T), bootstrap.rep);
+    conf_int = boot.ci(boot_samp, type="bca", conf=0.95)$bca[4:5]
 
     return(conf_int)
 }
