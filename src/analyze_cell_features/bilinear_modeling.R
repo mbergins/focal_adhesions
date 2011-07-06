@@ -108,7 +108,8 @@ draw_diagnostic_traces <- function(models,file.name) {
     for (i in ad_nums) {
         phase_lengths = c(models$assembly$length[i],models$disassembly$length[i])
         R_sq = c(models$assembly$adj.r.squared[i],models$disassembly$adj.r.squared[i])
-        plot_ad_intensity(models,i,phase_lengths,R_sq,y_limits);
+        slopes = c(models$assembly$slope[i],models$disassembly$slope[i])
+        plot_ad_intensity(models,i,phase_lengths,R_sq,y_limits,slopes);
     }
     graphics.off()
 }
@@ -328,20 +329,30 @@ if (length(args) != 0) {
         #######################################################################
         # Model Building and Output
         #######################################################################
+        model_five = build_bilinear_models(data_set,exp_props, min.phase.length = 5, 
+            time.spacing = time_spacing);
+        model_five$exp_props = exp_props;
+        model_five$exp_dir = data_dir;
+        model_five$exp_data = data_set;
+        R_model_file = sub(".csv$", "_length5.Rdata", model_file ,perl=T)
+        output_file = file.path(output_folder,R_model_file);
+        save(model_five,file = output_file)
+
         model = build_bilinear_models(data_set,exp_props, min.phase.length = min_length, 
             time.spacing = time_spacing);
         model$exp_props = exp_props;
         model$exp_dir = data_dir;
         model$exp_data = data_set;
         
+        R_model_file = sub(".csv$", ".Rdata", model_file ,perl=T)
+        output_file = file.path(output_folder,R_model_file);
+        save(model,file = output_file)
+        
         diagnostic_diagrams_file = sub(".csv$", ".pdf", model_file ,perl=T)
         output_file = file.path(output_folder,diagnostic_diagrams_file);
         source('FA_analysis_lib.R')
         draw_diagnostic_traces(model,output_file);
 
-        R_model_file = sub(".csv$", ".Rdata", model_file ,perl=T)
-        output_file = file.path(output_folder,R_model_file);
-        save(model,file = output_file)
 
         disassembly_models = model$disassembly;
         disassembly_models$ad_num = seq(1,dim(disassembly_models)[1]);
