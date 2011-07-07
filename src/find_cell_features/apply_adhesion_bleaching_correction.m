@@ -62,4 +62,14 @@ end
 
 csvwrite(fullfile(exp_dir,'adhesion_props','adhesion_mean_levels.csv'),expression_levels)
 
+plot(expression_levels);
+xlabel('Image Number')
+ylabel('Average Adhesion Intensity')
+y_limits = ylim();
+ylim([0,y_limits(2)]);
+set(gca, 'FontName','Helvetica','FontSize',16,'Box','off');
+set(gcf, 'PaperPositionMode', 'auto');
+print('-depsc2', fullfile(exp_dir,'adhesion_props','Adhesion_expression_levels.eps'));
+close;
+
 toc;
