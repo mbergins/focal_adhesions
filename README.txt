@@ -1,6 +1,6 @@
 Introduction:
 
-Congradulations, you have downloaded the focal adhesion analysis suite. You
+Congratulations, you have downloaded the focal adhesion analysis suite. You
 should see three folders:
 
 	-data: used to hold the raw imaging data, along with config files
