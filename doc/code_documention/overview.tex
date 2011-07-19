@@ -147,24 +147,26 @@
 	edge.
 
 \section{Finding Cell Features}
+
 	Two types of features are assessed by the system, the location of the cell
 	bodies in the images and locations of the adhesions. The cell bodies are
-	found using roughly the same method as one of Gaudenz papers\cite{Machacek06}.
-	Briefly, a histogram of the intensity values in the image is gathered and a
-	dip between the first to peaks is found. The first peek should encompass all
-	the background pixels (low fluorescence values), while the second peek
-	should encompass the cell. The low point between the two peaks is used as the
-	threshold and after some clean up steps, the cell bodies are found. The perl
-	script that controls sending off the cell finding matlab commands is
+	found using a method similar to that used in another
+	publication\cite{Machacek06}.  Briefly, a histogram of the intensity values
+	in the image is gathered and a dip between the first to peaks is found. The
+	first peek should encompass all the background pixels (low fluorescence
+	values), while the second peek should encompass the cell. The low point
+	between the two peaks is used as the threshold and after some clean up
+	steps, the cell bodies are found. The perl script that controls sending off
+	the cell finding matlab commands is
 	\emph{src/find\_cell\_features/collect\_mask\_image\_set.pl}, while the
 	matlab code used to analyze the images is
 	\emph{src/find\_cell\_features/find\_cell\_mask.m}. The resulting cell mask
 	binary images are written to each image folder to be used in downstream
 	processing steps. The system is flexible enough that if the source image
 	needed to find the cell mask isn't present, then the processing steps will
-	continue, with the properties where the cell mask is needed (distance from edge,
-	distance from center,...) won't be calculated.
-	
+	continue, with the properties where the cell mask is needed (distance from
+	edge, distance from center,...) won't be calculated.
+
 	The adhesions are also found using a slightly modified method already
 	present in the literature\cite{Zamir1999}. The method detailed in the paper
 	is a constrained watershed algorithm, I've made a few modifications to fill
@@ -172,16 +174,53 @@
 	and the code. The perl script that sends off the matlab jobs to find the
 	adhesions is \emph{src/find\_cell\_features/collect\_fa\_image\_set.pl},
 	while the matlab code is in
-	\emph{src/find\_cell\_features/find\_focal\_adhesions.pl}.
+		\emph{src/find\_cell\_features/find\_focal\_adhesions.pl}.
 
-	The last step in cell feature finding is to determine the properties of
-	each adhesion. Most of the properties are calculated by the matlab function
-	'regionprops'. 
-	
+	The last step in cell feature finding is to determine the properties of each
+	adhesion. Most of the properties are calculated by the matlab function
+	'regionprops'. The properties collected are output as CSV files into the
+	\emph{raw\_data} folder of each image's processing results folder.
 
 \section{Analyzing Cell Features}
 
+	The first step in analyzing the results involves tracking the adhesions. Two
+	programs are used here: build\_tracking\_data.pl and track\_adhesions.pl. The
+	first program builds the percentage overlap and centroid distance matrices,
+	while the second program takes those output files and makes the tracking
+	decisions. The result is a tracking matrix, which is put in a new folder
+	'tracking\_matrices'.  The tracking matrix is formatted so that each line
+	represents a single adhesion's lifetime. Any number below zero means the
+	adhesion either has yet to be born or has died.
+
+	After tracking the adhesions, several results matrices are produced using
+	\emph{gather\_tracking\_results.pl}. This program reads the data in from the
+	properties extracted by matlab, reformats the data and outputs the results
+	into the \emph{adhesion\_props} folder. Several different properties are
+	output as matrices formatted similarly to the tracking matrix, except the
+	adhesion identification numbers are replaced by the value of the property.
+	As an example, consider the \emph{Average\_adhesion\_signal.csv} file, each
+	line of this file follows a single adhesion's average pixel intensity
+	through time. All the adhesion time series are output in
+	\emph{lin\_time\_series} (lin standing for lineage).
+
+	With the lineage files output, the assembly and disassembly rates are
+	collected. This is controlled by \emph{build\_R\_models.pl}, which sets up the
+	R command that actually analyzes the data. The R code is in
+	\emph{FA\_analysis\_lib.R}.
+
 \section{Visualization}
+
+	All of the visualization code is controlled by
+	\emph{collect\_visualizations.pl}. This script makes a config file so matlab
+	knows where all the needed files are and then calls three matlab scripts.
+	The first is \emph{make\_movie\_frames}, which produces images showing each
+	adhesion with various types of highlighting. The \emph{make\_ghost\_frames}
+	command makes a visualization with each adhesion in all the images put on
+	top of one another and highlighted with the rainbow color scheme. Finally,
+	\emph{make\_single\_ad\_frames} produces small multiple visualizations of each
+	adhesion that had a assembly or disassembly model produced. All the
+	visualizations end up in the \emph{visualizations} folder in the results
+	folder.
 
 \bibliography{all_literature}{}
 \bibliographystyle{plain}
