@@ -3,16 +3,18 @@
 ###############################################################################
 
 build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacing=1,
-    diagnostic.figure = NA) {
+    expression.correction = NA,diagnostic.figure = NA) {
     
     #get a blank result to make sure we can add the proper number of blank
     #entries for adhesions which dont meet analysis criteria
     sample_model_results = fit_all_possible_log_models(list(values = 1:10,time = 1:10));
     
-    models = list()
-    
-    start_elapse = proc.time()[3];
+    if (!is.na(expression.correction)) {
+        data = data*(expression.correction/mean(data,na.rm=T));
+    }
 
+    models = list()
+    start_elapse = proc.time()[3];
     for (i in 1:dim(data)[1]) {
         #assembly rate gathering
         only.data = na.omit(data[i,]);
@@ -123,7 +125,6 @@ fit_all_possible_log_models <- function(time.series,min.phase.length=10) {
     time.series$value = time.series$value/time.series$value[1];
     time.series$value[time.series$value < 0] = 1E-5;
 
-
     for (i in min.phase.length:length(time.series$value)) {
         this_model = lm(log(time.series$value[1:i]) ~ time.series$time[1:i]);
         model_summary = summary(this_model);
@@ -166,7 +167,8 @@ find_optimum_model_indexes <- function(assembly=NULL,disassembly=NULL) {
                     next;
                 }
 
-                r_sums[as_index,dis_index] = assembly$adj.r.squared[as_index] + disassembly$adj.r.squared[dis_index]
+                r_sums[as_index,dis_index] = assembly$adj.r.squared[as_index] + 
+                    disassembly$adj.r.squared[dis_index]
             }
         }
         
@@ -347,16 +349,16 @@ if (length(args) != 0) {
         ##############################################
 
         model = build_bilinear_models(data_set,exp_props, min.phase.length = min_length, 
-            time.spacing = time_spacing);
+            time.spacing = time_spacing,expression.correction=1000);
         model$exp_props = exp_props;
         model$exp_dir = data_dir;
         model$exp_data = data_set;
         
-        R_model_file = sub(".csv$", ".Rdata", model_file ,perl=T)
+        R_model_file = sub(".csv$", "exp_corr.Rdata", model_file ,perl=T)
         output_file = file.path(output_folder,R_model_file);
         save(model,file = output_file)
         
-        diagnostic_diagrams_file = sub(".csv$", ".pdf", model_file ,perl=T)
+        diagnostic_diagrams_file = sub(".csv$", "exp_corr.pdf", model_file ,perl=T)
         output_file = file.path(output_folder,diagnostic_diagrams_file);
         source('FA_analysis_lib.R')
         draw_diagnostic_traces(model,output_file);
