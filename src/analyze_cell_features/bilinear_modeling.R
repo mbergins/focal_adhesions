@@ -10,6 +10,7 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
     sample_model_results = fit_all_possible_log_models(list(values = 1:10,time = 1:10));
     
     if (!is.na(expression.correction)) {
+        print('Expression correction applied')
         data = data*(expression.correction/mean(data,na.rm=T));
     }
 
@@ -335,7 +336,6 @@ if (length(args) != 0) {
             time.spacing = time_spacing);
         model_five$exp_props = exp_props;
         model_five$exp_dir = data_dir;
-        model_five$exp_data = data_set;
  
         R_model_file = sub(".csv$", "_length5.Rdata", model_file ,perl=T)
         output_file = file.path(output_folder,R_model_file);
@@ -352,7 +352,6 @@ if (length(args) != 0) {
             time.spacing = time_spacing,expression.correction=1000);
         model$exp_props = exp_props;
         model$exp_dir = data_dir;
-        model$exp_data = data_set;
         
         R_model_file = sub(".csv$", "exp_corr.Rdata", model_file ,perl=T)
         output_file = file.path(output_folder,R_model_file);
