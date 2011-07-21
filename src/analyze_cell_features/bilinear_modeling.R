@@ -11,7 +11,9 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
     
     if (!is.na(expression.correction)) {
         print('Expression correction applied')
-        data = data*(expression.correction/mean(data,na.rm=T));
+        data = data*(300/sd(as.vector(data),na.rm=T));
+        data = data - mean(data,na.rm=T) + expression.correction;
+        # data = data*(expression.correction/mean(data,na.rm=T));
     }
 
     models = list()
