@@ -158,7 +158,7 @@ for this_num = large_ad_nums
     %to fill any holes present
     this_ad = zeros(size(ad_zamir));
     this_ad(ad_zamir == this_num) = 1;
-    filled_ad = imfill(this_ad);
+    filled_ad = imfill(this_ad,'holes');
     
     ad_zamir(logical(filled_ad)) = this_num;
     if (i_p.Results.debug && mod(this_num,50)==0)
@@ -221,6 +221,10 @@ if (nargout > 0)
     varargout{1} = struct('adhesions',im2bw(ad_zamir,0),'ad_zamir',ad_zamir);
 end
 toc;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function threshed_image = find_threshed_image(high_passed_image, filter_thresh)
 

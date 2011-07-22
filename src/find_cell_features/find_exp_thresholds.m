@@ -14,8 +14,6 @@ i_p.parse(exp_dir,varargin{:});
 addpath('matlab_scripts');
 filenames = add_filenames_to_struct(struct());
 
-stdev_thresh = i_p.Results.stdev_thresh;
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -46,10 +44,8 @@ for i_num = 1:size(image_dirs,1)
         disp([i_num,size(image_dirs,1)])
     end
 end
-sorted_pix_vals = sort(all_images(:));
-remove_limit = round(length(sorted_pix_vals)/100000);
-sorted_pix_vals = sorted_pix_vals(remove_limit:(length(sorted_pix_vals)-remove_limit));
-min_max = [min(sorted_pix_vals),max(sorted_pix_vals)];
+trimmed_pix_values = trim_data_set(all_images(:),1E-6);
+min_max = [min(trimmed_pix_values),max(trimmed_pix_values)];
 
 output_file = fullfile(base_dir,image_dirs(1).name,filenames.focal_image_min_max);
 [output_folder,~,~] = fileparts(output_file);
@@ -59,18 +55,34 @@ end
 
 csvwrite(output_file,min_max);
 
-focal_image_threshold = mean(all_high_passed(:)) + i_p.Results.stdev_thresh*std(all_high_passed(:));
+trimmed_high_pass = trim_data_set(all_high_passed(:),1E-6);
+focal_image_threshold = mean(trimmed_high_pass) + i_p.Results.stdev_thresh*std(trimmed_high_pass);
 csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),focal_image_threshold);
 
-hist(all_high_passed(:),100);
+hist(trimmed_high_pass,100);
 xlabel('High Pass Filtered Intensity','FontSize',16,'FontName','Helvetica');
 ylabel('Pixel Count','FontSize',16,'FontName','Helvetica');
 y_limits = ylim();
-line([focal_image_threshold,focal_image_threshold],[0,y_limits(2)],'Color','red', ... 
-    'LineStyle','--','LineWidth',3);
+
+for i=1:length(focal_image_threshold)
+    this_thresh = focal_image_threshold(i);
+    line([this_thresh,this_thresh],[0,y_limits(2)],'Color','red', ... 
+        'LineStyle','--','LineWidth',3);
+end
+
 set(gca, 'FontName','Helvetica','FontSize',16,'Box','off');
 set(gcf, 'PaperPositionMode', 'auto');
 print('-depsc2', fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold_plot));
 close;
 
 toc;
+end
+
+function trimmed_set = trim_data_set(data,percentage)
+
+trimmed_set = sort(data);
+remove_limit = round(length(trimmed_set)*percentage);
+
+trimmed_set = trimmed_set(remove_limit:(end - remove_limit));
+
+end
