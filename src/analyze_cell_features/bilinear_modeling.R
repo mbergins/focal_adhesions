@@ -13,7 +13,6 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
         print('Expression correction applied')
         data = data*(300/sd(as.vector(data),na.rm=T));
         data = data - mean(data,na.rm=T) + expression.correction;
-        # data = data*(expression.correction/mean(data,na.rm=T));
     }
 
     models = list()
@@ -334,19 +333,19 @@ if (length(args) != 0) {
         #######################################################################
         # Model Building and Output
         #######################################################################
-        model_five = build_bilinear_models(data_set,exp_props, min.phase.length = 5, 
-            time.spacing = time_spacing);
-        model_five$exp_props = exp_props;
-        model_five$exp_dir = data_dir;
+        # model_five = build_bilinear_models(data_set,exp_props, min.phase.length = 5, 
+        #     time.spacing = time_spacing);
+        # model_five$exp_props = exp_props;
+        # model_five$exp_dir = data_dir;
  
-        R_model_file = sub(".csv$", "_length5.Rdata", model_file ,perl=T)
-        output_file = file.path(output_folder,R_model_file);
-        save(model_five,file = output_file)
-        
-        diagnostic_diagrams_file = sub(".csv$", "_length5.pdf", model_file ,perl=T)
-        output_file = file.path(output_folder,diagnostic_diagrams_file);
-        source('FA_analysis_lib.R')
-        draw_diagnostic_traces(model_five,output_file);
+        # R_model_file = sub(".csv$", "_length5.Rdata", model_file ,perl=T)
+        # output_file = file.path(output_folder,R_model_file);
+        # save(model_five,file = output_file)
+        # 
+        # diagnostic_diagrams_file = sub(".csv$", "_length5.pdf", model_file ,perl=T)
+        # output_file = file.path(output_folder,diagnostic_diagrams_file);
+        # source('FA_analysis_lib.R')
+        # draw_diagnostic_traces(model_five,output_file);
         
         ##############################################
 

@@ -422,7 +422,7 @@ plot_stage_length_data <- function(stage_length_data, type='stacked', top_gap = 
     }
 }
 
-add_labels_with_sub <- function(data_sets,names,at,subtitle=NA,...) {
+add_labels_with_sub <- function(data_sets,names,at,subtitle=NA,with.axis=T,...) {
     pl_size = par("usr");
     char_size = par("cxy")[2]
     
@@ -436,8 +436,10 @@ add_labels_with_sub <- function(data_sets,names,at,subtitle=NA,...) {
             labs = c(labs, paste(names[i],' (n=',length(data_sets[[i]]),')',sep=''))
         }
     }
-
-    axis(1,labels=labs,at=at,...)
+    
+    if (with.axis) {
+        axis(1,labels=labs,at=at,...)
+    }
 
     if (! is.na(subtitle)) {
         lines(c(min(at),max(at)),rep(pl_size[3]-char_size*1.675,2),lwd=3)
@@ -534,19 +536,22 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
 }
 
 filter_results_by_drug_addition <- function(data_set) {
-    assembly_filter = data_set$as$birth_i_num <= data_set$as$drug_addition_time &
-        data_set$as$death_i_num >= data_set$as$drug_addition_time
-    assembly_filter[is.na(assembly_filter)] = FALSE
+    # assembly_filter = data_set$as$birth_i_num <= data_set$as$drug_addition_time &
+    #     data_set$as$death_i_num >= data_set$as$drug_addition_time
+    # assembly_filter[is.na(assembly_filter)] = FALSE
 
-    disassembly_filter = data_set$di$birth_i_num <= data_set$di$drug_addition_time &
-        data_set$di$death_i_num >= data_set$di$drug_addition_time
-    disassembly_filter[is.na(disassembly_filter)] = FALSE
-    # assembly_filter = data_set$assembly$birth_i_num < data_set$assembly$drug_addition_time &
-    #     (data_set$assembly$birth_i_num + data_set$assembly$length) > data_set$assembly$drug_addition_time
-    # 
-    # disassembly_filter = data_set$disassembly$death_i_num > data_set$disassembly$drug_addition_time &
-    #     (data_set$d$death_i_num - data_set$d$length) < data_set$disassembly$drug_addition_time
+    # disassembly_filter = data_set$di$birth_i_num <= data_set$di$drug_addition_time &
+    #     data_set$di$death_i_num >= data_set$di$drug_addition_time
+    # disassembly_filter[is.na(disassembly_filter)] = FALSE
+    assembly_filter = data_set$assembly$birth_i_num < data_set$assembly$drug_addition_time &
+        (data_set$assembly$birth_i_num + data_set$assembly$length) > data_set$assembly$drug_addition_time
     
+    disassembly_filter = data_set$disassembly$death_i_num > data_set$disassembly$drug_addition_time &
+        (data_set$d$death_i_num - data_set$d$length) < data_set$disassembly$drug_addition_time
+    
+    assembly_close = data_set$assembly$birth_i_num > data_set$assembly$drug_addition_time &
+        data_set$assembly$birth_i_num <= data_set$assembly$drug_addition_time + 5
+  
     assem_length = length(assembly_filter);
     assem_filt_length = sum(assembly_filter);
     disassem_length = length(disassembly_filter);
@@ -888,7 +893,7 @@ ranges_overlap <- function(range_1, range_2) {
 	return(FALSE);
 }
 
-gather_general_dynamic_props <- function(results, debug=FALSE) {
+gather_general_dynamic_props <- function(results, min.longevity=NA, debug=FALSE) {
 	points = list()
 	for (i in 1:length(results)) {
 		res = results[[i]]
@@ -897,6 +902,10 @@ gather_general_dynamic_props <- function(results, debug=FALSE) {
         }
 
         filt = ! res$exp_props$split_birth_status & res$exp_props$death_status
+        
+        if (! is.na(min.longevity)) {
+            filt = filt & !is.na(res$exp_props$longevity) & res$exp_props$longevity >= min.longevity;
+        }
 
 		points$longevity = c(points$longevity, res$exp_props$longevity[filt])
 		points$mean_area = c(points$mean_area, res$exp_props$mean_area[filt])
@@ -912,6 +921,17 @@ gather_general_dynamic_props <- function(results, debug=FALSE) {
 
 	points = as.data.frame(points)
 	points
+}
+
+gather_dynamics_summary <- function(data,debug=FALSE) {
+    data_summary = list()
+
+    data_summary$counts = lapply(data,length);
+    data_summary$mean = lapply(data,function(x) mean(x,na.rm=T));
+
+    data_summary$t_conf = lapply(data, function(x) t.test(x)$conf.int[1:2])
+    
+    return(data_summary);
 }
 
 gather_static_props <- function(ind_results, debug=FALSE) {
@@ -944,15 +964,17 @@ load_results <- function(dirs,file, debug=TRUE) {
     if (length(dirs) == 0) return()
     if (debug) print(paste('Loading data from',length(dirs),'files.'))
 
+    files_found = 0;
 	for (i in 1:length(dirs)) {
 		this_file = file.path(dirs[i],file)
 		if (file.exists(this_file)) {
+            files_found = files_found + 1;
             if (debug) {
                 print(paste('Loading File:', this_file))
             }
 			var_name = load(file.path(dirs[i],file))
-			results[[i]] = get(var_name)
-		}
+			results[[files_found]] = get(var_name)
+		} 
 	}
 	results
 }
