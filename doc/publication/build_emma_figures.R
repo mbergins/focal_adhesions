@@ -78,25 +78,28 @@ for (exp_type in names(raw_data)) {
 
 processed = list();
 dynamic_props = list();
+dynamic_props_five = list();
 full_cell_props = list();
 static_props = list();
 for (exp_type in names(raw_data)) {
-    for (property in names(raw_data[[exp_type]])) {
-        if (property != "intensity") {
-            next;
-        }
-        print(paste("Filtering", exp_type, property));
-        
-        processed$no_filt[[exp_type]][[property]] = filter_results(raw_data[[exp_type]][[property]], 
-            min.r.sq = -Inf, max.p.val = Inf, pos.slope=FALSE);
-        
-        processed$only_signif[[exp_type]][[property]] = filter_results(raw_data[[exp_type]][[property]], 
-            min.r.sq = -Inf, max.p.val = 0.05, model_count = total_models);
-
-    }
+    # for (property in names(raw_data[[exp_type]])) {
+    #     if (property != "intensity") {
+    #         next;
+    #     }
+    #     print(paste("Filtering", exp_type, property));
+    #     
+    #     processed$no_filt[[exp_type]][[property]] = filter_results(raw_data[[exp_type]][[property]], 
+    #         min.r.sq = -Inf, max.p.val = Inf, pos.slope=FALSE);
+    #     
+    #     processed$only_signif[[exp_type]][[property]] = filter_results(raw_data[[exp_type]][[property]], 
+    #         min.r.sq = -Inf, max.p.val = 0.05, model_count = total_models);
+    # }
     
-    full_cell_props[[exp_type]] = gather_global_exp_summary(raw_data[[exp_type]]$intensity)
-    dynamic_props[[exp_type]] = gather_general_dynamic_props(raw_data[[exp_type]]$intensity)
+    # full_cell_props[[exp_type]] = gather_global_exp_summary(raw_data[[exp_type]]$intensity)
+    dynamic_props[[exp_type]] = gather_general_dynamic_props(raw_data[[exp_type]]$intensity, min.longevity=NA,
+        debug=F)
+    dynamic_props_five[[exp_type]] = gather_general_dynamic_props(raw_data[[exp_type]]$intensity, 
+        min.longevity=5, debug=F)
 }
 
 print('Done Filtering Data')
@@ -104,9 +107,7 @@ out_folder = '../../doc/publication/figures/emma'
 dir.create(out_folder,recursive=TRUE, showWarnings=FALSE);
 
 KD_Pax = processed$only_signif$KD_Pax$intensity;
-KD_Pax_nf = processed$no_filt$KD_Pax$intensity;
 IA32_Pax = processed$only_signif$WT_Pax$intensity;
-IA32_Pax_nf = processed$no_filt$WT_Pax$intensity;
 
 KD_Vin = processed$only_signif$KD_Vin$intensity;
 IA32_Vin = processed$only_signif$WT_Vin$intensity;
@@ -165,6 +166,98 @@ stop()
 ################################################################################
 #Plotting
 ################################################################################
+
+########################################
+# Average Adhesion Area - Fibronectin
+########################################
+ad_areas = list(dynamic_props$Fibro_1ug$mean_area, dynamic_props$Fibro_10ug$mean_area,
+    dynamic_props$Fibro_100ug$mean_area)
+
+fibro_areas = gather_dynamics_summary(ad_areas)
+
+svg(file.path(out_folder,'overall_FA_props','fibro_concens_areas.svg'),width=4,height=5)
+par(bty='n',mar=c(2.8,2.6,0.3,0), mgp=c(1.6,0.5,0),xpd=T)
+# bar_data = barplot(unlist(ad_areas_mean), names=rep(c('NS', '2xKD'),3))
+bar_data = barplot(unlist(fibro_areas$mean), ylim=c(0,max(unlist(fibro_areas$t_conf))),
+    ylab='Mean Adhesion Area (pixels)', names=c(1,10,100))
+
+for (i in 1:length(ad_conf_int)) {
+    errbar(bar_data[i],fibro_areas$mean[[i]],fibro_areas$t_conf[[i]][2],
+        fibro_areas$t_conf[[i]][1],add=T,cex=1E-10)
+}
+
+add_labels_with_sub(c(NA,NA,NA),names=c(1,10,100),bar_data[1:3],
+    subtitle='Fibronectin Concentration (\u03BCg/mL)',with.axis=F)
+graphics.off()
+
+########################################
+# Average Axial Ratio - Fibronectin
+########################################
+fibro_axial = gather_dynamics_summary(list(dynamic_props$Fibro_1ug$mean_axial, 
+    dynamic_props$Fibro_10ug$mean_axial,dynamic_props$Fibro_100ug$mean_axial))
+
+svg(file.path(out_folder,'overall_FA_props','fibro_concens_ax_ratio.svg'),width=4,height=5)
+par(bty='n',mar=c(2.8,2.6,0.3,0), mgp=c(1.6,0.5,0),xpd=T)
+# bar_data = barplot(unlist(ad_areas_mean), names=rep(c('NS', '2xKD'),3))
+bar_data = barplot(unlist(fibro_axial$mean), ylim=c(0,max(unlist(fibro_axial$t_conf))),
+    ylab='Mean Adhesion Area (pixels)', names=c(1,10,100))
+
+for (i in 1:length(ad_conf_int)) {
+    errbar(bar_data[i],fibro_axial$mean[[i]],fibro_axial$t_conf[[i]][2],
+        fibro_axial$t_conf[[i]][1],add=T,cex=1E-10)
+}
+
+add_labels_with_sub(c(NA,NA,NA),names=c(1,10,100),bar_data[1:3],
+    subtitle='Fibronectin Concentration (\u03BCg/mL)',with.axis=F)
+graphics.off()
+
+
+########################################
+# Average Adhesion Area - Different Tags
+########################################
+ad_areas = list(dynamic_props$WT_Pax$mean_area, dynamic_props$KD_Pax$mean_area,
+    dynamic_props$WT_Vin$mean_area,dynamic_props$KD_Vin$mean_area,
+    dynamic_props$WT_FAK$mean_area,dynamic_props$KD_FAK$mean_area)
+
+tag_areas = gather_dynamics_summary(ad_areas)
+
+svg(file.path(out_folder,'overall_FA_props','tagged_ads_100ug_areas.svg'),width=5,height=5)
+par(bty='n',mar=c(2.6,2.6,0.3,0), mgp=c(1.6,0.5,0),xpd=T)
+# bar_data = barplot(unlist(ad_areas_mean), names=rep(c('NS', '2xKD'),3))
+bar_data = barplot(unlist(tag_areas$mean), ylim=c(0,max(unlist(tag_areas$t_conf))),
+    ylab='Mean Adhesion Area (pixels)', names=rep(c('NS', '2xKD'),3))
+
+for (i in 1:length(ad_conf_int)) {
+    errbar(bar_data[i],tag_areas$mean[[i]],tag_areas$t_conf[[i]][2],tag_areas$t_conf[[i]][1],add=T,cex=1E-10)
+}
+
+add_labels_with_sub(c(NA,NA),names=c('NS','2xKD'),bar_data[1:2],subtitle='Pax',with.axis=F)
+add_labels_with_sub(c(NA,NA),names=c('NS','2xKD'),bar_data[3:4],subtitle='Vin',with.axis=F)
+add_labels_with_sub(c(NA,NA),names=c('NS','2xKD'),bar_data[5:6],subtitle='FAK',with.axis=F)
+graphics.off()
+
+########################################
+# Average Axial Ratio - Different Tags
+########################################
+ad_axials = gather_dynamics_summary(list(dynamic_props$WT_Pax$mean_axial_ratio, 
+    dynamic_props$KD_Pax$mean_axial_ratio, dynamic_props$WT_Vin$mean_axial_ratio,
+    dynamic_props$KD_Vin$mean_axial_ratio, dynamic_props$WT_FAK$mean_axial_ratio,
+    dynamic_props$KD_FAK$mean_axial_ratio))
+
+svg(file.path(out_folder,'overall_FA_props','tagged_ads_100ug_ax_ratio.svg'),width=5,height=5)
+par(bty='n',mar=c(2.6,2.6,0.3,0), mgp=c(1.6,0.5,0),xpd=T)
+bar_data = barplot(unlist(ad_axials$mean), ylim=c(0,max(unlist(ad_axials$t_conf))),
+    ylab='Mean Adhesion Axial Ratio', names=rep(c('NS', '2xKD'),3))
+
+for (i in 1:length(ad_conf_int)) {
+    errbar(bar_data[i],ad_axials$mean[[i]],ad_axials$t_conf[[i]][2],ad_axials$t_conf[[i]][1],add=T,cex=1E-10)
+}
+
+add_labels_with_sub(c(NA,NA),names=c('NS','2xKD'),bar_data[1:2],subtitle='Pax',with.axis=F)
+add_labels_with_sub(c(NA,NA),names=c('NS','2xKD'),bar_data[3:4],subtitle='Vin',with.axis=F)
+add_labels_with_sub(c(NA,NA),names=c('NS','2xKD'),bar_data[5:6],subtitle='FAK',with.axis=F)
+graphics.off()
+
 
 ########################################
 # All-by-All Plots
