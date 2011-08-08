@@ -1,0 +1,8 @@
+Fibro 100ug WT_01 data set
+
+There are 15 minutes between each of the sampled small multple sets
+(variable_angle.png and stable_angle.png)
+
+Adhesion 506 (variable_angle.png) - mean deviance 21.4 degrees
+
+Adhesion 1 (stable_angle.png) - mean deviance 3.2 degrees
