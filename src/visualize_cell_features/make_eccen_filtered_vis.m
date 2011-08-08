@@ -33,11 +33,11 @@ image_dirs = image_dirs(3:end);
 major_axis = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','MajorAxisLength.csv'));
 minor_axis = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','MinorAxisLength.csv'));
 
-eccentricity = major_axis ./ minor_axis;
+axis_ratio = major_axis ./ minor_axis;
 
 tracking_mat = csvread(fullfile(exp_dir,'tracking_matrices','tracking_seq.csv')) + 1;
 
-output_dir = fullfile(exp_dir,'visualizations','eccentricity_highlight');
+output_dir = fullfile(exp_dir,'visualizations','axis_ratio_highlight');
 if (not(exist(output_dir,'dir')))
     mkdir(output_dir);
 end
@@ -47,11 +47,11 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i_num = 1:size(image_dirs)
     this_data = read_in_file_set(fullfile(base_dir,image_dirs(i_num).name),filenames);
-    this_eccen = eccentricity(:,i_num);
+    this_ratio = axis_ratio(:,i_num);
     this_tracking = tracking_mat(:,i_num);
     
     ad_rows = this_tracking > 0;
-    high_eccen_rows = this_eccen > 2;
+    high_eccen_rows = this_ratio >= 3;
     
     high_eccen_rows = ad_rows & high_eccen_rows;
     low_eccen_rows = ad_rows & not(high_eccen_rows);
