@@ -1,10 +1,10 @@
-function write_montage_image_set(image_set,output_file,varargin)
+function [varargout] = write_montage_image_set(image_set,output_file,varargin)
 %WRITE_MONTAGE_IMAGE_SET    Takes in a set of images to be montaged,
 %                           arranges them into a single frame and writes to
 %                           the given output file
 %
-%   write_montage_image_set(i_set, out_f) 
-%   
+%   write_montage_image_set(i_set, out_f)
+%
 %   Options:
 %       -num_cols: number of columns to use
 %       -num_images: used in conjuction with phase to decide how many
@@ -28,6 +28,9 @@ i_p.addOptional('pixel_size',-Inf,@(x)isnumeric(x) & x > 0);
 i_p.addOptional('bar_size',10,@(x)isnumeric(x) & x > 0);
 i_p.addOptional('bar_position',1,@(x)isnumeric(x) & x > 0);
 
+i_p.addOptional('border_size',3,@(x)isnumeric(x) & x > 0);
+i_p.addOptional('border_color',[0.5,0.5,0.5],@(x)all(isnumeric(x) & x >= 0));
+
 i_p.parse(image_set,output_file,varargin{:});
 
 %The image set may start when many empty cells, first we clear all those
@@ -37,7 +40,7 @@ while isempty(image_set{end}), image_set = image_set(1:(end-1)); end
 
 if (isempty(strmatch('num_images', i_p.UsingDefaults)))
     assert(size(image_set,2) >= i_p.Results.num_images, ...
-           'Problem with number of images requested: image_set:%d Requested Number:%d',size(image_set,2), i_p.Results.num_images)
+        'Problem with number of images requested: image_set:%d Requested Number:%d',size(image_set,2), i_p.Results.num_images)
     if (isempty(strmatch('phase', i_p.UsingDefaults)))
         if (strcmpi(i_p.Results.phase, 'assembly'))
             image_set = image_set(1:i_p.Results.num_images);
@@ -47,7 +50,7 @@ if (isempty(strmatch('num_images', i_p.UsingDefaults)))
             warning('FA:phaseType','Expected assembly or disassembly for phase parameter, got %s',i_p.Results.phase)
         end
         assert(size(image_set,2) == i_p.Results.num_images, ...
-               'Problem with removing images: image_set:%d Requested Number:%d',size(image_set,2), i_p.Results.num_images)
+            'Problem with removing images: image_set:%d Requested Number:%d',size(image_set,2), i_p.Results.num_images)
     else
         warning('FA:adCount','When num_images parameter specified, expected phase parameter to be set to either assembly or disassembly.')
     end
@@ -72,7 +75,7 @@ if (not(isempty(strmatch('num_cols', i_p.UsingDefaults))))
     images_per_side = ones(1,2);
     for j = 1:(ceil(sqrt(total_images)) - 1)
         if (total_images <= images_per_side(1)*images_per_side(2)), continue; end
-
+        
         if (total_images <= j * (j + 1))
             images_per_side = [j, j+1];
             continue;
@@ -93,8 +96,8 @@ montage = 0.5*ones(image_size(1)*images_per_side(1)+images_per_side(1) - 1, ...
 for j = 1:images_per_side(1)
     for k = 1:images_per_side(2)
         i_index = (j-1)*images_per_side(2) + k;
-
-        if (i_index > total_images), continue; end 
+        
+        if (i_index > total_images), continue; end
         if (isempty(image_set{i_index})), continue; end
         
         montage((j-1)*image_size(1) + j:(j)*image_size(1) + j - 1, ...
@@ -106,9 +109,28 @@ end
 output_folder = fileparts(output_file);
 if (not(isempty(output_folder)) && not(exist(output_folder,'dir'))), mkdir(output_folder); end
 
-if (isempty(strmatch('pixel_size', i_p.UsingDefaults)))
+if (not(any(strcmp('pixel_size',i_p.UsingDefaults))))
     montage = draw_scale_bar(montage,i_p.Results.pixel_size, 'bar_size', ...
         i_p.Results.bar_size,'position_code',i_p.Results.bar_position);
 end
 
-imwrite(montage, output_file);
+if (not(any(strcmp('border_size',i_p.UsingDefaults))))
+    image_size = size(montage);
+    b_size = i_p.Results.border_size;
+    b_color = i_p.Results.border_color;
+    
+    border = cat(3,ones(image_size(1)+2*b_size,image_size(2)+2*b_size)*b_color(1), ...
+        ones(image_size(1)+2*b_size,image_size(2)+2*b_size)*b_color(2), ...
+        ones(image_size(1)+2*b_size,image_size(2)+2*b_size)*b_color(3));
+    
+    border((b_size+1):(b_size+image_size(1)),(b_size+1):(b_size+image_size(2)),:) = montage;
+    montage = border;
+    1;
+    
+end
+
+if (nargout >= 1)
+    varargout(1) = {montage};
+else
+    imwrite(montage, output_file);
+end

@@ -205,11 +205,12 @@ for i = 1:max_image_num
 
     spacer = 0.5*ones(size(edge_image_ad_bounded,1),1,3);
     
-    frame = cell(1,3);
-    frame{1} = [edge_image_ad_bounded,spacer,highlighted_all];
-    frame{2} = [cat(3,orig_i,orig_i,orig_i),spacer,highlighted_all];
-    frame{3} = [edge_image_ad_time_bounded,spacer,highlighted_time];
-    
+    frame = cell(1,1);
+    frame{1} = [cat(3,orig_i,orig_i,orig_i),spacer,highlighted_all];
+%     frame{1} = [edge_image_ad_bounded,spacer,highlighted_all];
+%     
+%     frame{3} = [edge_image_ad_time_bounded,spacer,highlighted_time];
+
     %Add scale bars if the pixel size is available
     if (exist('pixel_size','var') && not(i_p.Results.no_scale_bar))
         for j = 1:size(frame,2)
