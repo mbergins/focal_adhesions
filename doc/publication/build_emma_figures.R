@@ -17,35 +17,35 @@ raw_data_base_dir = '../../results/emma/processed_2stdev/';
 # Various adhesion tags, all on 100ug fibronectin
 ########################################
 
-#KD - Pax
-exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_KD/Pax_*/adhesion_props/models/'))
-exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
-raw_data$KD_Pax$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
-
-#IA32 - Pax
-exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_IA32/Pax_*/adhesion_props/models/'))
-exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
-raw_data$WT_Pax$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
-
-#KD - FAK 
-exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_KD/FAK_*/adhesion_props/models/'))
-exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
-raw_data$KD_FAK$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
-
-#IA32 - FAK 
-exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_IA32/FAK_*/adhesion_props/models/'))
-exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
-raw_data$WT_FAK$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
-
-#KD - Vin
-exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_KD/Vin_*/adhesion_props/models/'))
-exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
-raw_data$KD_Vin$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
-
-#IA32 - Vin
-exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_IA32/Vin_*/adhesion_props/models/'))
-exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
-raw_data$WT_Vin$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
+# #KD - Pax
+# exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_KD/Pax_*/adhesion_props/models/'))
+# exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
+# raw_data$KD_Pax$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
+# 
+# #IA32 - Pax
+# exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_IA32/Pax_*/adhesion_props/models/'))
+# exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
+# raw_data$WT_Pax$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
+# 
+# #KD - FAK 
+# exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_KD/FAK_*/adhesion_props/models/'))
+# exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
+# raw_data$KD_FAK$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
+# 
+# #IA32 - FAK 
+# exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_IA32/FAK_*/adhesion_props/models/'))
+# exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
+# raw_data$WT_FAK$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
+# 
+# #KD - Vin
+# exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_KD/Vin_*/adhesion_props/models/'))
+# exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
+# raw_data$KD_Vin$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
+# 
+# #IA32 - Vin
+# exp_dirs <- Sys.glob(file.path(raw_data_base_dir,'100ug_IA32/Vin_*/adhesion_props/models/'))
+# exp_dirs <- exp_dirs[file_test('-d',exp_dirs)]
+# raw_data$WT_Vin$intensity = load_results(exp_dirs,file.path('Average_adhesion_signal.Rdata'));
 
 ########################################
 # Fibronectin Percentages
@@ -76,90 +76,20 @@ for (exp_type in names(raw_data)) {
     total_models = total_models + find_number_of_models(raw_data[[exp_type]]$intensity);
 }
 
-processed = list();
+source('FA_analysis_lib.R')
 dynamic_props = list();
-dynamic_props_five = list();
-full_cell_props = list();
-static_props = list();
+adhesion_counts = list()
 for (exp_type in names(raw_data)) {
-    # for (property in names(raw_data[[exp_type]])) {
-    #     if (property != "intensity") {
-    #         next;
-    #     }
-    #     print(paste("Filtering", exp_type, property));
-    #     
-    #     processed$no_filt[[exp_type]][[property]] = filter_results(raw_data[[exp_type]][[property]], 
-    #         min.r.sq = -Inf, max.p.val = Inf, pos.slope=FALSE);
-    #     
-    #     processed$only_signif[[exp_type]][[property]] = filter_results(raw_data[[exp_type]][[property]], 
-    #         min.r.sq = -Inf, max.p.val = 0.05, model_count = total_models);
-    # }
-    
-    # full_cell_props[[exp_type]] = gather_global_exp_summary(raw_data[[exp_type]]$intensity)
-    dynamic_props[[exp_type]] = gather_general_dynamic_props(raw_data[[exp_type]]$intensity, min.longevity=NA,
+    dynamic_props[[exp_type]] = gather_general_dynamic_props(raw_data[[exp_type]]$intensity, min.longevity=1,
         debug=F)
-    dynamic_props_five[[exp_type]] = gather_general_dynamic_props(raw_data[[exp_type]]$intensity, 
-        min.longevity=5, debug=F)
+    adhesion_counts[[exp_type]] = count_adhesions_per_image(raw_data[[exp_type]]$intensity)
+        
 }
 
 print('Done Filtering Data')
 out_folder = '../../doc/publication/figures/emma'
 dir.create(out_folder,recursive=TRUE, showWarnings=FALSE);
-
-KD_Pax = processed$only_signif$KD_Pax$intensity;
-IA32_Pax = processed$only_signif$WT_Pax$intensity;
-
-KD_Vin = processed$only_signif$KD_Vin$intensity;
-IA32_Vin = processed$only_signif$WT_Vin$intensity;
-
-KD_FAK = processed$only_signif$KD_FAK$intensity;
-IA32_FAK = processed$only_signif$WT_FAK$intensity;
-
-Fibro_1ug = processed$only_signif$Fibro_1ug$intensity;
-Fibro_10ug = processed$only_signif$Fibro_10ug$intensity;
-Fibro_100ug = processed$only_signif$Fibro_100ug$intensity;
-
-# rate_angle_data = list()
-# rate_angle_data$Fibro_100ug = get_angle_data_set(raw_data$Fibro_100ug$intensity)
-# rate_angle_data$Fibro_10ug = get_angle_data_set(raw_data$Fibro_10ug$intensity)
-# rate_angle_data$Fibro_1ug = get_angle_data_set(raw_data$Fibro_1ug$intensity)
-# 
-# split_data = list()
-# split_data$Fibro_100ug = split_angle_data(rate_angle_data$Fibro_100ug)
-# split_data$Fibro_10ug = split_angle_data(rate_angle_data$Fibro_10ug)
-# split_data$Fibro_1ug = split_angle_data(rate_angle_data$Fibro_1ug)
  
-stop()
- 
-###########################################################
-# P-value calculations
-###########################################################
-
-Pax_p = list();
-Pax_p$assembly = determine_median_p_value(IA32_Pax$assembly$slope,KD_Pax$assembly$slope)
-Pax_p$disassembly = determine_median_p_value(IA32_Pax$disassembly$slope,KD_Pax$disassembly$slope)
-
-FAK_p = list();
-FAK_p$assembly = determine_median_p_value(IA32_FAK$assembly$slope,KD_FAK$assembly$slope)
-FAK_p$disassembly = determine_median_p_value(IA32_FAK$disassembly$slope,KD_FAK$disassembly$slope)
-
-Vin_p = list();
-Vin_p$assembly = determine_median_p_value(IA32_Vin$assembly$slope,KD_Vin$assembly$slope)
-Vin_p$disassembly = determine_median_p_value(IA32_Vin$disassembly$slope,KD_Vin$disassembly$slope)
-
-fibro_1ug_10ug_p = list()
-fibro_1ug_10ug_p$assembly = determine_median_p_value(Fibro_1ug$assembly$slope,Fibro_10ug$assembly$slope)
-fibro_1ug_10ug_p$disassembly = determine_median_p_value(Fibro_1ug$disassembly$slope,Fibro_10ug$disassembly$slope)
-
-fibro_1ug_100ug_p = list()
-fibro_1ug_100ug_p$assembly = determine_median_p_value(Fibro_1ug$assembly$slope,Fibro_100ug$assembly$slope)
-fibro_1ug_100ug_p$disassembly = determine_median_p_value(Fibro_1ug$disassembly$slope,Fibro_100ug$disassembly$slope)
-
-fibro_10ug_100ug_p = list()
-fibro_10ug_100ug_p$assembly = determine_median_p_value(Fibro_10ug$assembly$slope,Fibro_100ug$assembly$slope)
-fibro_10ug_100ug_p$disassembly = determine_median_p_value(Fibro_10ug$disassembly$slope,Fibro_100ug$disassembly$slope)
-
-prep_time = proc.time()
 system("notify-send \"done reading in R data\"");
 stop()
 
@@ -167,28 +97,34 @@ stop()
 #Plotting
 ################################################################################
 
-########################################
-# Average Adhesion Area - Fibronectin
-########################################
-ad_areas = list(dynamic_props$Fibro_1ug$mean_area, dynamic_props$Fibro_10ug$mean_area,
-    dynamic_props$Fibro_100ug$mean_area)
+dynamic_props_names = names(dynamic_props$Fibro_1ug);
+prop_summaries = list()
 
-fibro_areas = gather_dynamics_summary(ad_areas)
-
-svg(file.path(out_folder,'overall_FA_props','fibro_concens_areas.svg'),width=4,height=5)
-par(bty='n',mar=c(2.8,2.6,0.3,0), mgp=c(1.6,0.5,0),xpd=T)
-# bar_data = barplot(unlist(ad_areas_mean), names=rep(c('NS', '2xKD'),3))
-bar_data = barplot(unlist(fibro_areas$mean), ylim=c(0,max(unlist(fibro_areas$t_conf))),
-    ylab='Mean Adhesion Area (pixels)', names=c(1,10,100))
-
-for (i in 1:length(ad_conf_int)) {
-    errbar(bar_data[i],fibro_areas$mean[[i]],fibro_areas$t_conf[[i]][2],
-        fibro_areas$t_conf[[i]][1],add=T,cex=1E-10)
+for (prop in dynamic_props_names) {
+    prop_summaries[[prop]] = gather_dynamics_summary(list(dynamic_props$Fibro_1ug[[prop]],
+        dynamic_props$Fibro_10ug[[prop]],dynamic_props$Fibro_100ug[[prop]]));
 }
 
-add_labels_with_sub(c(NA,NA,NA),names=c(1,10,100),bar_data[1:3],
-    subtitle='Fibronectin Concentration (\u03BCg/mL)',with.axis=F)
-graphics.off()
+props_of_interest = c('mean_area','mean_axial_ratio','longevity','average_speed')
+for (prop in props_of_interest) {
+    
+    data = prop_summaries[[prop]];
+    
+    svg(file.path(out_folder,'overall_FA_props',paste(prop,'.svg',sep='')),width=4,height=5)
+    par(bty='n',mar=c(2.8,2.6,0.3,0), mgp=c(1.6,0.5,0),xpd=T)
+
+    bar_data = barplot(unlist(data$mean), ylim=c(0,max(unlist(data$t_conf))),
+        ylab=prop,names=c('1','10','100'))
+
+    for (i in 1:length(data$mean)) {
+        errbar(bar_data[i],data$mean[[i]],data$t_conf[[i]][2],
+            data$t_conf[[i]][1],add=T,cex=1E-10)
+    }
+
+    graphics.off()
+}
+
+
 
 ########################################
 # Average Axial Ratio - Fibronectin
