@@ -498,6 +498,9 @@ sub gather_longevities {
             push @longevities, $default_val;
         } else {
             my $count = scalar(grep $tracking_mat[$i][$_] > -1, 0..$#{$tracking_mat[$i]});
+			if (exists($cfg{time_spacing})) {
+				$count = $count * $cfg{time_spacing};
+			}
             push @longevities, $count;
         }
     }
@@ -685,6 +688,10 @@ sub gather_adhesion_speeds {
                 my $end_y = ${ $data_sets{$end_i_num}{Centroid_y} }[$end_ad_num];
 
                 my $speed = sqrt(($start_x - $end_x)**2 + ($start_y - $end_y)**2);
+				
+				if (defined $cfg{time_spacing}) {
+					$speed = $speed/$cfg{time_spacing};
+				}
 
                 push @{ $speed[$i] }, $speed;
                 push @{ $velocity[$i] }, [ ($start_x - $end_x, $start_y - $end_y) ];
