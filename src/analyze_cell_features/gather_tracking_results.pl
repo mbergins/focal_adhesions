@@ -280,7 +280,9 @@ sub gather_and_output_lineage_properties {
     undef $props{Average_adhesion_signal};
     
 	$props{MajorAxisLength} = &gather_prop_seq("MajorAxisLength");
+	$props{mean_major_axis} = &gather_average_value($props{MajorAxisLength});
     $props{MinorAxisLength} = &gather_prop_seq("MinorAxisLength");
+	$props{mean_minor_axis} = &gather_average_value($props{MinorAxisLength});
 	$props{axial_ratio} = &gather_prop_ratio($props{"MajorAxisLength"},$props{"MinorAxisLength"});
 	$props{mean_axial_ratio} = &gather_average_value($props{axial_ratio});
 	
@@ -824,7 +826,8 @@ sub gather_lineage_summary_data {
 	mean_edge_dist ending_edge_dist starting_center_dist mean_center_dist
 	ending_center_dist merge_count split_count death_status split_birth_status
 	average_speeds max_speeds ad_sig birth_i_num start_x start_y death_i_num
-	end_x end_y mean_axial_ratio drug_addition_time); 
+	end_x end_y mean_axial_ratio mean_major_axis mean_minor_axis
+	drug_addition_time); 
 	
     my @lin_summary_data;
     for (@possible_props) {
