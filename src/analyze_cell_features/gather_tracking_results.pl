@@ -688,7 +688,8 @@ sub gather_adhesion_speeds {
                 my $end_y = ${ $data_sets{$end_i_num}{Centroid_y} }[$end_ad_num];
 
                 my $speed = sqrt(($start_x - $end_x)**2 + ($start_y - $end_y)**2);
-				
+				$speed *= $cfg{pixel_size};
+
 				if (defined $cfg{time_spacing}) {
 					$speed = $speed/$cfg{time_spacing};
 				}
@@ -752,6 +753,9 @@ sub gather_merge_count {
                 $merge_count[$i]++ if ($tracking_mat[$i][$j] == ($tracking_mat[$k][$j] + 2) * -1);
             }
         }
+		if ($i % 1000 == 0 && $opt{debug}) {
+    		print "\r", " " x 80, "\rGathering Merge Counts: ", sprintf('%.1f',$i/$#tracking_mat);
+		}
     }
 
     return \@merge_count;
