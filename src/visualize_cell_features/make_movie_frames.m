@@ -226,7 +226,7 @@ for i = 1:max_image_num
     
     %Output all the other images
     if (exist('out_path','var'))
-        for j = 1:length(out_prefix) %#ok<USENS>
+        for j = 1:size(frame,2) %#ok<USENS>
             output_filename = fullfile(out_path,out_prefix{1,j},[padded_i_seen,'.png']);
             fullpath = fileparts(output_filename);
             if (not(exist(fullpath,'dir')))
