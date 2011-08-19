@@ -208,8 +208,8 @@ analyze_single_adhesions <- function(align_data, min.data.points = 5, min.ratio 
 # Processing Single Adhesion Data
 ###########################################################
 
-filter_alignment_data <- function(align_data, min.data.points = 10, min.ratio = 3, 
-	min.area = 60) {
+filter_alignment_data <- function(align_data, min.data.points = 2, min.ratio = 3, 
+	min.area = -Inf) {
     
     orientation = as.matrix(align_data$mat$orientation);
     ratio = as.matrix(align_data$mat$ratio);
@@ -220,7 +220,6 @@ filter_alignment_data <- function(align_data, min.data.points = 10, min.ratio = 
 
     above_all_limits = above_ratio_limit & above_area_limit;
     num_above_limits = rowSums(above_all_limits)
-	# conse_above_limits = apply(above_all_limits,1,number_consecutive_trues)
     passed_ad_nums = which(num_above_limits >= min.data.points)
 
     if (any(names(align_data) == "lineage_data")) {
