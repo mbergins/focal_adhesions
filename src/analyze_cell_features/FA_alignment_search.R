@@ -25,18 +25,20 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
         row.names=F,col.names=F,sep=',')
     print('Done searching for best angle in single images')
     
-    data_set$single_ads = analyze_single_adhesions(data_set)
+    data_set$single_ad_deviances = gather_all_single_adhesion_deviances(data_set);
     print('Done analyzing single adhesions')
-    
+
     save(data_set,file=file.path(exp_dir,'..',output_file))
     
     if (! diagnostic.figure) {
         return(data_set);
     }
-
-    #diagnostic figure
-    pdf(file.path(exp_dir,'..','adhesion_orientation.pdf'), height=7*(3/2))
-    layout(rbind(c(1,2),c(3,4),c(5,6)))
+    
+    #######################################################
+    # Diagnostic Figure
+    #######################################################
+    pdf(file.path(exp_dir,'..','adhesion_orientation.pdf'))
+    layout(rbind(c(1,2),c(3,4),c(5,5)))
     par(bty='n', mar=c(4,4.2,2,0),mgp=c(2,1,0))
     
     hist(data_set$subseted_data$orientation,main='Pos X-axis Reference',
@@ -61,12 +63,8 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
 		xlim=c(-100,100));
     
     plot(data_set$per_image_dom_angle,xlab='Image Number',ylab='Dominant Angle',ylim=c(0,180));
-
-    hist(data_set$single_ads$best_angle,main='Single Adhesions - Best Angle',
-        xlab=paste('Angle n=',length(data_set$single_ads$best_angle),sep=''),xlim=c(0,180));
     
-    hist(data_set$single_ads$FAAI,main='Single Adhesions - Max FAAI',
-        xlab=paste('Angle n=',length(data_set$single_ads$best_angle),sep=''),xlim=c(0,90));
+    hist(data_set$single_ad_deviances$mean_dev)
 
     graphics.off()
 
@@ -75,6 +73,7 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
 
 read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
     data_set = list();
+    data_set$lineage_data = read.table(file.path(time_series_dir,'../single_lin.csv'),sep=',',header=T);
     data_set$mat$orientation = read.csv(file.path(time_series_dir,'Orientation.csv'),header=F);
     data_set$mat$area = read.csv(file.path(time_series_dir,'Area.csv'),header=F);
     major_axis = read.csv(file.path(time_series_dir,'MajorAxisLength.csv'),header=F);
@@ -143,8 +142,9 @@ find_FAAI_from_orientation <- function(orientation_data) {
 
 find_best_alignment_angle <- function(test_angle_set) {
     # to select the best angle, find the angles with the maximum FAAI, from
-    # those angles select the angle with the lowest (meaning closest to zero)
-    # mean angle
+    # those angles select the angle with the lowest absolute value of the mean
+    # angle
+    
     max_FAAI = max(test_angle_set$angle_FAAI)*0.9999
     #the max FAAI value is reduced by 0.01% due to some strange numeric
     #accuracy issues that elimnated some angles from the max FAAI index set
@@ -246,107 +246,18 @@ filter_alignment_data <- function(align_data, min.data.points = 2, min.ratio = 3
     return(align_data);
 }
 
-plot_single_adhesion_orientations <- function(align_data, min.data.points = 20,
- 	max.data.points=Inf, min.ratio = 3, dominant.angle = 0, which.ads=NA, 
- 	min.area = 100,main=NA,with.tags=F) {
-
-    orientations = as.matrix(align_data$mat$orientation);
-    ratio = as.matrix(align_data$mat$ratio);
-    area = as.matrix(align_data$mat$area);
- 
-    align_data = build_single_orientation_filters(align_data,
-        min.data.points = min.data.points, max.data.points=max.data.points,
-        min.ratio = min.ratio, min.area = min.area)
-	
-	passed_ad_nums = which(rowSums(! is.na(aligned_data$mat$filtered_orientations)) != 0)
-	
-    if (! is.na(which.ads)) {
-        passed_ad_nums = which.ads
-    }
-    
-    if (length(passed_ad_nums) == 0) {
-        return();
-    }
-
-    colors = rainbow(length(passed_ad_nums));
-    colors = sample(colors,length(colors),replace=F);
-
-    time = (0:(dim(orientations)[2]-1))*2.5
-    count = 1;
-    for (ad_num in passed_ad_nums) {
-        this_ad_filter = above_all_limits[ad_num,];
-        
-        angle_sequence = orientations[ad_num,];
-        angle_sequence[! this_ad_filter] = NA;
-        angle_sequence = apply_new_orientation(angle_sequence,dominant.angle);
-        
-        if (count == 1) {
-            xlims = c(0,max(time))
-            if (with.tags) {
-                xlims = c(0,max(time)*1.1);
-            }
-
-            plot(time,angle_sequence,ylim=c(-90,90),col=colors[count],
-                pch=19,cex=0.25,xlim=xlims,axes=F,
-                xlab='Time (min)',ylab='FA Orientation (degrees)');
-            lines(time,angle_sequence, col=colors[count],pch=19,cex=0.25)
-
-            if (! is.na(main)) {
-                title(main=main);
-            }
-            
-            p_limits = par("usr");
-            text(p_limits[2],p_limits[4],
-                paste(align_data$best_angle,'\u00B0','/','n=',length(passed_ad_nums),sep=''),
-                pos=2,offset=c(0,-1));
-
-            axis(1)
-            axis(2, at = seq(-90,90,by=90))
-        } else {
-            points(time,angle_sequence, col=colors[count],pch=19,cex=0.25)
-            lines(time,angle_sequence, col=colors[count],pch=19,cex=0.25)
-        }
-
-        ad_present_time = (which(!is.na(angle_sequence))-1)*2.5;
-        omited_sequence = na.omit(angle_sequence);
-        # segments(min(ad_present_time),mean(angle_sequence,na.rm=T),
-        #     max(ad_present_time),mean(angle_sequence,na.rm=T),
-        #     col=colors[count])
-
-        lin_model = lm(angle_sequence~time);
-        lin_model_summary = summary(lin_model);
-        # lines(ad_present_time,predict(lin_model))
-        
-        if (with.tags) {
-            single_ad_index = which(align_data$single_ads$ad_nums == ad_num);
-            # text(max(ad_present_time),mean(angle_sequence,na.rm=T),
-            #     sprintf('%.1f',align_data$single_ads$FAAI[single_ad_index]),col=colors[count],
-            #     pos=3)
-            text(max(ad_present_time),tail(omited_sequence,1),
-                ad_num,col=colors[count],
-                pos=1)
-            # text(max(ad_present_time),mean(angle_sequence,na.rm=T),
-            #     sprintf('%.1e',lin_model_summary$coefficients[2,4]),col=colors[count],
-            #     pos=4)
-        }
-        count = count + 1;
-    }
-    pl_size = par("usr");
-    segments(pl_size[1],0,pl_size[2],0)
-
-    print(count)
-}
-
 adhesion_angle_deviance <- function(orientations,min.data.points) {
 	passed_ads = which(rowSums(! is.na(orientations)) >= 1)
 	mean_dev = c()
     num_pass_filter = c()
+    best_angle_set = c()
 	for (ad_num in passed_ads) {
 		or_set = orientations[ad_num,];
 		or_set = na.omit(or_set);
         
 		angle_test = test_dom_angles(or_set);
 		best_angle = find_best_alignment_angle(angle_test);
+        best_angle_set = c(best_angle_set,best_angle);
 
 		or_set = apply_new_orientation(or_set, best_angle);
 
@@ -354,7 +265,8 @@ adhesion_angle_deviance <- function(orientations,min.data.points) {
 		mean_dev = c(mean_dev,mean(diffs));
         num_pass_filter = c(num_pass_filter,length(or_set));
 	}
-	return(data.frame(mean_dev = mean_dev, ad_num=passed_ads, num_pass_filter=num_pass_filter))
+	return(data.frame(mean_dev = mean_dev, ad_num=passed_ads, 
+        num_pass_filter=num_pass_filter, best_angle=best_angle_set))
 }
 
 number_consecutive_trues <- function(logical_seq) {
@@ -388,62 +300,13 @@ stopifnot(number_consecutive_trues(c(rep(F,10),rep(T,10),rep(F,50),rep(T,20))) =
 stopifnot(number_consecutive_trues(c(rep(T,25),rep(F,10),rep(T,10),rep(F,50),rep(T,20))) == 25)
 stopifnot(number_consecutive_trues(rep(T,20)) == 20)
 
-gather_all_single_adhesion_deviances <- function(align_files, lin_files, min.area=-Inf, min.data.points=2) {
-	all_dev_data = list();
-	for (i in 1:length(align_files)) {
-		sample_data = get(load(align_files[i]))
-		sample_data$lineage_data <- read.table(lin_files[i],sep=',',header=T);
-		
-		sample_data_filtered = filter_alignment_data(sample_data, 
-			min.area=min.area, min.data.points=min.data.points);
-		overall_dev = adhesion_angle_deviance(sample_data_filtered$mat$filtered_orientation);
-		overall_dev$exp_num = rep(i,dim(overall_dev)[1])
-		overall_dev$longevity = sample_data$lineage_data$longevity[overall_dev$ad_num];
-
-		all_dev_data = rbind(all_dev_data, overall_dev);
-        print(paste('Done with ',i,'/',length(align_files),sep=''));
-	}
-    return(all_dev_data)
-}
-
-get_mean_major_minor_ratio <- function(lin_ts_folder,min.longevity = 10) {
-    major_file = Sys.glob(file.path(lin_ts_folder, 'Major*'))
-    minor_file = Sys.glob(file.path(lin_ts_folder, 'Minor*'))
-
-    exp_props = read.csv(file.path(lin_ts_folder, '../single_lin.csv'))
-    filt = ! exp_props$split_birth_status & exp_props$death_status
-
-    major = as.matrix(read.csv(major_file,header=F));
-    minor = as.matrix(read.csv(minor_file,header=F));
-
-    ratio = major / minor
-
-    longevity = rowSums(! is.na(ratio));
-
-    ratio = ratio[longevity > min.longevity & filt,];
+gather_all_single_adhesion_deviances <- function(sample_data, min.area=-Inf, min.data.points=2) {
     
-    return(rowMeans(ratio,na.rm=T))
-}
+    sample_data_filtered = filter_alignment_data(sample_data, 
+        min.area=min.area, min.data.points=min.data.points);
+    overall_dev = adhesion_angle_deviance(sample_data_filtered$mat$filtered_orientation);
 
-get_mean_eccen <- function(lin_ts_folder,min.longevity = 10) {
-    major_file = Sys.glob(file.path(lin_ts_folder, 'Major*'))
-    minor_file = Sys.glob(file.path(lin_ts_folder, 'Minor*'))
-
-    exp_props = read.csv(file.path(lin_ts_folder, '../single_lin.csv'))
-    filt = ! exp_props$split_birth_status & exp_props$death_status
-
-    major = as.matrix(read.csv(major_file,header=F));
-    minor = as.matrix(read.csv(minor_file,header=F));
-    
-    ratio = (minor/2)/(major/2)
-    
-    eccen = sqrt(1-ratio^2)
-
-    longevity = rowSums(! is.na(eccen));
-
-    eccen = eccen[longevity > min.longevity & filt,];
-    
-    return(rowMeans(eccen,na.rm=T))
+    return(overall_dev)
 }
 
 ###########################################################
@@ -704,9 +567,9 @@ if (length(args) != 0) {
         end_time = proc.time();
         print(paste('FA Orientation Runtime:',(end_time - start_time)[3]))
         
-        start_time = proc.time();
-        temp = find_dist_overlaps_and_orientations(time_series_dir);
-        end_time = proc.time();
-        print(paste('FA Dists/Orientation Runtime:',(end_time - start_time)[3]))
+        # start_time = proc.time();
+        # temp = find_dist_overlaps_and_orientations(time_series_dir);
+        # end_time = proc.time();
+        # print(paste('FA Dists/Orientation Runtime:',(end_time - start_time)[3]))
     }
 }
