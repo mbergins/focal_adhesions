@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
+
 <svg
    xmlns:dc="http://purl.org/dc/elements/1.1/"
    xmlns:cc="http://creativecommons.org/ns#"
@@ -13,11 +14,11 @@
    height="200.51289"
    id="svg16484"
    sodipodi:version="0.32"
-   inkscape:version="0.46"
+   inkscape:version="0.47 r22583"
    version="1.0"
    sodipodi:docname="sample_seg_and_ratio_highlight.svg"
    inkscape:output_extension="org.inkscape.output.svg.inkscape"
-   inkscape:export-filename="/Users/mbergins/Documents/Projects/focal_adhesions/trunk/doc/publication/figures/emma/orientation_cartoon/seg_to_filtered/sample_seg_and_ratio_highlight.png"
+   inkscape:export-filename="/home/mbergins/Documents/Projects/focal_adhesions/trunk/doc/publication/figures/emma/orientation_cartoon/seg_to_filtered/sample_seg_and_ratio_highlight.png"
    inkscape:export-xdpi="200"
    inkscape:export-ydpi="200">
   <defs
@@ -43,6 +44,46 @@
        inkscape:vp_y="0 : 1000 : 0"
        inkscape:vp_x="0 : 526.18109 : 1"
        sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective6381"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <marker
+       style="overflow:visible"
+       id="Arrow1Sendm"
+       refX="0"
+       refY="0"
+       orient="auto"
+       inkscape:stockid="Arrow1Sendm">
+      <path
+         transform="matrix(-0.2,0,0,-0.2,-1.2,0)"
+         style="fill:#ffffff;fill-rule:evenodd;stroke:#ffffff;stroke-width:1pt;marker-start:none"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         id="path16012" />
+    </marker>
+    <inkscape:perspective
+       id="perspective6398"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <marker
+       style="overflow:visible"
+       id="Arrow1Sendm-0"
+       refX="0"
+       refY="0"
+       orient="auto"
+       inkscape:stockid="Arrow1Sendm">
+      <path
+         transform="matrix(-0.2,0,0,-0.2,-1.2,0)"
+         style="fill:#ffffff;fill-rule:evenodd;stroke:#ffffff;stroke-width:1pt;marker-start:none"
+         d="M 0,0 5,-5 -12.5,0 5,5 0,0 z"
+         id="path16012-4" />
+    </marker>
   </defs>
   <sodipodi:namedview
      id="base"
@@ -62,10 +103,11 @@
      showgrid="false"
      inkscape:window-width="1440"
      inkscape:window-height="852"
-     inkscape:window-x="0"
+     inkscape:window-x="2439"
      inkscape:window-y="0"
      showguides="true"
-     inkscape:guide-bbox="true">
+     inkscape:guide-bbox="true"
+     inkscape:window-maximized="0">
     <sodipodi:guide
        orientation="1,0"
        position="245.96415,25.815479"
@@ -79,6 +121,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -88,21 +131,21 @@
      id="layer1"
      transform="translate(-3.7212946,-1.0035425)">
     <image
-       y="1.5164362"
-       x="3.7212946"
-       id="image16757"
-       height="200"
+       sodipodi:absref="/home/mbergins/Documents/Projects/focal_adhesions/trunk/doc/publication/figures/emma/orientation_cartoon/seg_to_filtered/../sample_seg/raw_images_fibro_100_wt02/focal_norm.png"
+       xlink:href="../sample_seg/raw_images_fibro_100_wt02/focal_norm.png"
        width="238"
-       sodipodi:absref="/Users/mbergins/Documents/Projects/focal_adhesions/trunk/doc/publication/figures/emma/orientation_cartoon/sample_seg/raw_images_fibro_100_wt02/focal_norm.png"
-       xlink:href="/Users/mbergins/Documents/Projects/focal_adhesions/trunk/doc/publication/figures/emma/orientation_cartoon/sample_seg/raw_images_fibro_100_wt02/focal_norm.png" />
+       height="200"
+       id="image16757"
+       x="3.7212946"
+       y="1.5164362" />
     <image
-       y="1.0035425"
-       x="250.12007"
-       id="image16943"
-       height="179"
+       sodipodi:absref="/home/mbergins/Documents/Projects/focal_adhesions/trunk/doc/publication/figures/emma/orientation_cartoon/seg_to_filtered/../sample_seg/raw_images_fibro_100_wt02/eccen_highlight.png"
+       xlink:href="../sample_seg/raw_images_fibro_100_wt02/eccen_highlight.png"
        width="213.00998"
-       sodipodi:absref="/Users/mbergins/Documents/Projects/focal_adhesions/trunk/doc/publication/figures/emma/orientation_cartoon/sample_seg/raw_images_fibro_100_wt02/eccen_highlight.png"
-       xlink:href="/Users/mbergins/Documents/Projects/focal_adhesions/trunk/doc/publication/figures/emma/orientation_cartoon/sample_seg/raw_images_fibro_100_wt02/eccen_highlight.png" />
+       height="179"
+       id="image16943"
+       x="250.12007"
+       y="1.0035425" />
     <text
        xml:space="preserve"
        style="font-size:70px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;font-family:Helvetica;-inkscape-font-specification:Helvetica"
@@ -130,5 +173,35 @@
    id="tspan3193">/</tspan></tspan><tspan
            style="fill:#ff0000;fill-opacity:1"
            id="tspan3171">Ratio &lt; 3</tspan></tspan></text>
+    <text
+       id="text5677"
+       y="85.376404"
+       x="449.80893"
+       style="font-size:29.0236454px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#ffffff;fill-opacity:1;stroke:none;display:inline;font-family:Helvetica;-inkscape-font-specification:Helvetica"
+       xml:space="preserve"><tspan
+         y="85.376404"
+         x="449.80893"
+         id="tspan5679"
+         sodipodi:role="line">1</tspan></text>
+    <path
+       id="path6665"
+       d="M 449.52347,77.065669 430.79389,60.321934"
+       style="fill:none;stroke:#ffffff;stroke-width:3.72055268;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-mid:none;marker-end:url(#Arrow1Sendm);display:inline"
+       sodipodi:nodetypes="cc" />
+    <text
+       id="text6661"
+       y="176.66699"
+       x="313.51508"
+       style="font-size:29.0236454px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#ffffff;fill-opacity:1;stroke:none;display:inline;font-family:Helvetica;-inkscape-font-specification:Helvetica"
+       xml:space="preserve"><tspan
+         y="176.66699"
+         x="313.51508"
+         id="tspan6663"
+         sodipodi:role="line">2</tspan></text>
+    <path
+       id="path19509"
+       d="m 330.8822,168.80583 32.74631,-15.87699"
+       style="fill:none;stroke:#ffffff;stroke-width:3.72055268;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-mid:none;marker-end:url(#Arrow1Sendm);display:inline"
+       sodipodi:nodetypes="cc" />
   </g>
 </svg>
