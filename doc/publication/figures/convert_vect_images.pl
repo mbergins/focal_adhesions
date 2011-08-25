@@ -8,7 +8,8 @@ $opt{debug} = 0;
 $opt{resample} = 300;
 $opt{dir} = '.';
 $opt{convert_to} = "png";
-GetOptions(\%opt, "debug|d", "resample=s", "dir=s", "convert_to=s");
+$opt{trim} = 0;
+GetOptions(\%opt, "debug|d", "resample=s", "dir=s", "convert_to=s","trim");
 
 find(\&find_vect_files, $opt{dir});
 
@@ -42,6 +43,10 @@ sub convert_vect_images {
 			$converted_file =~ s/\.png/\.$opt{convert_to}/;
 			system "convert $output_name $converted_file";
 			# system "unlink $output_name";
+			$output_file = $converted_file;
+		}
+		if ($opt{trim}) {
+			system "convert $output_file -trim $output_file";
 		}
     }
 }
