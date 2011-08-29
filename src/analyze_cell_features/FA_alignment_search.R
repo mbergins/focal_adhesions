@@ -170,40 +170,6 @@ apply_new_orientation <- function(orientation_data,angle) {
     return(orientation_data)
 }
 
-analyze_single_adhesions <- function(align_data, min.data.points = 5, min.ratio = 3) {
-    orientations = as.matrix(align_data$mat$orientation);
-    ratio = as.matrix(align_data$mat$ratio);
-
-    num_above_ratio_limit = apply(ratio,1,function(x) sum(! is.na(x) & x >= min.ratio));
-
-    passed_ad_nums = which(num_above_ratio_limit >= min.data.points);
-    
-    single_ad_data = list()
-    single_ad_data$ad_nums = passed_ad_nums
-
-    time = 0:(dim(orientations)[2]-1)
-    for (ad_num in passed_ad_nums) {
-        this_ad_filter = ! is.na(ratio[ad_num,]) & ratio[ad_num,] >= min.ratio;
-
-        these_angles = orientations[ad_num,this_ad_filter];
-        these_ratio = ratio[ad_num,this_ad_filter];
-        stopifnot(length(these_angles) == num_above_ratio_limit[ad_num])
-        
-        angle_search = test_dom_angles(these_angles);
-        best_angle = find_best_alignment_angle(angle_search);
-
-        single_ad_data$best_angle = c(single_ad_data$best_angle,best_angle)
-        single_ad_data$FAAI = c(single_ad_data$FAAI, max(angle_search$angle_FAAI))
-        
-        lin_model = lm(orientations[ad_num,]~time);
-        lin_model_summary = summary(lin_model);
-
-        single_ad_data$lin_model_p = c(single_ad_data$lin_model_p,lin_model_summary$coefficients[2,4]);
-    }
-
-    return(single_ad_data);
-}
-
 ###########################################################
 # Processing Single Adhesion Data
 ###########################################################
@@ -301,10 +267,18 @@ stopifnot(number_consecutive_trues(c(rep(T,25),rep(F,10),rep(T,10),rep(F,50),rep
 stopifnot(number_consecutive_trues(rep(T,20)) == 20)
 
 gather_all_single_adhesion_deviances <- function(sample_data, min.area=-Inf, min.data.points=2) {
-    
     sample_data_filtered = filter_alignment_data(sample_data, 
         min.area=min.area, min.data.points=min.data.points);
     overall_dev = adhesion_angle_deviance(sample_data_filtered$mat$filtered_orientation);
+    overall_dev$lineage = sample_data$lineage_data[overall_dev$ad_num,];
+
+    diff_from_dominant = c()
+    for (i in 1:dim(overall_dev)[1]) {
+        angle_set = sort(c(overall_dev$best_angle[i],sample_data$best_angle));
+        temp = min(c(angle_set[2] - angle_set[1]),angle_set[1] + 180 - angle_set[2]);
+        diff_from_dominant = c(diff_from_dominant, temp);
+    }
+    overall_dev$diff_from_dominant = diff_from_dominant
 
     return(overall_dev)
 }
@@ -552,11 +526,11 @@ if (length(args) != 0) {
 	#in the current scope
     for (this_arg in commandArgs()) {
         split_arg = strsplit(this_arg,"=",fixed=TRUE)
-            if (length(split_arg[[1]]) == 1) {
-                assign(split_arg[[1]][1], TRUE);
-            } else {
-                assign(split_arg[[1]][1], split_arg[[1]][2]);
-            }
+        if (length(split_arg[[1]]) == 1) {
+            assign(split_arg[[1]][1], TRUE);
+        } else {
+            assign(split_arg[[1]][1], split_arg[[1]][2]);
+        }
     }
 	
     class(fixed_best_angle) <- "numeric";
