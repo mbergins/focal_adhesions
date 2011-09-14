@@ -7,19 +7,47 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
 
     data_set = read_in_orientation_data(exp_dir, min.ratio=min.ratio);
     print('Done reading in data set')
-    data_set$angle_search = test_dom_angles(data_set$subseted_data$orientation);
-    print('Done searching potential dominant angles')
 
+    ###########################################################################
+    # Overall Angle Search
+    ###########################################################################
+    data_set$angle_search = test_dom_angles(data_set$high_ratio$orientation);
+    print('Done searching potential dominant angles')
     if (is.na(fixed_best_angle)) {
         data_set$best_angle = find_best_alignment_angle(data_set$angle_search)
     } else {
         data_set$best_angle = fixed_best_angle
         data_set$actual_best_angle = find_best_alignment_angle(data_set$angle_search)
     }
-    data_set$corrected_orientation = apply_new_orientation(data_set$subseted_data$orientation,
+
+    data_set$corrected_orientation = apply_new_orientation(data_set$high_ratio$orientation,
         data_set$best_angle)
+    data_set$FAAI = find_FAAI_from_orientation(data_set$corrected_orientation)
     print('Done finding best orientation')
-    
+
+    ###########################################################################
+    # Area Bin Angle Search
+    ###########################################################################
+    for (area_class in names(data_set$area_sets)) {
+        this_or = data_set$area_sets[[area_class]]$orientation
+
+        temp = list()
+
+        temp$angle_search = test_dom_angles(this_or);
+        temp$best_angle = find_best_alignment_angle(temp$angle_search)
+
+        temp$corrected_orientation = apply_new_orientation(this_or,
+            temp$best_angle)
+        
+        temp$FAAI = find_FAAI_from_orientation(temp$corrected_orientation);
+
+        data_set$area_results[[area_class]] = temp;
+    }
+    print('Done with area bins')
+
+    ###########################################################################
+    # Per Image/Adhesion FAAI Search
+    ###########################################################################
     data_set$per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min.ratio=min.ratio)
     write.table(t(data_set$per_image_dom_angle),file=file.path(exp_dir,'..','per_image_dom_angle.csv'),
         row.names=F,col.names=F,sep=',')
@@ -34,16 +62,15 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
         return(data_set);
     }
     
-    #######################################################
+    ###########################################################################
     # Diagnostic Figure
-    #######################################################
+    ###########################################################################
     pdf(file.path(exp_dir,'..','adhesion_orientation.pdf'))
     layout(rbind(c(1,2),c(3,4),c(5,5)))
     par(bty='n', mar=c(4,4.2,2,0),mgp=c(2,1,0))
     
-    hist(data_set$subseted_data$orientation,main='Pos X-axis Reference',
-        xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''), 
-		xlim=c(-100,100));
+    hist(data_set$high_ratio$orientation,main='Pos X-axis Reference',
+        xlab=paste('Angle n=',dim(data_set$high_ratio)[1],sep=''), xlim=c(-90,90));
     
     plot(data_set$angle_search$test_angles,data_set$angle_search$angle_FAAI,typ='l',
         xlab='Dominant Search Angle',ylab='FA Alignment Index',ylim=c(0,90));
@@ -58,13 +85,12 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
 
     hist(data_set$corrected_orientation,
         main=paste('Rotated ',data_set$best_angle,'\u00B0 / ',
-            sprintf('%0.1f',90-sd(data_set$corrected_orientation)),' FAAI',sep=''),
-        xlab=paste('Angle n=',dim(data_set$subseted_data)[1],sep=''),
-		xlim=c(-100,100));
+            sprintf('%0.1f',find_FAAI_from_orientation(data_set$corrected_orientation)), ' FAAI',sep=''),
+        xlab=paste('Angle n=',dim(data_set$high_ratio)[1],sep=''), xlim=c(-90,90));
     
     plot(data_set$per_image_dom_angle,xlab='Image Number',ylab='Dominant Angle',ylim=c(0,180));
     
-    hist(data_set$single_ad_deviances$mean_dev)
+    hist(data_set$single_ad_deviances$mean_dev,main='')
 
     graphics.off()
 
@@ -86,9 +112,19 @@ read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
         unlist_data_set[[i]] = unlist(data_set$mat[[i]]);
     }
     unlist_data_set = as.data.frame(unlist_data_set);
-    data_set$subseted_data = subset(unlist_data_set, !is.nan(unlist_data_set$ratio) & 
+    data_set$high_ratio = subset(unlist_data_set, !is.nan(unlist_data_set$ratio) & 
         unlist_data_set$ratio >= min.ratio);
     
+    #Area seperations/binning
+    area_thresholds = quantile(data_set$high_ratio$area, c(1/3,2/3));
+
+    data_set$area_sets$small = subset(data_set$high_ratio, 
+        area <= area_thresholds[1]);
+    data_set$area_sets$medium = subset(data_set$high_ratio, 
+        area > area_thresholds[1] & area <= area_thresholds[2]);
+    data_set$area_sets$large = subset(data_set$high_ratio, 
+        area > area_thresholds[2]);
+
     return(data_set);
 }
 
@@ -132,7 +168,7 @@ test_dom_angles <- function(orientation, search_resolution = 0.1) {
     results$mean_angle = mean_angle;
     results$median_angle = median_angle;
     results$angle_FAAI = new_angle_FAAI;
-
+    
     return(results)
 }
 
@@ -498,8 +534,7 @@ load_alignment_props <- function(alignment_models) {
     for (align_file in alignment_models) {
         data_set = get(load(align_file));
         
-        align_props$best_FAAI = c(align_props$best_FAAI, 
-            find_FAAI_from_orientation(data_set$corrected_orientation));
+        align_props$best_FAAI = c(align_props$best_FAAI, data_set$FAAI);
         if (any(names(data_set) == "actual_best_angle")) {
             align_props$actual_best_angle = c(align_props$actual_best_angle, data_set$actual_best_angle);
             align_props$best_angle = c(align_props$best_angle, data_set$best_angle);
