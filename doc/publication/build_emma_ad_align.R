@@ -1,4 +1,4 @@
-# rm(list = ls())
+rm(list = ls())
 library(lattice)
 library(geneplotter)
 library(Hmisc)
@@ -39,19 +39,19 @@ fibro_10ug = load_alignment_props(align_files);
 align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/*/FA_orientation.Rdata*'))
 fibro_100ug = load_alignment_props(align_files);
 
-# #######################################
-# # Rat 2 Control
-# #######################################
-# 
-# align_files = Sys.glob(file.path(raw_data_base_dir,'Rat_2/WT_*/*/FA_orientation.Rdata*'))
-# rat_2 = load_alignment_props(align_files);
-# 
-# #######################################
-# # Rat 2 - CK666
-# #######################################
-# 
-# align_files = Sys.glob(file.path(raw_data_base_dir,'Rat_2_ck666/WT_*/*/FA_orientation.Rdata*'))
-# rat_2_ck666 = load_alignment_props(align_files);
+#######################################
+# Rat 2 Control
+#######################################
+
+align_files = Sys.glob(file.path(raw_data_base_dir,'Rat2/*/*/FA_orientation.Rdata*'))
+rat2 = load_alignment_props(align_files);
+
+#######################################
+# Rat 2 - CK666
+#######################################
+
+align_files = Sys.glob(file.path(raw_data_base_dir,'Rat2_ck666/*/*/FA_orientation.Rdata*'))
+rat2_ck666 = load_alignment_props(align_files);
 
 #######################################
 # FAK WT/KD
@@ -101,16 +101,31 @@ fibro_NS_KD_1ug_p = determine_mean_p_value(fibro_1ug_2xKD$best_FAAI,fibro_1ug$be
 fibro_NS_KD_10ug_p = determine_mean_p_value(fibro_10ug_2xKD$best_FAAI,fibro_10ug$best_FAAI)
 fibro_NS_KD_100ug_p = determine_mean_p_value(fibro_100ug_2xKD$best_FAAI,fibro_100ug$best_FAAI)
 
+rat2_p = determine_mean_p_value(rat2$best_FAAI,rat2_ck666$best_FAAI)
 
 Pax_p = determine_mean_p_value(IA32_Pax$best_FAAI,KD_Pax$best_FAAI)
 FAK_p = determine_mean_p_value(IA32_FAK$best_FAAI,KD_FAK$best_FAAI)
 Vin_p = determine_mean_p_value(IA32_Vin$best_FAAI,KD_Vin$best_FAAI)
+
+large_area_p = determine_mean_p_value(fibro_100ug_2xKD$large_FAAI,fibro_100ug$large_FAAI)
+medium_area_p = determine_mean_p_value(fibro_100ug_2xKD$medium_FAAI,fibro_100ug$medium_FAAI)
+small_area_p = determine_mean_p_value(fibro_100ug_2xKD$small_FAAI,fibro_100ug$small_FAAI)
+
+small_medium_NS = determine_mean_p_value(fibro_100ug$small_FAAI,fibro_100ug$medium_FAAI)
+small_large_NS = determine_mean_p_value(fibro_100ug$small_FAAI,fibro_100ug$large_FAAI)
+medium_large_NS = determine_mean_p_value(fibro_100ug$medium_FAAI,fibro_100ug$large_FAAI)
+
+small_medium_2xKD = determine_mean_p_value(fibro_100ug_2xKD$small_FAAI,fibro_100ug_2xKD$medium_FAAI)
+small_large_2xKD = determine_mean_p_value(fibro_100ug_2xKD$small_FAAI,fibro_100ug_2xKD$large_FAAI)
+medium_large_2xKD = determine_mean_p_value(fibro_100ug_2xKD$medium_FAAI,fibro_100ug_2xKD$large_FAAI)
 
 system('notify-send "done with R"')
 stop()
 ###############################################################################
 # Plotting
 ###############################################################################
+
+KD_2X_color = rgb(148/255,150/255,152/255,1);
 
 ###########################################################
 # FAAI
@@ -120,47 +135,35 @@ stop()
 # Paxillin in NS on Fibro
 #######################################
 
-svg(file.path(out_folder,'FAAI','fibro_FAAI.svg'),width=4,height=4);
+svg(file.path(out_folder,'FAAI','fibro_FAAI.svg'),width=3.1,height=4);
 
 #the xpd=T part allows us to draw lines outside the plotting area, this is
 #needed to get the lines under the lables
-par(bty='n',mar=c(2.7,2.6,0.2,0), mgp=c(1.6,0.5,0),xpd=T)
+par(bty='n',mar=c(2.5,2.5,1.3,0), mgp=c(1.6,0.5,0),xpd=T,lwd=1.5)
 
 boxplot(fibro_1ug$best_FAAI,fibro_1ug_2xKD$best_FAAI, 
     fibro_10ug$best_FAAI,fibro_10ug_2xKD$best_FAAI, 
     fibro_100ug$best_FAAI,fibro_100ug_2xKD$best_FAAI,
-    ylab='FA Alignment Index',axes=F,col=c('green','red'))
-axis(2)
+    ylab='FA Alignment Index',axes=F,col=c('white',KD_2X_color))
 
-axis(1,at=c(1.5,3.5,5.5),labels=c(1,10,100))
+axis(2,lwd=1.5)
+axis(1,at=c(1.5,3.5,5.5),labels=c(1,10,100),lwd=1.5)
 
-legend('topleft',c('NS','2xKD'),fill=c('green','red'),bty='n')
+legend('topleft',c('NS','2xKD'),fill=c('white',KD_2X_color),bty='n')
 
-mtext('Fibronectin Concentration (\u03BCg/mL)',1,at=mean(p_size[1:2]),line=1.6)
+p_size = par("usr")
 
-graphics.off()
-# names = rep(c('NS','2xKD'),3),
-#     col=c('green','red','green','red','green','red'))
+plot_signif_bracket(c(1,p_size[4]*0.875),c(2,p_size[4]*0.87), 
+    over_text=paste('p<',fibro_NS_KD_1ug_p$p.value[1],sep=''))
 
-boxplot_with_points(list(fibro_1ug$best_FAAI,fibro_1ug_2xKD$best_FAAI, 
-    fibro_10ug$best_FAAI,fibro_10ug_2xKD$best_FAAI, 
-    fibro_100ug$best_FAAI,fibro_100ug_2xKD$best_FAAI),
-    ylab='FA Alignment Index',with.p.value=F, names = rep(c('NS','2xKD'),3),
-    colors=c('green','red','green','red','green','red'),notch=F)
-p_size = par("usr");
-char_size = par("cxy")[2];
+plot_signif_bracket(c(3,p_size[4]*0.94),c(4,p_size[4]*0.935), 
+    over_text=paste('p<',fibro_NS_KD_10ug_p$p.value[1],sep=''))
 
-mtext('Fibronectin Concentration (\u03BCg/mL)',1,at=mean(p_size[1:2]),line=1.6)
+plot_signif_bracket(c(5,p_size[4]*1),c(6,p_size[4]*0.995), 
+    over_text=paste('p<',fibro_NS_KD_100ug_p$p.value[1],sep=''))
 
-graphics.off()
+mtext('Fibronectin Concentration (\u03BCg/mL)',1,at=mean(p_size[1:2]),line=1.4)
 
-#put in the significance brackets
-plot_signif_bracket(c(1,p_size[4]*0.95),c(2,p_size[4]*0.945), 
-    over_text=paste('p<',fibro_1_10_p$p.value[1],sep=''))
-plot_signif_bracket(c(2,p_size[4]*1),c(3,p_size[4]*0.995), 
-    over_text=paste('p<',fibro_10_100_p$p.value[1],sep=''))
-plot_signif_bracket(c(1,p_size[4]*1.04),c(3,p_size[4]*1.035), 
-    over_text=paste('p<',fibro_1_100_p$p.value[1],sep=''))
 graphics.off()
 
 #######################################
@@ -168,54 +171,119 @@ graphics.off()
 #######################################
 
 #placing the labels on this figure has become fairly complicated
-svg(file.path(out_folder,'FAAI','tagged_ads_100ug_comparisons.svg'),width=7,height=4);
+svg(file.path(out_folder,'FAAI','tagged_ads_100ug_comparisons.svg'),width=4.75,height=4);
 
 #the xpd=T part allows us to draw lines outside the plotting area, this is
 #needed to get the lines under the lables
-par(bty='n',mar=c(2.6,2.6,0.3,0), mgp=c(1.6,0.5,0),xpd=T)
+par(bty='n',mar=c(3.7,2.6,1,0), mgp=c(1.6,0.5,0),xpd=T,lwd=1.5)
 
 #skip drawing axes
-boxplot_with_points(list(IA32_Pax$best_FAAI,KD_Pax$best_FAAI,
+boxplot(IA32_Pax$best_FAAI,KD_Pax$best_FAAI,
     IA32_FAK$best_FAAI,KD_FAK$best_FAAI,
-    IA32_Vin$best_FAAI,KD_Vin$best_FAAI),
-    ylab='FA Alignment Index',ylim=c(40,80),with.p.value=F, 
-    colors=c('black'),axes=F)
+    IA32_Vin$best_FAAI,KD_Vin$best_FAAI,
+    ylab='FA Alignment Index',axes=F,col=c('white',KD_2X_color))
 
 p_size = par("usr");
 #draw the axes
+axis(2,lwd=1.5)
+
+# legend('topleft',c('NS','2xKD'),fill=c('white',KD_2X_color),bty='n')
+
+text_height = strheight('Paxillin')*0.25
+mtext('Paxillin',at=c(1.5,p_size[4]))
+segments(1,p_size[4]-text_height,2,p_size[4]-text_height,lwd=3)
+mtext('FAK',at=c(3.5,p_size[4]))
+segments(3,p_size[4]-text_height,4,p_size[4]-text_height,lwd=3)
+mtext('Vinculin',at=c(5.5,p_size[4]))
+segments(5,p_size[4]-text_height,6,p_size[4]-text_height,lwd=3)
+
+labs = c(paste('NS \n(n=',length(IA32_Pax$best_FAAI),')',sep=''),
+    paste('2xKD \n(n=',length(KD_Pax$best_FAAI),')',sep=''))
+axis(1, labels = labs, at = c(1,2),padj=0.6,lwd=1.5)
+mtext(paste('p<',Pax_p$p.value[1],sep=''),side=1,at=c(1.5,p_size[3]),line=2.6)
+
+labs = c(paste('NS \n(n=',length(IA32_FAK$best_FAAI),')',sep=''),
+    paste('2xKD \n(n=',length(KD_FAK$best_FAAI),')',sep=''))
+axis(1, labels = labs, at = c(3,4),padj=0.6,lwd=1.5)
+mtext(paste('p<',FAK_p$p.value[1],sep=''),side=1,at=c(3.5,p_size[3]),line=2.6)
+ 
+labs = c(paste('NS \n(n=',length(IA32_Vin$best_FAAI),')',sep=''),
+    paste('2xKD \n(n=',length(KD_Vin$best_FAAI),')',sep=''))
+axis(1, labels = labs, at = c(5,6),padj=0.6,lwd=1.5)
+mtext(paste('p<',Vin_p$p.value[1],sep=''),side=1,at=c(5.5,p_size[3]),line=2.6)
+
+graphics.off()
+
+#######################################
+# Paxillin in Rat2
+#######################################
+svg(file.path(out_folder,'FAAI','Rat2_FAAI.svg'),width=2.2,height=4);
+
+#the xpd=T part allows us to draw lines outside the plotting area, this is
+#needed to get the lines under the lables
+par(bty='n',mar=c(2.6,2.5,1.3,0), mgp=c(1.6,0.5,0),xpd=T,lwd=1.5)
+
+rat2_names = c(paste('CK-689 \n(n=',dim(rat2)[1],')',sep=''),paste('CK-666 \n(n=',dim(rat2_ck666)[1],')',sep=''))
+
+boxplot(rat2$best_FAAI,rat2_ck666$best_FAAI,
+    ylab='FA Alignment Index',axes=F)
+
+axis(2,lwd=1.5);
+axis(1,labels = rat2_names,at=c(1,2),padj=0.6,lwd=1.5);
+
+p_size = par("usr");
+
+plot_signif_bracket(c(1,p_size[4]*1),c(2,p_size[4]*0.995), 
+    over_text=paste('p<',rat2_p$p.value[1],sep=''))
+
+graphics.off()
+
+#######################################
+# Area Bins (NS vs 2xKD)
+#######################################
+svg(file.path(out_folder,'FAAI','area_bins_FAAI.svg'),width=4.75,height=4);
+
+#the xpd=T part allows us to draw lines outside the plotting area, this is
+#needed to get the lines under the lables
+par(bty='n',mar=c(2.6,2.5,1.3,0), mgp=c(1.6,0.5,0),xpd=T,lwd=1.5)
+
+boxplot(fibro_100ug$small_FAAI,fibro_100ug_2xKD$small_FAAI,
+    fibro_100ug$medium_FAAI,fibro_100ug_2xKD$medium_FAAI,
+    fibro_100ug$large_FAAI,fibro_100ug_2xKD$large_FAAI,
+    axes=F,ylab='FA Alignment Index',col=c('white',KD_2X_color))
+
 axis(2)
 
-labs = c(paste('NS (n=',length(IA32_Pax$best_FAAI),')',sep=''),
-    paste('2xKD (n=',length(KD_Pax$best_FAAI),')',sep=''))
-axis(1, labels = labs, at = c(1,2))
-lines(c(1,2),rep(p_size[3]*0.89,2),lwd=3)
-mtext('Pax',1,at=1.5,line=1.6)
+p_size = par("usr");
 
-labs = c(paste('NS (n=',length(IA32_FAK$best_FAAI),')',sep=''),
-    paste('2xKD (n=',length(KD_FAK$best_FAAI),')',sep=''))
-axis(1, labels = labs, at = c(3,4))
-lines(c(3,4),rep(p_size[3]*0.89,2),lwd=3)
-mtext('FAK',1,at=3.5,line=1.6)
+text_height = strheight('Paxillin')*0.25
+mtext('Small',at=c(1.5,p_size[4]))
+segments(1,p_size[4]-text_height,2,p_size[4]-text_height,lwd=3)
+mtext('Medium',at=c(3.5,p_size[4]))
+segments(3,p_size[4]-text_height,4,p_size[4]-text_height,lwd=3)
+mtext('Large',at=c(5.5,p_size[4]))
+segments(5,p_size[4]-text_height,6,p_size[4]-text_height,lwd=3)
 
-labs = c(paste('NS (n=',length(IA32_Vin$best_FAAI),')',sep=''),
-    paste('2xKD (n=',length(KD_Vin$best_FAAI),')',sep=''))
-axis(1, labels = labs, at = c(5,6))
-lines(c(5,6),rep(p_size[3]*0.89,2),lwd=3)
-mtext('Vin',1,at=5.5,line=1.6)
+labs = c(paste('NS \n(n=',length(fibro_100ug$small_FAAI),')',sep=''),
+    paste('2xKD \n(n=',length(fibro_100ug_2xKD$small_FAAI),')',sep=''))
+axis(1, labels = labs, at = c(1,2),padj=0.6,lwd=1.5)
+# mtext(paste('p<',Pax_p$p.value[1],sep=''),side=1,at=c(1.5,p_size[3]),line=2.6)
 
-#put in the significance brackets
-plot_signif_bracket(c(1,p_size[4]*0.97),c(2,p_size[4]*0.965), 
-    over_text=paste('p<',Pax_p$p.value[1],sep=''))
-plot_signif_bracket(c(3,p_size[4]*0.97),c(4,p_size[4]*0.965), 
-    over_text=paste('p<',FAK_p$p.value[1],sep=''))
-plot_signif_bracket(c(5,p_size[4]*0.97),c(6,p_size[4]*0.965), 
-    over_text=paste('p<',Vin_p$p.value[1],sep=''))
+labs = c(paste('NS \n(n=',length(fibro_100ug$medium_FAAI),')',sep=''),
+    paste('2xKD \n(n=',length(fibro_100ug_2xKD$medium_FAAI),')',sep=''))
+axis(1, labels = labs, at = c(3,4),padj=0.6,lwd=1.5)
+# mtext(paste('p<',FAK_p$p.value[1],sep=''),side=1,at=c(3.5,p_size[3]),line=2.6)
+ 
+labs = c(paste('NS \n(n=',length(fibro_100ug$large_FAAI),')',sep=''),
+    paste('2xKD \n(n=',length(fibro_100ug_2xKD$large_FAAI),')',sep=''))
+axis(1, labels = labs, at = c(5,6),padj=0.6,lwd=1.5)
+# mtext(paste('p<',Vin_p$p.value[1],sep=''),side=1,at=c(5.5,p_size[3]),line=2.6)
+
 graphics.off()
 
 ###########################################################
 # Simple FAAI Figure hist
 ###########################################################
-
 fibro_100ug_10 = get(load('../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_10/adhesion_props/FA_orientation.Rdata'));
 
 svg(file.path(out_folder,'simple orientation','FAAI_hist.svg'),width=5,height=5);
@@ -233,82 +301,101 @@ graphics.off()
 ###########################################################
 # Sample FAAI plots
 ###########################################################
-
 high_FAAI_data = get(load('../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_01/adhesion_props/FA_orientation.Rdata'));
 
-svg(file.path(out_folder,'FAAI','sample_high_FAAI.svg'));
-par(bty='n',mar=c(2.8,2.6,0.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
+svg(file.path(out_folder,'sample_FAAI_stills','sample_high_FAAI.svg'));
+par(bty='n',mar=c(2.6,2.6,0.6,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
 breaks = hist(high_FAAI_data$corrected_orientation,axes=F,ylab='Number of Adhesions',
-    xlab='FA Orientation',main='')
+    xlab='FA Orientation',main='',xlim=c(-90,90),breaks=seq(-90,90,by=15))
 axis(2, lwd=3)
 axis(1,at=seq(-90,90,by=45),lwd=3)
 pl_size = par("usr");
-text(pl_size[2],pl_size[4],paste('FAAI=',sprintf('%.1f',fibro_100ug$best_FAAI[1]),sep=''),pos=2)
+text(90,pl_size[4]*0.9,paste('FAAI=',sprintf('%.1f',fibro_100ug$best_FAAI[1]),sep=''),pos=2,cex=1.5)
 graphics.off()
 
-var_name = load(as.character(fibro_1ug$align_file[8]))
-low_FAAI_data = get(var_name)
 
-svg(file.path(out_folder,'FAAI','sample_low_FAAI.svg'));
-par(bty='n',mar=c(2.6,2.8,0.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
-breaks = hist(low_FAAI_data$corrected_orientation,axes=F,ylab='Number of Adhesions',
-    xlab='FA Orientation',main='')
+low_FAAI_data = get(load('../../results/emma/processed_2stdev//Fibro_1ug_trial_2/WT_08/adhesion_props/FA_orientation.Rdata'));
+
+svg(file.path(out_folder,'sample_FAAI_stills','sample_low_FAAI.svg'));
+par(bty='n',mar=c(2.6,2.6,0,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
+hist(low_FAAI_data$corrected_orientation,axes=F,ylab='Number of Adhesions',
+    xlab='FA Orientation',main='',xlim=c(-90,90),breaks=seq(-90,90,by=20))
 axis(2, lwd=3)
 axis(1,at=seq(-90,90,by=45),lwd=3)
 pl_size = par("usr");
-text(pl_size[2],pl_size[4],paste('FAAI=',sprintf('%.1f',fibro_1ug$best_FAAI[8]),sep=''),pos=2)
+text(-90,pl_size[4]*0.9,paste('FAAI=',sprintf('%.1f',fibro_1ug$best_FAAI[8]),sep=''),pos=4,cex=1.5)
 graphics.off()
 
 ###########################################################
-# Single Adhesion Stability - NS
+# Single Adhesion Stability
 ###########################################################
-
-source('FA_alignment_search.R')
 align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/*/FA_orientation.Rdata'));
-lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
-ad_dev_100ug = gather_all_single_adhesion_deviances(align_files,lin_files);
-system('notify-send "done with R"')
+ad_dev_100ug = list();
+for (file in align_files) {
+    temp = get(load(file))
+    temp = temp$single_ad_deviances
+    temp$mean_area = temp$lineage$mean_area
+    temp$longevity = temp$lineage$longevity
+    temp$mean_axial_ratio = temp$lineage$mean_axial_ratio
+    temp$exp_file = file
+    temp = subset(temp, select=-c(lineage))
+    ad_dev_100ug = rbind(ad_dev_100ug,temp)
+}
 
-save(ad_dev_100ug,file='../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_01/adhesion_props/all_100ug_single_ad_dev.Rdata');
+align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_2xKD/Pax*/*/FA_orientation.Rdata*'))
+ad_dev_100ug_2xKD = list();
+for (file in align_files) {
+    temp = get(load(file))
+    temp = temp$single_ad_deviances
+    temp$mean_area = temp$lineage$mean_area
+    temp$longevity = temp$lineage$longevity
+    temp$mean_axial_ratio = temp$lineage$mean_axial_ratio
+    temp = subset(temp, select=-c(lineage))
+    ad_dev_100ug_2xKD = rbind(ad_dev_100ug_2xKD,temp)
+}
 
-svg(file.path(out_folder,'FAAI','single_ad_stability_wide.svg'), width=10);
-par(bty='n',mar=c(2.8,2.6,.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
-hist(ad_dev_100ug$mean_dev,xlab='Average Deviance from Start (degrees)',
-	ylab='# of Focal Adhesions',main='',axes=F, lwd=3,ylim=c(0,2500))
-axis(2,at=seq(0,2500,by=500),lwd=3)
-axis(1,lwd=3)
+#############################
+# Beside Histogram
+#############################
+hist_breaks = seq(0,90,by=5);
+
+NS_hist_data = hist(ad_dev_100ug$mean_dev,plot=F,breaks=hist_breaks);
+KD_hist_data = hist(ad_dev_100ug_2xKD$mean_dev,plot=F,breaks=hist_breaks);
+
+all_hist_data = rbind(NS_hist_data$counts/(sum(NS_hist_data$counts)),
+    KD_hist_data$counts/(sum(KD_hist_data$counts)))
+
+bin_labels = c()
+for (i in 1:length(hist_breaks[-1])) {
+    bin_labels[i] = sprintf('%d - %d',hist_breaks[i],hist_breaks[i+1]);
+}
+
+svg(file.path(out_folder,'FAAI','single_ad_stability_dual.svg'), width=6,height=4);
+par(bty='n',mar=c(4.4,2.5,0.5,0), mgp=c(1.6,0.5,0),xpd=T,lwd=1)
+bar_data = barplot(all_hist_data,beside=T,axes=F,ylab='Percentage of Focal Adhesions',
+    col=c('white',KD_2X_color),space=c(0,0.25))
+axis(1,at = (bar_data[1,]+bar_data[2,])/2, labels=bin_labels,tick=F,las=2)
+axis(2)
+mtext('Average Deviance from Start (degrees)',side=1,line=3.25)
+
+legend('bottomright',c('NS','2xKD'),
+    fill=c('white',KD_2X_color),bty='n',inset=c(0.0,0.02),cex=1.5)
+
 graphics.off()
 
-###########################################################
-# Single Adhesion Stability - NS
-###########################################################
-
-# source('FA_alignment_search.R')
-# align_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/*/FA_orientation.Rdata'));
-# lin_files = Sys.glob(file.path(raw_data_base_dir,'Fibro_100ug_trial_2/WT_*/adhesion_props/single_lin.csv'));
-# ad_dev_100ug = gather_all_single_adhesion_deviances(align_files,lin_files);
-# system('notify-send "done with R"')
-# save(ad_dev_100ug,file='../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_01/adhesion_props/all_100ug_single_ad_dev.Rdata');
-
-ad_dev_100ug = get(load('../../results/emma/processed_2stdev/Fibro_100ug_trial_2/WT_01/adhesion_props/all_100ug_single_ad_dev.Rdata'));
-ad_dev_100ug_2xKD = get(load('../../results/emma/processed_2stdev/100ug_KD/Pax_01/adhesion_props/all_100ug_single_ad_dev.Rdata'));
-
-# NS_hist_data = hist(ad_dev_100ug$mean_dev,plot=F)
-# KD_hist_data = hist(ad_dev_100ug_2xKD$mean_dev,plot=F)
-# 
-# bar_data = barplot(rbind(NS_hist_data$intensities,KD_hist_data$intensities),beside=T,
-#     ylab='Percent of FAs')
-# axis(1,lwd=3)
-
+#############################
+# Overlapping Histogram
+#############################
 svg(file.path(out_folder,'FAAI','single_ad_stability_dual.svg'), width=10);
-par(bty='n',mar=c(2.8,2.6,.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
-hist(ad_dev_100ug$mean_dev,xlab='Average Deviance from Start (degrees)',
-	ylab='Percentage of Focal Adhesions',main='',axes=F,lwd=3,col=rgb(0,1,0,0.5),freq=F)
-hist(ad_dev_100ug_2xKD$mean_dev,axes=F,lwd=3,col=rgb(1,0,0,0.5),add=T,freq=F)
+par(bty='n',mar=c(2.8,2.6,0.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
+hist_data = hist(ad_dev_100ug$mean_dev,xlab='Average Deviance from Start (degrees)',
+	ylab='Percentage of Focal Adhesions',main='',axes=F,lwd=3,col=rgb(0,1,0,0.5),
+    freq=F,xlim=c(0,90))
+hist(ad_dev_100ug_2xKD$mean_dev,axes=F,lwd=3,col=rgb(1,0,0,0.5),add=T,freq=F,breaks=seq(0,90,by=5))
 axis(2,lwd=3)
 axis(1,lwd=3,at=seq(0,90,by=30))
 
-legend('bottomright',c('NS','2xKD'),
+legend('bottomright',c('NS','2xKD'),cex=2,
     fill=c(rgb(0,1,0,0.5),rgb(1,0,0,0.5)),bty='n',inset=c(0.01,0.01))
 
 # legend_text = c(paste('NS (n=',length(ad_dev_100ug$mean_dev),sep='',')')
@@ -318,35 +405,6 @@ legend('bottomright',c('NS','2xKD'),
 
 graphics.off()
 
-svg(file.path(out_folder,'FAAI','single_ad_stability_wide.svg'), width=10);
-par(bty='n',mar=c(2.8,2.6,.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
-hist(ad_dev_100ug$mean_dev,xlab='Average Deviance from Start (degrees)',
-	ylab='# of Focal Adhesions',main='',axes=F,lwd=3,ylim=c(0,2500))
-axis(2,at=seq(0,2500,by=500),lwd=3)
-axis(1,lwd=3)
-graphics.off()
-
-###########################################################
-# Single Adhesion Stability - 2xKD
-###########################################################
-
-# source('FA_alignment_search.R')
-# align_files = Sys.glob(file.path(raw_data_base_dir,'100ug_KD/Pax*/*/FA_orientation.Rdata*'))
-# lin_files = Sys.glob(file.path(raw_data_base_dir,'100ug_KD/Pax*/*/single_lin.csv'))
-# ad_dev_100ug_2xKD = gather_all_single_adhesion_deviances(align_files,lin_files);
-# system('notify-send "done with R"')
-# save(ad_dev_100ug_2xKD,file='../../results/emma/processed_2stdev/100ug_KD/Pax_01/adhesion_props/all_100ug_single_ad_dev.Rdata');
-
-
-svg(file.path(out_folder,'FAAI','single_ad_stability_wide.svg'), width=10);
-par(bty='n',mar=c(2.8,2.6,.5,0), mgp=c(1.6,0.5,0),xpd=T,cex=2,lwd=3)
-hist(ad_dev_100ug_2xKD$mean_dev,xlab='Average Deviance from Start (degrees)',
-	ylab='# of Focal Adhesions',main='',axes=T, lwd=3)
-# axis(2,at=seq(0,2500,by=500),lwd=3)
-# axis(1,lwd=3)
-graphics.off()
-
-
 ###########################################################
 # Spatial
 ###########################################################
@@ -354,7 +412,6 @@ graphics.off()
 #######################################
 # Fibronectin Concentrations
 #######################################
-
 spatial_files = Sys.glob(file.path(raw_data_base_dir,'Fibro*trial_2/*/*/FA_dist_orientation.Rdata'))
 all_spatial = list();
 
