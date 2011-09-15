@@ -16,6 +16,10 @@ write_montage_image_set(ad_1,'stable_angle_full_set.png');
 ad_1 = ad_1(1:6:end);
 addpath('/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/visualize_cell_features/')
 
+montage_ad_no_border = write_montage_image_set(ad_1,'stable_angle.png','num_cols',length(ad_1), ... 
+    'pixel_size',0.1333333333,'bar_size',5);
+imwrite(montage_ad_no_border,'NS_stable_angle.png')
+
 b_size = 10;
 montage_ad = write_montage_image_set(ad_1,'stable_angle.png','num_cols',length(ad_1), ... 
     'pixel_size',0.1333333333,'bar_size',5,'border_size',b_size,'border_color',[0,1,0]);
@@ -46,6 +50,10 @@ write_montage_image_set(ad_1202,'sample_2xKD_ad.png');
 %trim set down to first frame and then a few intermediate
 ad_1202 = ad_1202(1:6:end);
 addpath('/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/visualize_cell_features/')
+
+montage_ad_no_border = write_montage_image_set(ad_1202,'2xKD_set.png','num_cols',length(ad_1202), ... 
+    'pixel_size',0.1333333333,'bar_size',5);
+imwrite(montage_ad_no_border,'2xKD_stable_angle.png')
 
 b_size = 10;
 montage_ad = write_montage_image_set(ad_1202,'2xKD_set.png','num_cols',length(ad_1202), ... 
