@@ -116,7 +116,7 @@ read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
         unlist_data_set$ratio >= min.ratio);
     
     #Area seperations/binning
-    area_thresholds = quantile(data_set$high_ratio$area, c(1/3,2/3));
+    area_thresholds = c(0.53,1.26);
 
     data_set$area_sets$small = subset(data_set$high_ratio, 
         area <= area_thresholds[1]);
@@ -524,6 +524,15 @@ split_angle_data <- function(rate_angle_data, angle=45) {
 ###########################################################
 # Data Loading
 ###########################################################
+load_all_areas <- function(alignment_models) {
+    areas = c()
+    for (align_file in alignment_models) {
+        data_set = get(load(align_file));
+        areas = c(areas, data_set$high_ratio$area);
+        print(paste('Done loading:', align_file))
+    }
+    return(areas)
+}
 
 load_alignment_props <- function(alignment_models) {
     if (length(alignment_models) == 0) {
@@ -541,7 +550,13 @@ load_alignment_props <- function(alignment_models) {
         } else {
             align_props$best_angle = c(align_props$best_angle, data_set$best_angle);
         }
+
+        align_props$small_FAAI = c(align_props$small_FAAI, data_set$area_results$small$FAAI)
+        align_props$medium_FAAI = c(align_props$medium_FAAI, data_set$area_results$medium$FAAI)
+        align_props$large_FAAI = c(align_props$large_FAAI, data_set$area_results$large$FAAI)
+
         align_props$align_file = c(align_props$align_file, align_file);
+        # browser()
         print(paste('Done loading:', align_file))
     }
     align_props = as.data.frame(align_props);
