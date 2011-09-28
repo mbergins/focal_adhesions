@@ -59,18 +59,20 @@ for i_num = 1:size(image_dirs)
     high_eccen_ads = this_tracking(high_eccen_rows);
     low_eccen_ads = this_tracking(low_eccen_rows);
     
-    high_eccen_perim = ismember(this_data.adhesions_perim,high_eccen_ads);
-    low_eccen_perim = ismember(this_data.adhesions_perim,low_eccen_ads);
+    high_eccen_filled = ismember(this_data.adhesions,high_eccen_ads);
+    low_eccen_filled = ismember(this_data.adhesions,low_eccen_ads);
     
-    highlight = create_highlighted_image(this_data.focal_norm,high_eccen_perim,'color_map',[0,1,0],'mix_percent',0.5);
-    highlight = create_highlighted_image(highlight,low_eccen_perim,'color_map',[1,0,0],'mix_percent',0.5);
+    highlight = create_highlighted_image(this_data.focal_norm,high_eccen_filled,'color_map',[0,1,0],'mix_percent',1);
+    highlight = create_highlighted_image(highlight,low_eccen_filled,'color_map',[1,0,0],'mix_percent',1);
     if (any(strcmp('adhesion_centroid',fieldnames(this_data))))
         highlight = add_centroid_mark(highlight,this_data.adhesion_centroid,[0,0,1]);
     end
     
     padded_i_num = sprintf('%04d',i_num);
-    
-    imwrite(highlight,fullfile(output_dir,[padded_i_num,'.png']));
+    out_file = fullfile(output_dir,[padded_i_num,'.png']);
+%     highlight = imresize(highlight,[591, NaN]);
+    imwrite(highlight,out_file);
+%     system(['convert ',out_file,' -pointsize 36 -gravity southwest -fill "#FFFFFF" -annotate 0 "High FAAI" ',out_file]);
 end
 toc;
 
