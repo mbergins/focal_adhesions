@@ -48,7 +48,9 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     ###########################################################################
     # Per Image/Adhesion FAAI Search
     ###########################################################################
-    data_set$per_image_dom_angle = find_per_image_dom_angle(data_set$mat, min.ratio=min.ratio)
+	temp = find_per_image_dom_angle(data_set$mat, min.ratio=min.ratio)
+    data_set$per_image_dom_angle = temp$best_angles
+    data_set$per_image_FAAI	 = temp$FAAI
     write.table(t(data_set$per_image_dom_angle),file=file.path(exp_dir,'..','per_image_dom_angle.csv'),
         row.names=F,col.names=F,sep=',')
     print('Done searching for best angle in single images')
@@ -130,6 +132,7 @@ read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
 
 find_per_image_dom_angle <- function(mat_data, min.ratio=3) {
     best_angles = c()
+    FAAI = c()
     for (i_num in 1:dim(mat_data$orientation)[2]) {
         this_orientation = mat_data$orientation[,i_num];
         this_ratio = mat_data$ratio[,i_num];
@@ -138,11 +141,15 @@ find_per_image_dom_angle <- function(mat_data, min.ratio=3) {
         
         angle_search = test_dom_angles(this_orientation[good_rows]);
         best_angle = find_best_alignment_angle(angle_search)
+		
+		best_orientation = apply_new_orientation(this_orientation[good_rows],best_angle)
+		image_FAAI = find_FAAI_from_orientation(best_orientation)
 
         best_angles = c(best_angles, best_angle);
+		FAAI = c(FAAI,image_FAAI);
     }
-
-    return(best_angles)
+	temp = list(best_angles = best_angles, FAAI=FAAI);	
+    return(temp)
 }
 
 test_dom_angles <- function(orientation, search_resolution = 0.1) {
