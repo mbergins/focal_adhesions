@@ -49,13 +49,12 @@ assert(length(min_index) == 1, 'Error: expected to only find one minimum index b
 
 threshed_mask = im2bw(mask_image, intensity(imin(min_index)));
 
-
 %%Mask Cleanup
 connected_areas = bwlabel(threshed_mask);%
 region_sizes = regionprops(connected_areas, 'Area');
 
-%filter out connected regions smaller than 10 pixels
-threshed_mask = ismember(connected_areas, find([region_sizes.Area] > 100));
+%filter out connected regions smaller than 2.5% of the total image area
+threshed_mask = ismember(connected_areas, find([region_sizes.Area] > 0.025*length(mask_image(:))));
 
 threshed_mask = imfill(threshed_mask,'holes');
 
