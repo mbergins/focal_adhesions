@@ -55,7 +55,7 @@ connected_areas = bwlabel(threshed_mask);%
 region_sizes = regionprops(connected_areas, 'Area');
 
 %filter out connected regions smaller than 10 pixels
-threshed_mask = ismember(connected_areas, find([region_sizes.Area] > 10));
+threshed_mask = ismember(connected_areas, find([region_sizes.Area] > 100));
 
 threshed_mask = imfill(threshed_mask,'holes');
 

@@ -203,7 +203,6 @@ end
 imwrite(highlighted_image,fullfile(i_p.Results.output_dir, 'highlights.png'));
 
 if (i_p.Results.paper_figures)
-    
     col_range = (find(sum(ad_zamir),1,'first')-5):(find(sum(ad_zamir),1,'last')+5);
     col_range = col_range(col_range > 0 & col_range < size(ad_zamir,2));
     row_range = (find(sum(ad_zamir,2),1,'first')-5):(find(sum(ad_zamir,2),1,'last')+5);

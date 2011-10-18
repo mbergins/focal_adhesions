@@ -59,6 +59,14 @@ trimmed_high_pass = trim_data_set(all_high_passed(:),1E-6);
 focal_image_threshold = mean(trimmed_high_pass) + i_p.Results.stdev_thresh*std(trimmed_high_pass);
 csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),focal_image_threshold);
 
+per_image_threshold = zeros(size(image_dirs,1),1);
+for i_num = 1:size(image_dirs,1)
+    temp = all_high_passed(:,:,i_num);
+    temp = trim_data_set(temp(:),5E-6);
+    per_image_threshold(i_num) = mean(temp(:)) + i_p.Results.stdev_thresh*std(temp(:));
+end
+
+%diagnostic diagram
 hist(trimmed_high_pass,100);
 xlabel('High Pass Filtered Intensity','FontSize',16,'FontName','Helvetica');
 ylabel('Pixel Count','FontSize',16,'FontName','Helvetica');
