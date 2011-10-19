@@ -58,7 +58,6 @@ my @overall_command_seq = (
 	[ [ "../analyze_cell_features",   "./build_alignment_models.pl" ], ],
 	[ [ "../visualize_cell_features", "./collect_visualizations.pl" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script ../visualize_cell_features/max_intent_project" ], ],
-	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script ../visualize_cell_features/make_eccen_filtered_vis" ], ],
 );
 
 if (defined $cfg{photo_bleach_correction} && $cfg{photo_bleach_correction}) {
