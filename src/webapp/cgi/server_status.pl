@@ -20,7 +20,7 @@ $| = 1;
 ###############################################################################
 
 my $upload_dir = 'upload';
-my $run_exp_dir = '/home/mbergins/Documents/Projects/fa_webapp_run/src/cgi/';
+my $run_exp_dir = '/home/mbergins/Documents/Projects/fa_webapp_run/src/webapp/';
 
 ###############################################################################
 # Main Program
@@ -29,7 +29,7 @@ my $run_exp_dir = '/home/mbergins/Documents/Projects/fa_webapp_run/src/cgi/';
 my $q = CGI->new();
 
 print $q->header,
-	  $q->start_html(-title=>'Focal Adhesion Analysis Server',-style=>'../../FA_webapp/css/screen.css');
+	  $q->start_html(-title=>'Focal Adhesion Analysis Server',-style=>'/FA_webapp/css/screen.css');
 	  
 print "<div class=\"container\">\n";
 print $q->h1('Focal Adhesion Analysis Server - Server Status');
@@ -37,7 +37,7 @@ print $q->h1('Focal Adhesion Analysis Server - Server Status');
 my @upload_zips = <$upload_dir/*.zip>;
 print $q->p, "<b>Experiments in queue:</b> ", scalar(@upload_zips);
 
-my @run_files = <$run_exp_dir/fa_webapp.*>;
+my @run_files = <$run_exp_dir/fa_webapp.*.run>;
 print $q->p, "<b>Experiments being processed:</b> ", scalar(@run_files);
 
 my %uptime_props = &process_uptime_reading;
