@@ -4,15 +4,16 @@ function build_thresholded_set(I_file,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
 i_p = inputParser;
-
 i_p.addRequired('I_file',@(x)exist(x,'file') == 2);
-
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
-
 i_p.parse(I_file,varargin{:});
 
 %read in and normalize the input focal adhesion image
+
 focal_image  = double(imread(I_file));
+if (length(size(focal_image)) > 2) 
+    focal_image = focal_image(:,:,1);
+end
 focal_image_norm = (focal_image - min(focal_image(:)))/range(focal_image(:));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -28,24 +29,35 @@ stdev_val = std(high_passed_image(:));
 
 stdev_intervals = 1:0.5:4;
 
+% stdev_intervals = linspace(-3,3,20);
+% temp = jet(floor(length(stdev_intervals)/2));
+% c_map = jet(ceil(length(stdev_intervals)/2));
+% c_map = [temp(end:-1:1,:);c_map];
 thresholds = mean_val + stdev_val*stdev_intervals;
 
 %collected the thresholded images
 threshed_images = cell(0);
 threshed_images_perims = cell(0);
+% threshed_image_overlay = ones([size(high_passed_image),3]);
+% i_pix_count = length(high_passed_image(:));
+% c_map = jet(length(stdev_intervals));
 for i = 1:length(thresholds)
     threshed_images{i} = find_threshed_image(high_passed_image,thresholds(i));
 
     %identify and remove adhesions on the immediate edge of the image
-    threshed_images{i} = remove_edge_adhesions(threshed_images{i});
+%     threshed_images{i} = remove_edge_adhesions(threshed_images{i});
     
     threshed_images_perims{i} = bwperim(threshed_images{i});
+    
+%     threshed_image_overlay(find(threshed_images{i})) = c_map(i,1);
+%     threshed_image_overlay(find(threshed_images{i})+i_pix_count) = c_map(i,2);
+%     threshed_image_overlay(find(threshed_images{i})+i_pix_count*2) = c_map(i,3);    
 end
 
 %create highlighted images
 highlighted_images = cell(0);
 for i = 1:length(threshed_images)
-    highlighted_images{i} = create_highlighted_image(focal_image_norm,threshed_images_perims{i});
+    highlighted_images{i} = create_highlighted_image(focal_image_norm,threshed_images_perims{i},'color_map',[1,1,0]);
 end
 
 %file output
