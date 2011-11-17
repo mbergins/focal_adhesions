@@ -13,9 +13,18 @@ while (1) {
 	@thresh_dirs = grep -d $_, @thresh_dirs;
 
 	for (@thresh_dirs) {
+		print "Checking: $_\n" if $opt{debug};
 		my @files = <$_/*>;
-		@files = grep !($_ =~ /index.html/), @files;
+		#check for the index.html file, if present, then the file has been fully uploaded.
+		if (! grep $_ =~ /upload_done/, @files) {
+			print "Didn't find upload_done, exiting\n" if $opt{debug};
+			next;
+		}
+		#now remove the index.html file, if only one file is left it must be the
+		#uploaded file, so run the matlab script on it
+		@files = grep !($_ =~ /upload_done/), @files;
 		if (scalar(@files) > 1) {
+			print "Found more than one other file.\n" if $opt{debug};
 			next;
 		} else {
 			my $command = "matlab -nojvm -nodisplay -nosplash -r \"build_thresholded_set('$files[0]');exit;\" > /dev/null";
@@ -26,9 +35,15 @@ while (1) {
 			}
 		}
 	}
-
+	if ($opt{debug}) {
+		exit;
+	}
 	sleep 1;
 }
+
+###############################################################################
+# Functions
+###############################################################################
 
 sub process_run_file {
     my $run_file = shift @_; 
