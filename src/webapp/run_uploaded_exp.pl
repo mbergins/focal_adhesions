@@ -13,11 +13,13 @@ use Config::Adhesions qw(ParseConfig);
 
 my %opt;
 $opt{ID} = 1;
-GetOptions(\%opt, "ID=s","debug|d") or die;
+GetOptions(\%opt, "fullnice", "ID=s","debug|d") or die;
+
+$| = 1;
 
 if ($opt{fullnice}) {
-	system("renice -n 20 p $$");
-	system("ionice -c 3 p $$");
+	system("renice -n 20 -p $$ > /dev/null");
+	system("ionice -c 3 -p $$");
 }
 
 ###############################################################################
@@ -60,10 +62,6 @@ for my $file (@uploaded_files) {
 	$upload_data{$name}{orig_cfg} = $cfg;
 }
 
-# my @data_names = <$data_proc_dir/*>;
-# @data_names = grep -d $_, @data_names;
-# @data_names = map basename($_), @data_names;
-
 my %youngest_file = &find_oldest_new_upload_file(\%upload_data);
 $youngest_file{target_dir} = catdir($data_proc_dir,$youngest_file{name});
 
@@ -72,22 +70,39 @@ $youngest_file{target_dir} = catdir($data_proc_dir,$youngest_file{name});
 &add_image_dir_to_config(%youngest_file);
 
 my %config = ParseConfig(\%youngest_file);
-$youngest_file{email} = $config{email};
+if (defined $config{email}) {
+	$youngest_file{email} = $config{email};
+}
 $youngest_file{self_note} = $config{self_note};
+if (defined $config{phone} && defined $config{provider}) {
+	$youngest_file{phone} = $config{phone};
+	$youngest_file{provider} = $config{provider};
+}
 
 ###########################################################
 # Processing
 ###########################################################
 
-&send_start_email(%youngest_file);
+# &send_start_email(%youngest_file);
+
 &setup_exp(%youngest_file);
 &run_processing_pipeline(\%youngest_file,\%config);
 &build_vector_vis(%youngest_file);
 $youngest_file{public_zip} = &zip_results_folder(\%youngest_file,\%config);
-&send_done_email(%youngest_file);
-&delete_run_file($run_file);
 
+###########################################################
+# Notifications, Cleanup
+###########################################################
+if (defined $youngest_file{email}) {
+	&send_done_email(%youngest_file);
+}
+if (defined $youngest_file{phone} && defined $youngest_file{provider}) {
+	&send_done_text(%youngest_file);
+}
+
+&delete_run_file($run_file);
 &add_runtime_to_config(\%youngest_file,$start_time);
+
 ###############################################################################
 # Functions
 ###############################################################################
@@ -129,16 +144,40 @@ sub determine_image_folder {
 	my $target_dir = $_[0];
 	
 	my @files = <$target_dir/*>;
-	my @dirs = grep -d $_, @files;
+	if ($opt{debug}) {
+		print "Found files: ",join(" ",@files), "\n\n";
+	}
+	my @dirs = grep {
+		if (-d $_) {
+			if ($_ =~ /$target_dir\/(.*)/) {
+				#Macs like to add in hidden directories that begin with "__",
+				#while linus uses ".", I'll check for both of those and exclude
+				#them from the directories list
+				if ($1 =~ /^__/) {
+					print "Found __ folder\n" if ($opt{debug});
+					0;
+				} elsif ($1 =~ /^\./) {
+					print "Found . folder\n" if ($opt{debug});
+					0;
+				} else {
+					1;
+				}
+			}
+		}
+	} @files;
+
+	if ($opt{debug}) {
+		print "Found folders: ",join(" ",@dirs), "\n\n";
+	}
 	@dirs = map {
-		if ($_ =~ /$target_dir(.*)/) {
+		if ($_ =~ /$target_dir\/(.*)/) {
 			$1;
 		}
 	} @dirs;
 
 	if (scalar(@dirs) > 1) {
 		print "Found more than one folder after unzipping:";
-		print join ("\n", @dirs);
+		print join (" ", @dirs);
 		exit;
 	}
 	if (scalar(@dirs) == 0) {
@@ -211,8 +250,10 @@ sub delete_run_file {
 sub send_email {
 	my %email_data = @_;
 	
-	$email_data{body} = "$email_data{body}\n\n" . 
-		"Your note to yourself about this experiment:\n$email_data{self_note}";
+	if ($email_data{self_note}) {
+		$email_data{body} = "$email_data{body}\n\n" . 
+			"Your note to yourself about this experiment:\n$email_data{self_note}";
+	}
 
 	my $command = "echo \"$email_data{body}\" | mail -s \"$email_data{subject}\" $email_data{address}";
 
@@ -250,6 +291,34 @@ sub send_done_email {
 	);
 
 	&send_email(%done_email);
+}
+
+sub send_done_text {
+	my %config = @_;
+	
+	my $provider_email;
+	if (defined $config{provider}) {
+		if ($config{provider} eq "AT&T") {
+			$provider_email = 'txt.att.net';
+		} elsif ($config{provider} eq "Verizon") {
+			$provider_email = 'vtext.com';
+		} elsif ($config{provider} eq "Sprint") {
+			$provider_email = 'messaging.nextel.com';
+		} else {
+			print "Unrecognized provider code: $config{provider}\n" if $opt{debug};
+			return;
+		}
+	}
+
+	if (defined $config{phone} && $config{phone} =~ /\d+/) {
+		my %text_email = (
+			'address' => $config{phone} . "\@$provider_email",
+			'body' => "Your exp ($config{name}) has finished. Self note: $config{self_note}",
+			'subject' => "",
+			'self_note' => undef,
+		);
+		&send_email(%text_email);
+	}
 }
 
 ###########################################################
