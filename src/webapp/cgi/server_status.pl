@@ -12,6 +12,9 @@ use CGI::Carp;
 use IO::Handle;
 use Config::General;
 
+use lib './';
+use webserver_funcs qw(print_html_end);
+
 my $start = time;
 
 $| = 1;
@@ -45,11 +48,7 @@ my %uptime_props = &process_uptime_reading;
 print $q->p, "<b>The server has been running for:</b> ", $uptime_props{runtime};
 print $q->p, "<b>The server load levels are:</b> ", $uptime_props{load};
 
-print $q->br,$q->br,$q->hr, $q->p, 
-	"Return to the ", $q->a({href=>"/FA_webapp"},'home page');
-
-print "</div>\n";
-print $q->end_html;
+&print_html_end($q);
 
 ###############################################################################
 # Functions
