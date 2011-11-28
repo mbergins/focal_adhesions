@@ -70,12 +70,5 @@ if (defined $cfg{job_group}) {
 sub build_extra_command_line_opts {
 	my $extra = '';
 
-	if ($opt{script} =~ /find_exp_thresholds/) {
-        if (defined $cfg{stdev_thresh}) {
-			my @split_stdev_vals = split(/\s+/,$cfg{stdev_thresh});
-            $extra .= ",'stdev_thresh',[" . join(",",@split_stdev_vals) . "]";
-        }
-	}
-
 	return $extra;
 }

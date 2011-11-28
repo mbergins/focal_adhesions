@@ -36,6 +36,8 @@ i_p.addParamValue('filter_thresh',0.1,@isnumeric);
 i_p.addParamValue('min_independent_size',14,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
 i_p.addParamValue('max_adhesion_count', Inf, @(x) isnumeric(x));
+i_p.addParamValue('stdev_thresh',2,@(x)isnumeric(x) && all(x > 0));
+i_p.addParamValue('proximity_filter',0,@(x)isnumeric(x) && all(x > 0));
 
 %output parameters
 i_p.addParamValue('output_dir', fileparts(I_file), @(x)exist(x,'dir')==7);
@@ -51,7 +53,7 @@ i_p.parse(I_file,varargin{:});
 
 %Add the folder with all the scripts used in this master program
 addpath('matlab_scripts');
-addpath(genpath('..'));
+addpath('../visualize_cell_features');
 
 %read in the cell mask image if defined in parameter set
 if (not(any(strcmp('cell_mask', i_p.UsingDefaults))))
@@ -60,7 +62,8 @@ end
 
 filenames = add_filenames_to_struct(struct());
 
-filter_thresh = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
+filter_vals = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
+filter_thresh = filter_vals(1) + filter_vals(2)*i_p.Results.stdev_thresh;
 
 %read in and normalize the input focal adhesion image
 focal_image  = double(imread(I_file));
@@ -78,7 +81,7 @@ I_filt = fspecial('disk',i_p.Results.filter_size);
 blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
 high_passed_image = focal_image - blurred_image;
 
-threshed_image = find_threshed_image(high_passed_image,filter_thresh);
+threshed_image = find_threshed_image(high_passed_image,filter_thresh,i_p.Results.proximity_filter);
 
 %identify and remove adhesions on the immediate edge of the image
 threshed_image = remove_edge_adhesions(threshed_image);
@@ -111,7 +114,7 @@ end
 %in order to select a threshold for having adhesions remain as seperate
 %enties when touching, so we also check for that before using the watershed
 %segmentation
-if (i_p.Results.no_ad_splitting || not(isempty(strmatch('min_independent_size', i_p.UsingDefaults))))
+if (i_p.Results.no_ad_splitting || any(strcmp('min_independent_size',i_p.UsingDefaults)))
     %if splitting is off, there is no need to use the fancy watershed based
     %segmentation methods, just identify the connected areas
     ad_zamir = bwlabel(threshed_image,4);
@@ -225,13 +228,14 @@ toc;
 % Functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function threshed_image = find_threshed_image(high_passed_image, filter_thresh)
+function threshed_image = find_threshed_image(high_passed_image, filter_thresh, proximity_filter)
 
 if (length(filter_thresh) == 1)
     threshed_image = high_passed_image >= filter_thresh;
 else
     high_threshed_image = high_passed_image >= filter_thresh(2);
     high_threshed_image = remove_edge_adhesions(high_threshed_image);
+    high_threshed_image = imdilate(high_threshed_image,strel('disk',proximity_filter));
     
     low_threshed_image = high_passed_image >= filter_thresh(1);
     low_thresh_bwlabel = bwlabel(low_threshed_image,4);
@@ -243,3 +247,4 @@ else
     
     threshed_image = ismember(low_thresh_bwlabel,overlap_labels);
 end
+1;

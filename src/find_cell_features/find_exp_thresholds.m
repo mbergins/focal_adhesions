@@ -6,7 +6,6 @@ tic;
 i_p = inputParser;
 
 i_p.addRequired('exp_dir',@(x)exist(x,'dir') == 7);
-i_p.addParamValue('stdev_thresh',4,@(x)isnumeric(x) && all(x > 0));
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
 i_p.parse(exp_dir,varargin{:});
@@ -52,18 +51,20 @@ output_file = fullfile(base_dir,image_dirs(1).name,filenames.focal_image_min_max
 if (not(exist(output_folder,'dir')))
     mkdir(output_folder);
 end
-
 csvwrite(output_file,min_max);
 
 trimmed_high_pass = trim_data_set(all_high_passed(:),1E-6);
-focal_image_threshold = mean(trimmed_high_pass) + i_p.Results.stdev_thresh*std(trimmed_high_pass);
-csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),focal_image_threshold);
+high_pass_mean = mean(trimmed_high_pass);
+high_pass_std = std(trimmed_high_pass);
+csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),...
+    [high_pass_mean,high_pass_std]);
 
-per_image_threshold = zeros(size(image_dirs,1),1);
+per_image_threshold = zeros(size(image_dirs,1),2);
 for i_num = 1:size(image_dirs,1)
     temp = all_high_passed(:,:,i_num);
     temp = trim_data_set(temp(:),5E-6);
-    per_image_threshold(i_num) = mean(temp(:)) + i_p.Results.stdev_thresh*std(temp(:));
+
+    per_image_threshold(i_num,:) = [mean(temp(:)), std(temp(:))];
 end
 
 %diagnostic diagram
@@ -72,8 +73,8 @@ xlabel('High Pass Filtered Intensity','FontSize',16,'FontName','Helvetica');
 ylabel('Pixel Count','FontSize',16,'FontName','Helvetica');
 y_limits = ylim();
 
-for i=1:length(focal_image_threshold)
-    this_thresh = focal_image_threshold(i);
+for i=1:4
+    this_thresh = high_pass_mean+high_pass_std*i;
     line([this_thresh,this_thresh],[0,y_limits(2)],'Color','red', ... 
         'LineStyle','--','LineWidth',3);
 end

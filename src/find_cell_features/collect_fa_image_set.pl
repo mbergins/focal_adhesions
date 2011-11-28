@@ -76,8 +76,9 @@ sub create_all_matlab_commands {
         my $cell_mask = catfile(dirname($file_name), $cfg{cell_mask_file});
 
         my $extra_opt = "";
-        if (defined $cfg{filter_thresh}) {
-            $extra_opt .= ",'filter_thresh',$cfg{filter_thresh}";
+        if (defined $cfg{stdev_thresh}) {
+			my @split_stdev_vals = split(/\s+/,$cfg{stdev_thresh});
+            $extra_opt .= ",'stdev_thresh',[" . join(",",@split_stdev_vals) . "]";
         }
         if (defined $cfg{no_ad_splitting}) {
             $extra_opt .= ",'no_ad_splitting',$cfg{no_ad_splitting}";
@@ -90,6 +91,9 @@ sub create_all_matlab_commands {
         }
         if (defined $cfg{max_adhesion_count}) {
             $extra_opt .= ",'max_adhesion_count',$cfg{max_adhesion_count}";
+        }
+        if (defined $cfg{proximity_filter}) {
+            $extra_opt .= ",'proximity_filter',$cfg{proximity_filter}";
         }
 
 		if (-e $cell_mask) {
