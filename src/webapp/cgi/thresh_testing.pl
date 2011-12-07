@@ -62,8 +62,13 @@ if (defined $lightweight_fh) {
 	open OUTPUT, ">$dir/upload_done";
 	print OUTPUT "done";
 	close OUTPUT;
+	my $sleep_count = 0;
 	while (! -e "$dir/thumbs/focal_image_4.jpg") {
 		sleep 1;
+		$sleep_count++;
+		if ($sleep_count > (10*60)) {
+			die "Threshold processing on $dir took over ten minutes, exiting.";
+		}
 	}
 
 	#start a new CGI object to build the browsing page for the thresholded image
