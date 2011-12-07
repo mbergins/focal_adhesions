@@ -55,7 +55,6 @@ if ($opt{lsf}) {
     }
     
     $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'tracking_data');
-    $opt{resource} = "blade RH5";
     $opt{queue} = "week";
 	#mem specified in kb
     $opt{mem} = (1024**2)*4;

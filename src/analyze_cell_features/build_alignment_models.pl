@@ -45,7 +45,6 @@ if ($opt{lsf}) {
     push @commands, "$0 -cfg $opt{cfg}";
     
     $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'alignment_models');
-    $opt{resource} = 'blade';
     if (defined $cfg{job_group}) {
         $opt{job_group} = $cfg{job_group};
     }
