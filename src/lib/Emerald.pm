@@ -35,7 +35,7 @@ sub create_LSF_Matlab_commands {
     $opt{error_file}  = File::Spec->catfile($opt{error_folder},$opt{error_filename});
     unlink($opt{output_file}, $opt{error_file});
     
-    my $bsub_command   = "bsub -mig 0 -r -R RH5 -q $opt{queue} -o $opt{output_file} -e $opt{error_file} -We $opt{runtime}";
+    my $bsub_command   = "bsub -mig 0 -r -q $opt{queue} -o $opt{output_file} -e $opt{error_file} -We $opt{runtime}";
     if (defined $opt{job_group}) {
         $bsub_command .= " -g $opt{job_group}";
     }
