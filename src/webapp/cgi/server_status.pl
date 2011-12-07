@@ -43,6 +43,8 @@ print $q->p, "<b>Experiments in queue:</b> ", scalar(@upload_zips);
 my @run_files = <$run_exp_dir/fa_webapp.*.run>;
 print $q->p, "<b>Experiments being processed:</b> ", scalar(@run_files);
 
+print $q->p, "<b>Number of Processing Workers:</b> ", &count_upload_workers;
+
 my %uptime_props = &process_uptime_reading;
 
 print $q->p, "<b>The server has been running for:</b> ", $uptime_props{runtime};
@@ -69,4 +71,15 @@ sub process_uptime_reading {
 	}
 
 	return %uptime_props;
+}
+
+sub count_upload_workers {
+	open INPUT, "current_cron";
+	my @cron = <INPUT>;
+	close INPUT;
+
+	@cron = grep !($_ =~ /^#/), @cron;
+	@cron = grep $_ =~ /run_uploaded_exp/, @cron;
+
+	return(scalar(@cron));
 }
