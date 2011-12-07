@@ -1,7 +1,7 @@
 #!/usr/bin/perl -wT
 
 use strict;
-use File::Path;
+use File::Path qw(make_path remove_tree);
 use File::Basename;
 use File::Spec::Functions;
 use File::Copy;
@@ -26,12 +26,13 @@ $| = 1;
 my $q = CGI->new();
 
 print $q->header,
-	  $q->start_html(-title=>'Focal Adhesion Analysis Server', 
+	  $q->start_html(-title=>'Focal Adhesion Analysis Server - Experiment Upload', 
 		  -style=>'/FA_webapp/css/screen.css',
+		  -script=>{-type=>'javascript',-src=>'/FA_webapp/javascript/validation.js'},
 	  );
 
 print "<div class=\"container\">\n";
-print $q->h1( 'Focal Adhesion Analysis Server');
+print $q->h1( 'Focal Adhesion Analysis Server - Experiment Upload' );
 #First check for a valid file handle, if so, present user with acknowledgement
 #of the upload
 my $lightweight_fh = $q->upload('uploaded_file');
@@ -43,7 +44,7 @@ if (defined $lightweight_fh) {
     
     my $temp_output = catdir('upload');
     if (! -e $temp_output) {
-        mkpath($temp_output);
+        make_path($temp_output);
 		chmod 0777, $temp_output;
     }
 
@@ -103,38 +104,51 @@ if (defined $lightweight_fh) {
 } else {
     #no valid file handle was available, instead present the user with the
     #regular upload page
+	print "Instructions are at the bottom of the page.\n";
+
     print $q->start_form(-method=>"POST",
                      -action=>"upload.pl",
                      -enctype=>"multipart/form-data",
-				 	 -name=>'fa_upload',
-				 	 -onSubmit=>'displaymessage()');
+				 	 -name=>'fa_upload',);
     print $q->h3({class=>'thin'},'Adhesion Image File'), 
           $q->filefield('uploaded_file','',50,80);
 
     print $q->h2('Advanced Settings'), 
 	   	  $q->h3({class=>'thin'},'Adhesion Detection Threshold'),
-          $q->textfield('filter_thresh','2',50,80);
+          $q->textfield(-name=>'filter_thresh',-value=>'2',-size=>50,
+			  -id=>'thresh_field',-onChange=>'validate_thresh(this.id)',
+		  	  -onSelect=>'validate_thresh(this.id)');
+	print "<div class=\"hide\" id=\"thresh_help\">
+		The threshold must be a number above 0, see instructions below for more help.
+		</div>\n";
     
 	print $q->h2('Optional Settings');
     print $q->h3({class=>'thin'},'Email Address'),
-          $q->textfield('email','',50,80);
+          $q->textfield(-name=>'email',-value=>'',-size=>50,
+			  -id=>'email_field','onChange'=>'validate_email(this.id)',
+			  -onSelect=>'validate_email(this.id)');
+	print "<div class=\"hide\" id=\"email_help\">
+		Please input a valid email address.</div>\n";
     print $q->h3({class=>'thin'},'Note to Self About Experiment'),
           $q->textfield('self_note','',50,80);
-	print $q->h3({class=>'thin'},'Cell Phone Number'),
-		  $q->textfield(-name=>'phone',-value=>'XXX-XXX-XXXX',-size=>15,-maxlength=>20,
-		  	-onFocus=>"if(this.value=='XXX-XXX-XXXX')this.value=''");
-	print $q->h3({class=>'thin'},'Cell Phone Provider'),
-		  $q->popup_menu(-name=>'provider', -values=>[("", "AT&T", "Verizon", "Sprint")],
+	print $q->h3({class=>'thin'},'Cell Phone Number/Provider'),
+		  $q->textfield(-name=>'phone',-id=>'phone_field',-value=>'XXX-XXX-XXXX',-size=>15,-maxlength=>20,
+		  	-onChange=>"validate_phone(this.id)");
+	print " ",$q->popup_menu(-name=>'provider', -values=>[("", "AT&T", "Verizon", "Sprint")],
 		  	-default=>"");
+	print "<div class=\"hide\" id=\"phone_help\">
+		The phone number must be entered as XXX-XXX-XXXX or XXXXXXXXXX.
+		</div>\n";
+	# print $q->h3({class=>'thin'},'Cell Phone Provider'),
 
     print $q->br,$q->br,
-          $q->submit(-name=>"Submit Data");
+          $q->submit(-name=>"Submit Data",-id=>"submit_button");
 
     print $q->end_form;
 
     print $q->br, $q->hr;
     
-    &print_analysis_instrucitons
+    &print_analysis_instrucitons;
 }
 
 &print_html_end($q);
@@ -180,13 +194,15 @@ sub print_analysis_instrucitons {
 	print $q->h3({class=>'thin'},'Email');
 
 	print "If an email address is provided, you will be notified via email when
-	your job starts processing and when it finishes. If this is not provided,
-	then the experiment status page returned on submission needs to bookmarked
-	in order to retrieve your results.";
+	your job starts processing and when it finishes. Your email address will
+	only be used for notification purposes. If this is not provided, then the
+	experiment status page returned on submission needs to bookmarked in order
+	to retrieve your results.";
 	
 	print $q->h3({class=>'thin'},'Phone Number/Provider'); 
 	print "If a cell phone number and cell phone provider are supplied, you will
-	be sent a text message when your experiment is done processing.";
+	be sent a text message when your experiment is done processing. Your cell
+	phone number will only be used for nofication purposes.";
 
     print $q->h2('Note to Self About Experiment');
 
@@ -232,13 +248,14 @@ sub move_tiff_file {
 	$file = basename($file);
 
 	chdir 'upload';
-	mkdir($file);
+	# move($file,"tmp_$file");
+	make_path("Images");
 
-	move($file,$file);
+	move($file,"Images/data.tif");
 	$ENV{PATH} = '/usr/bin/';
-	system("/usr/bin/zip -q -0 $file.zip $file");
+	system("/usr/bin/zip -r -q -0 $file.zip Images");
+	remove_tree("Images");
 	
 	chmod 0777, "$file.zip" or die "$!";
-	unlink $file;
 	chdir '..';
 }
