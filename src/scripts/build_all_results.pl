@@ -24,7 +24,9 @@ my %opt;
 $opt{debug} = 0;
 GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l", "exp_filter=s", "no_email") or die;
 
-if (-e '/opt/lsf/bin/bjobs' && not $opt{lsf}) {
+my $which_output = `which bsub`;
+chomp($which_output);
+if (-e $which_output && not $opt{lsf}) {
 	die "LSF appears to be installed on this machine, don't you want to use it?" 
 }	
 
