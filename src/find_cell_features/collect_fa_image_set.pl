@@ -53,7 +53,8 @@ if ($opt{debug}) {
     }
 }
 
-my @matlab_code = &create_all_matlab_commands;
+# my @matlab_code = &create_all_matlab_commands;
+my @matlab_code = &create_single_matlab_command;
 
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'FA');
 $opt{error_file} = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'FA', 'error.txt');
@@ -73,8 +74,6 @@ sub create_all_matlab_commands {
 
     my @image_files = <$cfg{individual_results_folder}/*/$cfg{adhesion_image_file}>;
     foreach my $file_name (@image_files) {
-        my $cell_mask = catfile(dirname($file_name), $cfg{cell_mask_file});
-
         my $extra_opt = "";
         if (defined $cfg{stdev_thresh}) {
 			my @split_stdev_vals = split(/\s+/,$cfg{stdev_thresh});
@@ -96,12 +95,38 @@ sub create_all_matlab_commands {
             $extra_opt .= ",'proximity_filter',$cfg{proximity_filter}";
         }
 
-		if (-e $cell_mask) {
-            $extra_opt .= ",'cell_mask','$cell_mask'";
-		}
-
 		$matlab_code[0] .= "find_focal_adhesions('$file_name'$extra_opt)\n";
     }
+
+    return @matlab_code;
+}
+
+sub create_single_matlab_command {
+    my @matlab_code;
+
+	my $extra_opt = "";
+	if (defined $cfg{stdev_thresh}) {
+		my @split_stdev_vals = split(/\s+/,$cfg{stdev_thresh});
+		$extra_opt .= ",'stdev_thresh',[" . join(",",@split_stdev_vals) . "]";
+	}
+	if (defined $cfg{no_ad_splitting}) {
+		$extra_opt .= ",'no_ad_splitting',$cfg{no_ad_splitting}";
+	}
+	if (defined $cfg{min_adhesion_size}) {
+		$extra_opt .= ",'min_adhesion_size',$cfg{min_adhesion_size}";
+	}
+	if (defined $cfg{min_independent_size}) {
+		$extra_opt .= ",'min_independent_size',$cfg{min_independent_size}";
+	}
+	if (defined $cfg{max_adhesion_count}) {
+		$extra_opt .= ",'max_adhesion_count',$cfg{max_adhesion_count}";
+	}
+	if (defined $cfg{proximity_filter}) {
+		$extra_opt .= ",'proximity_filter',$cfg{proximity_filter}";
+	}
+	
+
+	$matlab_code[0] .= "find_focal_adhesions_full_exp('$cfg{exp_results_folder}'$extra_opt)\n";
 
     return @matlab_code;
 }

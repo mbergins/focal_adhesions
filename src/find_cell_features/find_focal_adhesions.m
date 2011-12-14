@@ -21,13 +21,10 @@ function [varargout] = find_focal_adhesions(I_file,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
 i_p = inputParser;
-i_p.FunctionName = 'FIND_FOCAL_ADHESIONS';
-
+i_p.StructExpand = true;
 i_p.addRequired('I_file',@(x)exist(x,'file') == 2);
 
 i_p.parse(I_file);
-
-i_p.addParamValue('cell_mask',0,@(x)exist(x,'file') == 2);
 
 %Adhesion filtering parameters
 i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x) && x > 0);
@@ -37,13 +34,7 @@ i_p.addParamValue('min_independent_size',14,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
 i_p.addParamValue('max_adhesion_count', Inf, @(x) isnumeric(x));
 i_p.addParamValue('stdev_thresh',2,@(x)isnumeric(x) && all(x > 0));
-i_p.addParamValue('proximity_filter',0,@(x)isnumeric(x) && all(x > 0));
-
-%output parameters
-i_p.addParamValue('output_dir', fileparts(I_file), @(x)exist(x,'dir')==7);
-i_p.addParamValue('output_file', 'adhesions.png', @ischar);
-i_p.addParamValue('output_file_perim', 'adhesions_perim.png', @ischar);
-i_p.addParamValue('output_file_binary', 'adhesions_binary.png', @ischar);
+i_p.addParamValue('proximity_filter',0,@(x)isnumeric(x) && all(x >= 0));
 
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 i_p.addParamValue('paper_figures',0,@(x)x == 1 || x == 0);
@@ -55,12 +46,12 @@ i_p.parse(I_file,varargin{:});
 addpath('matlab_scripts');
 addpath('../visualize_cell_features');
 
+filenames = add_filenames_to_struct(struct());
+
 %read in the cell mask image if defined in parameter set
-if (not(any(strcmp('cell_mask', i_p.UsingDefaults))))
+if (exist(fullfile(I_file,filenames.cell_mask),'file'))
     cell_mask = imread(i_p.Results.cell_mask);
 end
-
-filenames = add_filenames_to_struct(struct());
 
 filter_vals = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
 filter_thresh = filter_vals(1) + filter_vals(2)*i_p.Results.stdev_thresh;
@@ -99,7 +90,7 @@ end
 %adding a check for finding adhesions, if didn't find any, output error
 %file
 if (sum(sum(threshed_image)) == 0)
-    no_ad_found_file = fullfile(i_p.Results.output_dir, 'no_ads_found.txt');
+    no_ad_found_file = fullfile(output_dir, 'no_ads_found.txt');
     system(['touch ', no_ad_found_file]);
     error('Didn''t find any adhesions');
 end
@@ -146,7 +137,7 @@ end
 ad_nums = unique(ad_zamir)';
 assert(ad_nums(1) == 0, 'Background pixels not found after building adhesion label matrix')
 if ((length(ad_nums) - 1) > i_p.Results.max_adhesion_count)
-    system(['touch ', fullfile(i_p.Results.output_dir, 'Found_too_many_adhesions')]);
+    system(['touch ', fullfile(output_dir, 'Found_too_many_adhesions')]);
     error(['Found more (',num2str(max(ad_zamir(:))),') adhesions than', ...
         ' max adhesion count (',num2str(i_p.Results.max_adhesion_count),').']);
 end
@@ -195,15 +186,18 @@ if(i_p.Results.status_messages), disp('Done building adhesion perimeters'); end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Write the output files
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-imwrite(double(ad_zamir)/2^16,fullfile(i_p.Results.output_dir, i_p.Results.output_file),'bitdepth',16);
-imwrite(double(ad_zamir_perim)/2^16,fullfile(i_p.Results.output_dir, i_p.Results.output_file_perim),'bitdepth',16);
-imwrite(im2bw(ad_zamir,0),fullfile(i_p.Results.output_dir, i_p.Results.output_file_binary));
+
+output_dir = fileparts(I_file);
+
+imwrite(double(ad_zamir)/2^16,fullfile(output_dir, filenames.adhesions),'bitdepth',16);
+imwrite(double(ad_zamir_perim)/2^16,fullfile(output_dir, filenames.adhesions_perim),'bitdepth',16);
+imwrite(im2bw(ad_zamir,0),fullfile(output_dir, filenames.adhesions_binary));
 
 highlighted_image = create_highlighted_image(focal_normed, im2bw(ad_zamir_perim,0), 'color_map',[1,1,0]);
 if (exist('cell_mask','var'))
     highlighted_image = create_highlighted_image(highlighted_image, bwperim(cell_mask),'color_map',[1,0,0]);
 end
-imwrite(highlighted_image,fullfile(i_p.Results.output_dir, 'highlights.png'));
+imwrite(highlighted_image,fullfile(output_dir, 'highlights.png'));
 
 if (i_p.Results.paper_figures)
     col_range = (find(sum(ad_zamir),1,'first')-5):(find(sum(ad_zamir),1,'last')+5);
@@ -213,10 +207,10 @@ if (i_p.Results.paper_figures)
     
     normed_hp_image = (high_passed_image - min(high_passed_image(:)))/range(high_passed_image(:));
     normed_hp_image = normed_hp_image(row_range,col_range);
-    imwrite(normed_hp_image,fullfile(i_p.Results.output_dir,'high_passed_image.png'),'bitdepth',16);
+    imwrite(normed_hp_image,fullfile(output_dir,'high_passed_image.png'),'bitdepth',16);
     
-    imwrite(highlighted_image(row_range,col_range,1:3),fullfile(i_p.Results.output_dir,'highlights_cropped.png'));
-    imwrite(focal_normed(row_range,col_range),fullfile(i_p.Results.output_dir,'focal_cropped.png'));
+    imwrite(highlighted_image(row_range,col_range,1:3),fullfile(output_dir,'highlights_cropped.png'));
+    imwrite(focal_normed(row_range,col_range),fullfile(output_dir,'focal_cropped.png'));
 end
 
 if (nargout > 0)

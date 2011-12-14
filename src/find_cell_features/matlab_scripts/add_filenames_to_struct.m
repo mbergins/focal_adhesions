@@ -12,6 +12,8 @@ filenames.adhesions = 'adhesions.png';
 filenames.adhesions_binary = 'adhesions_binary.png';
 filenames.adhesions_perim = 'adhesions_perim.png';
 
+filenames.cell_mask = 'cell_mask.png';
+
 filenames.photo_bleach_correction = 'photo_correct.txt';
 
 filenames.focal_image_min_max = '../../adhesion_props/focal_min_max.csv';
