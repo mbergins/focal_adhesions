@@ -22,7 +22,7 @@ use Config::Adhesions qw(ParseConfig);
 
 my %opt;
 $opt{debug} = 0;
-GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l", "exp_filter=s", "no_email") or die;
+GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l", "exp_filter=s", "no_email", "text|txt") or die;
 
 my $which_output = `which bsub`;
 chomp($which_output);
@@ -49,8 +49,10 @@ $|  = 1;
 #commands in.
 my @overall_command_seq = (
 	[ [ "../find_cell_features",      "./collect_mask_image_set.pl" ], ],
+	[ [ "../find_cell_features", "./run_matlab_over_field.pl -script apply_adhesion_bleaching_correction.m" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_exp_thresholds"], ],
 	[ [ "../find_cell_features",      "./collect_fa_image_set.pl" ], ],
+	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script apply_adhesion_bleaching_correction.m" ], ],
 	[ [ "../find_cell_features",      "./collect_fa_properties.pl" ], ],
 	[ [ "../analyze_cell_features",   "./build_tracking_data.pl" ], ],
 	[ [ "../analyze_cell_features",   "./track_adhesions.pl" ], ],
@@ -60,12 +62,6 @@ my @overall_command_seq = (
 	[ [ "../visualize_cell_features", "./collect_visualizations.pl" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script ../visualize_cell_features/max_intent_project" ], ],
 );
-
-if (defined $cfg{photo_bleach_correction} && $cfg{photo_bleach_correction}) {
-	@overall_command_seq = (@overall_command_seq[0..2], 
-		[ [ "../find_cell_features", "./run_matlab_over_field.pl -script apply_adhesion_bleaching_correction.m" ], ],
-		@overall_command_seq[3..$#overall_command_seq]);
-}
 
 #some of the scripts only need to be run once for each experiment, this will
 #rely on being able to find an experiment with one of the following values in
@@ -170,6 +166,10 @@ if (not($opt{debug})) {
 	
 	if (not $opt{no_email}) {
 		system($command) if $opt{lsf};
+	}
+	if ($opt{text}) {
+		$command = "echo \"Processing done\" | mail -s \"Processing done\" 8597976722\@txt.att.net";
+		system($command);
 	}
 }
 
