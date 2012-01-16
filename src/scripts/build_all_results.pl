@@ -22,11 +22,13 @@ use Config::Adhesions qw(ParseConfig);
 
 my %opt;
 $opt{debug} = 0;
-GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l", "exp_filter=s", "no_email", "text|txt") or die;
+GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l", "exp_filter=s", "no_email",
+	"text|txt", "sync=s") or die;
 
 my $lsf_return = system("which bsub > /dev/null 2> /dev/null");
 
-if ($lsf_return != 0 && not $opt{lsf}) {
+#Remember a return code of 0 means success
+if ($lsf_return == 0 && not $opt{lsf}) {
 	die "LSF appears to be installed on this machine, don't you want to use it?" 
 }	
 
@@ -168,6 +170,10 @@ if (not($opt{debug})) {
 	}
 	if ($opt{text}) {
 		$command = "echo \"Processing done\" | mail -s \"Processing done\" 8597976722\@txt.att.net";
+		system($command);
+	}
+	if ($opt{sync}) {
+		$command = "results/sync_to.pl -server $opt{sync}";
 		system($command);
 	}
 }
