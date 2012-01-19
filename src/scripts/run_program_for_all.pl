@@ -4,13 +4,15 @@
 # Global Variables and Modules
 ###############################################################################
 use strict;
+use lib "../lib";
+use lib "../lib/perl";
+
 use File::Basename;
 use File::Spec::Functions;
 use Cwd 'abs_path';
 use Getopt::Long;
 use File::Find::Rule;
 
-use lib "../lib";
 use Config::Adhesions qw(ParseConfig);
 
 #Perl built-in variable that controls buffering print output, 1 turns off
