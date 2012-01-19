@@ -46,8 +46,6 @@ if ($opt{lsf}) {
     my @command = "$0 -cfg $opt{cfg}";
     $command[0] .= " -skip_lin_regions" if $opt{skip_lin_regions};
     $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'track_analysis');
-    $opt{resource} = "mem32";
-    $opt{queue} = "week";
     if (defined $cfg{job_group}) {
         $opt{job_group} = $cfg{job_group};
     }
