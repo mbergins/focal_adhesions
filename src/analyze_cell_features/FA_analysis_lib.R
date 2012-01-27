@@ -55,7 +55,7 @@ plot_ad_seq <- function (results,index,type='assembly',log.trans = TRUE, time.sp
 		y = c(results$assembly$slope[index]*x[1] + results$assembly$inter[index],
 			  results$assembly$slope[index]*x[2] + results$assembly$inter[index]);
 		
-		plot(0:(length(ad_seq)-1), ad_seq, xlab='Time (minutes)', ylab='Intensity',type="o");
+		plot(0:(length(ad_seq)-1), ad_seq, xlab='Time (minutes)', ylab='Adhesion Intensity',type="o");
 		
         phase_lengths = c(results$assembly$length[index], results$disassembly$length[index]);
 
@@ -461,9 +461,162 @@ plot_rates_vs_time <- function(before, after) {
     abline(lm(slope ~ death_i_num, data=after$dis),col='red',lwd=2)
 }
 
-########################################
+plot_dual_hist <- function(data_set_1,data_set_2,
+    colors=c(rgb(0,0,1,0.6),rgb(1,1,0,0.6)),break.int=NA,
+    xlab=NA,ylab=NA,axes=F) {
+
+    hist_data_1 = hist(data_set_1,plot=F);
+    hist_data_2 = hist(data_set_2,plot=F);
+    
+    if (max(hist_data_1$breaks) > max(hist_data_2$breaks)) {
+        these_breaks = hist_data_1$breaks;
+    } else {
+        these_breaks = hist_data_2$breaks;
+    }
+
+    y_max = max(hist_data_1$counts/sum(hist_data_1$counts),hist_data_2$counts/sum(hist_data_2$counts))
+
+    if (!is.na(break.int)) {
+        these_breaks = seq(0,max(c(data_set_1,data_set_2)),by=break.int)
+        if (max(these_breaks) != max(c(data_set_1,data_set_2))) {
+            these_breaks = c(these_breaks, max(these_breaks)+break.int)
+        }
+    }
+    
+    hist(data_set_1,col=colors[1],breaks=these_breaks,freq=F,axes=axes,main='',
+        xlab=xlab,ylab=ylab,ylim=c(0,y_max));
+    hist(data_set_2,col=colors[2],add=T,breaks=these_breaks,freq=F,axes=F);
+}
+
+###########################################################
 #Data Summary functions
-########################################
+###########################################################
+
+#######################################
+# Bootstraping
+#######################################
+
+determine_mean_conf_int <- function(data, bootstrap.rep = 10000) {
+	require(boot);
+	
+    boot_samp = boot(data, function(data,indexes) mean(data[indexes],na.rm=T), bootstrap.rep);
+    conf_int = boot.ci(boot_samp, type="bca", conf=0.95)$bca[4:5]
+    
+    boot_samp <- NULL
+
+    return(conf_int)
+}
+
+determine_median_conf_int <- function(data, bootstrap.rep = 10000) {
+	require(boot);
+	
+    boot_samp = boot(data, function(data,indexes) median(data[indexes],na.rm=T), bootstrap.rep);
+    browser()
+    conf_int = boot.ci(boot_samp, type="bca", conf=0.95)$bca[4:5]
+
+    return(conf_int)
+}
+
+determine_mean_p_value <- function(data_1,data_2, bootstrap.rep = 10000) {
+	require(boot);
+    
+	boot_samp_1 = boot(data_1, function(values,indexes) mean(values[indexes],na.rm=T), bootstrap.rep);
+	boot_samp_2 = boot(data_2, function(values,indexes) mean(values[indexes],na.rm=T), bootstrap.rep);
+	
+    results = list();
+
+	results$p.value = find_p_val_from_bootstrap(boot_samp_1, boot_samp_2);
+    results$mean_vals = c(boot_samp_1$t0, boot_samp_2$t0);
+
+    return(results);
+}
+
+determine_median_ratio_conf <- function(data_1,data_2, bootstrap.rep=10000) {
+	require(boot);
+    
+    data_package = list(one = data_1, two = data_2);
+    boot_ratio = boot(data_package, function(values, indexes) ratio_samp(values$one, values$two), bootstrap.rep);
+    boot_ratio_conf = boot.ci(boot_ratio,type="bca", conf=0.99)
+
+    return(boot_ratio_conf)
+}
+
+determine_median_p_value <- function(data_1,data_2, bootstrap.rep = 10000) {
+	require(boot);
+    
+    results = list()
+	
+    boot_samp_1 = boot(data_1, function(values,indexes) median(values[indexes],na.rm=T), bootstrap.rep);
+	boot_samp_2 = boot(data_2, function(values,indexes) median(values[indexes],na.rm=T), bootstrap.rep);
+
+	results$p.value = find_p_val_from_bootstrap(boot_samp_1, boot_samp_2);
+	results$median_vals = c(boot_samp_1$t0, boot_samp_2$t0);
+    
+	return(results);
+}
+
+find_p_val_from_bootstrap <- function(boot_one, boot_two) {
+    p_vals_to_test = c(seq(0.99,0.01,by=-0.01),1E-3,1E-4,1E-5)
+
+	stopifnot(class(boot_one) == "boot")
+	stopifnot(class(boot_two) == "boot")
+	
+    overlap = rep(NA,length(p_vals_to_test));
+    overlap[length(overlap)] = bootstrap_overlap(boot_one, boot_two, 1-p_vals_to_test[length(p_vals_to_test)])
+    #if the lowest p-value doesn't produce overlapping intervals, return the
+    #lowest p-value from the function, otherwise, begin binary search for
+    #p-value cutoff
+    if (! overlap[length(overlap)]) {
+        return(p_vals_to_test[length(p_vals_to_test)])
+    }
+    overlap[1] = bootstrap_overlap(boot_one, boot_two, 1-p_vals_to_test[1])
+    
+    upper = length(p_vals_to_test)
+    lower = 1
+    middle = floor(mean(c(upper,lower)))
+
+    while (middle != lower && middle != upper) {
+        overlap[middle] = bootstrap_overlap(boot_one, boot_two, 1-p_vals_to_test[middle])
+        if (overlap[middle]) {
+            upper = middle;
+            middle = floor(mean(c(upper,lower)))
+        } else {
+            lower = middle;
+            middle = floor(mean(c(upper,lower)))
+        }
+    }
+
+    overlap_indexes = which(overlap)
+    no_overlap_indexes = which(!overlap)
+    
+    p_val_range = c(p_vals_to_test[no_overlap_indexes[length(no_overlap_indexes)]],
+        p_vals_to_test[overlap_indexes[1]])
+    
+    # these lines deal with a strange bug where R decides that some of the
+    # p-values are not quantized property, i.e. 0.05 as 0.04999999..., adding
+    # this sprintf to deal with those problems
+    if (p_val_range[1] > 1E-3) { p_val_range[1] = sprintf('%0.2f',as.numeric(p_val_range[1])) }
+    if (p_val_range[2] > 1E-3) { p_val_range[2] = sprintf('%0.2f',as.numeric(p_val_range[2])) }
+    
+    return(p_val_range)
+}
+
+bootstrap_overlap <- function(boot_one,boot_two,p_val, type="bca") {
+    conf_int_one = boot.ci(boot_one, type=type, conf=p_val)
+    conf_int_two = boot.ci(boot_two, type=type, conf=p_val)
+    
+    #occassionally, very large confidence intervals yield NA values, we will
+    #assume that those confidence intervals overlap
+    if (any(is.na(c(conf_int_one$bca[4:5], conf_int_two$bca[4:5])))) {
+        return(TRUE)
+    }
+
+    return(ranges_overlap(conf_int_one$bca[4:5], conf_int_two$bca[4:5]))
+}
+
+#######################################
+# Filtering
+#######################################
 filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 0.05, debug = FALSE,
         pos.slope = TRUE,old.names=F) {
 
@@ -482,19 +635,18 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         disassembly_filt = filter_sets$disassembly;
         joint_filt = filter_sets$joint;
         
-        #######################################################################
-        # Building the Assembly Data Set
-        #######################################################################
-
-        # create a temporary list to hold the variables we want to collect for
-        # each adhesion selected by filtering
-        this_assem_data = list()
-        this_assem_data = res$assembly[assembly_filt,]
-        prop_set = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num','death_i_num','mean_area')
+        prop_set = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num',
+            'death_i_num','mean_area','longevity')
         if (any(names(res$exp_props) == 'drug_addition_time')) {
             prop_set = c(prop_set, 'drug_addition_time');
         }
         these_props = subset(res$exp_props, select = prop_set)
+        #######################################################################
+        # Building the Assembly Data Set
+        #######################################################################
+
+        this_assem_data = list()
+        this_assem_data = res$assembly[assembly_filt,]
         # browser()
         this_assem_data = cbind(this_assem_data,these_props[assembly_filt,])
         this_assem_data$exp_num = c(this_assem_data$exp_num, rep(i,length(which(assembly_filt))));
@@ -508,7 +660,6 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         
         this_dis_data = list()
         this_dis_data = res$disassembly[disassembly_filt,]
-        these_props = subset(res$exp_props, select = prop_set)
         this_dis_data = cbind(this_dis_data,these_props[disassembly_filt,])
         this_dis_data$exp_num = c(this_dis_data$exp_num, rep(i,length(which(disassembly_filt))));
         this_dis_data$lin_num = c(this_dis_data$lin_num, which(disassembly_filt));
@@ -520,8 +671,17 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         #######################################################################
         ad_data$joint$exp_num = c(ad_data$joint$exp_num, rep(i,length(which(joint_filt))));
         ad_data$joint$lin_num = c(ad_data$joint$lin_num, which(joint_filt));
-        ad_data$joint$assembly_length = c(ad_data$joint$assembly_length, res$assembly$length[joint_filt]);
+        ad_data$joint$assembly_length = c(ad_data$joint$assembly_length, res$assem$length[joint_filt]);
+        ad_data$joint$assembly_slope = c(ad_data$joint$assembly_slope, res$assem$slope[joint_filt]);
         ad_data$joint$disassembly_length = c(ad_data$joint$disassembly_length, res$dis$length[joint_filt]);
+        ad_data$joint$disassembly_slope = c(ad_data$joint$disassembly_slope, res$dis$slope[joint_filt]);
+        ad_data$joint$longevity = c(ad_data$joint$longevity, res$exp_props$longevity[joint_filt]);
+
+        #the assembly/disassembly lengths are saved as number of images, not number of minutes, so to find the stability length we need the number of 
+        i_num_joint_longev = res$exp_props$death_i_num[joint_filt] - res$exp_props$birth_i_num[joint_filt] + 1;
+        ad_data$joint$stability_length = c(ad_data$joint$stability_length, 
+            i_num_joint_longev - res$assem$length[joint_filt] - res$dis$length[joint_filt]);
+
     }
     
     ad_data$assembly$exp_num = as.factor(ad_data$assembly$exp_num);
@@ -608,28 +768,38 @@ split_results_by_exp <- function(data_set) {
     return(per_exp);
 }
 
-determine_death_rate <- function(lineage_time_series) {
-    #death status 1 means a regular non-merging death
-    total_deaths = sum(lineage_time_series$exp_props$death_status);
-    total_time = dim(lineage_time_series$exp_data)[[2]];
+#######################################
+# Dynamics Summary
+#######################################
+gather_dynamics_summary <- function(data,debug=FALSE,table.text.format='%.1f\u00B1%.2f') {
+    data_summary = list()
 
-    total_deaths/total_time;
-}
+    data_summary$counts = lapply(data,length);
+    data_summary$mean = lapply(data,function(x) mean(x,na.rm=T));
 
-determine_birth_rate <- function(lineage_time_series) {
-    filtered_exp_data = lineage_time_series$exp_data[! lineage_time_series$exp_props$split_birth_status,1]
+    data_summary$t_conf = lapply(data, function(x) t.test(x)$conf.int[1:2])
+    data_summary$t_margin = lapply(data, function(x) t.test(x)$conf.int[2]-mean(x,na.rm=T))
     
-    # the first column of the exp data includes entries for every adhesion that
-    # will be born during the experiment, by excluding those adhesions that were
-    # alive in the first frame and removing adhesions that are born via splits,
-    # we can simply count the NaNs in the first column to see how many true
-    # adhesion births there will be in the experiment
-    total_births = sum(is.nan(filtered_exp_data));
-    total_time = dim(lineage_time_series$exp_data)[[2]];
-
-    total_births/total_time;
+    data_summary$table_text = lapply(data, 
+        function(x) sprintf(table.text.format,mean(x,na.rm=T),t.test(x)$conf.int[2]-mean(x,na.rm=T)))
+    
+    return(data_summary);
 }
 
+gather_dynamics_summary_median <- function(data,debug=FALSE,table.text.format='%.1f') {
+    data_summary = list()
+
+    data_summary$counts = lapply(data,length);
+    data_summary$mean = lapply(data,function(x) median(x,na.rm=T));
+
+    data_summary$t_conf = lapply(data, function(x) t.test(x)$conf.int[1:2])
+    data_summary$t_margin = lapply(data, function(x) t.test(x)$conf.int[2]-mean(x,na.rm=T))
+    
+    data_summary$table_text = lapply(data, 
+        function(x) sprintf(table.text.format,median(x,na.rm=T)))
+    
+    return(data_summary);
+}
 gather_global_exp_summary <- function(data_set) {
     stopifnot(is.list(data_set))
     
@@ -651,82 +821,327 @@ gather_global_exp_summary <- function(data_set) {
     return(adhesion_count_data);
 }
 
-determine_ad_turnover <- function(before_ts,after_ts,time.spacing = 1) {
-    before_birth = unlist(lapply(before_ts,determine_birth_rate))/time.spacing
-    before_death = unlist(lapply(before_ts,determine_death_rate))/time.spacing
-    
-    after_birth = unlist(lapply(after_ts,determine_birth_rate))/time.spacing
-    after_death = unlist(lapply(after_ts,determine_death_rate))/time.spacing
+gather_general_dynamic_props <- function(results, min.longevity=NA, debug=FALSE) {
+	points = list()
+	for (i in 1:length(results)) {
+		res = results[[i]]
+        
+        if (debug) {
+            print(paste("Working on", i))
+        }
 
-    ad_turnover = (after_birth - before_birth + after_death - before_death)/2
+        filt = ! res$exp_props$split_birth_status & res$exp_props$death_status
+        
+        if (! is.na(min.longevity)) {
+            filt = filt & !is.na(res$exp_props$longevity) & res$exp_props$longevity >= min.longevity;
+        }
+
+		points$longevity = c(points$longevity, res$exp_props$longevity[filt])
+		points$mean_area = c(points$mean_area, res$exp_props$mean_area[filt])
+		points$mean_axial_ratio = c(points$mean_axial_ratio, res$exp_props$mean_axial_ratio[filt])
+		points$mean_major_axis = c(points$mean_major_axis, res$exp_props$mean_major_axis[filt])
+		points$mean_minor_axis = c(points$mean_minor_axis, res$exp_props$mean_minor_axis[filt])
+		points$mean_edge_dist = c(points$mean_edge_dist, res$exp_props$mean_edge_dist[filt])
+		points$largest_area = c(points$largest_area, res$exp_props$largest_area[filt])
+		points$ad_sig = c(points$ad_sig, res$exp_props$ad_sig[filt])
+		points$average_speed = c(points$average_speed, res$exp_props$average_speeds[filt])
+		points$exp_num = c(points$exp_num, rep(i,length(which(filt))))
+	}
+    
+    points$exp_num = as.factor(points$exp_num);
+
+	points = as.data.frame(points)
+	points
 }
 
-gather_barplot_properties <- function(data_sets, bootstrap.rep = 10000) {
-    plot_props = list()
-    if (is.numeric(data_sets)) {
-        plot_props$mean = mean(data_sets);
-        temp_conf_data = determine_mean_conf_int(data_sets, bootstrap.rep);
+gather_static_props <- function(ind_results, debug=FALSE) {
+	ind_data = list();
+	
+	for (i in 1:length(ind_results)) {
+		res = ind_results[[i]]
+        if (debug) {
+            print(paste("Working on", i))
+        }
+		filt_by_area = res$Area >= min(res$Area)# & res$I_num == 1
+		ind_data$Area = c(ind_data$Area, res$Area[filt_by_area]);
+		ind_data$ad_sig = c(ind_data$ad_sig, res$Average_adhesion_signal[filt_by_area]);
+		ind_data$ad_var = c(ind_data$ad_var, res$Variance_adhesion_signal[filt_by_area]);
+		ind_data$axial_r = c(ind_data$axial_r, res$MajorAxisLength[filt_by_area]/res$MinorAxisLength[filt_by_area]);
+	
+		ind_data$cent_dist = c(ind_data$cent_dist, res$Centroid_dist_from_edge[filt_by_area]);
+        ind_data$exp_num = c(ind_data$exp_num, rep(i, length(filt_by_area)));
+	}
+    
+    ind_data$exp_num = as.factor(ind_data$exp_num);
+	as.data.frame(ind_data)
+}
 
-        plot_props$yminus = temp_conf_data[1];
-        plot_props$yplus = temp_conf_data[2];
-    } else {
-        for (i in 1:length(data_sets)) {
-            plot_props$mean = c(plot_props$mean, mean(data_sets[[i]]));
+#######################################
+# Birth Death Rates
+#######################################
+count_births_per_point <- function(exp_data) {
+    live_adhesions = !is.na(exp_data)
+    
+    counts = c()
+    data_size = dim(live_adhesions)
+    for (i in 2:data_size[2]) {
+        before_col = live_adhesions[,i-1]
+        current_col = live_adhesions[,i]
 
-            temp_conf_data = determine_mean_conf_int(data_sets[[i]], bootstrap.rep);
+        birth_rows = which(! before_col & current_col);
+        counts = c(counts,length(birth_rows))
+    }
+    return(counts)
+}
 
-            plot_props$yminus = c(plot_props$yminus, temp_conf_data[1]);
-            plot_props$yplus = c(plot_props$yplus, temp_conf_data[2]);
+count_deaths_per_point <- function(exp_data) {
+    live_adhesions = !is.na(exp_data)
+    
+    counts = c()
+    data_size = dim(live_adhesions)
+    for (i in 2:data_size[2]) {
+        before_col = live_adhesions[,i-1]
+        current_col = live_adhesions[,i]
+
+        death_rows = which(before_col & ! current_col);
+        counts = c(counts, length(death_rows))
+    }
+    return(counts)
+}
+
+count_roll_mean_birth_death <- function(exp_data,split.time,rolling.mean.length=20,exp.norm=F) {
+    library(zoo)
+    birth_count = count_births_per_point(exp_data)
+    death_count = count_deaths_per_point(exp_data)
+    
+    birth_count_before = birth_count[1:split.time]
+    birth_count_after = birth_count[-1:-split.time]
+    
+    death_count_before = death_count[1:split.time]
+    death_count_after = death_count[-1:-split.time]
+    
+    birth_count_before = rollmean(birth_count_before,rolling.mean.length,na.pad=T,align='right')
+    birth_count_after = rollmean(birth_count_after,rolling.mean.length,na.pad=T,align='left')
+    death_count_before = rollmean(death_count_before,rolling.mean.length,na.pad=T,align='right')
+    death_count_after = rollmean(death_count_after,rolling.mean.length,na.pad=T,align='left')
+
+    if (exp.norm) {
+        birth_before_mean = mean(birth_count_before,na.rm=T)
+        birth_count_before = birth_count_before/birth_before_mean
+        birth_count_after = birth_count_after/birth_before_mean
+    
+        death_before_mean = mean(death_count_before,na.rm=T)
+        death_count_before = death_count_before/death_before_mean
+        death_count_after = death_count_after/death_before_mean
+    }
+
+    counts = list()
+    counts$birth = c(birth_count_before,birth_count_after)
+    counts$death = c(death_count_before,death_count_after)
+    counts$diff = c(birth_count_before,birth_count_after) - c(death_count_before,death_count_after)
+
+    return(counts)
+}
+
+matrix_from_list <- function(this_list,lineup='start') {
+    max_length = max(unlist(lapply(this_list,length)))
+
+    out_mat = matrix(NA,nrow=length(this_list),ncol=max_length);
+
+    if (lineup == 'start') {
+        for (i in 1:length(this_list)) {
+            out_mat[i,] = c(this_list[[i]],rep(NA,max_length - length(this_list[[i]])));
+        }
+    } else if (lineup == 'end') {
+        for (i in 1:length(this_list)) {
+            out_mat[i,] = c(rep(NA,max_length - length(this_list[[i]])),this_list[[i]]);
         }
     }
-    return(plot_props);
-}
-
-determine_mean_conf_int <- function(data, bootstrap.rep = 10000) {
-	require(boot);
-	
-    boot_samp = boot(data, function(data,indexes) mean(data[indexes],na.rm=T), bootstrap.rep);
-    conf_int = boot.ci(boot_samp, type="bca", conf=0.95)$bca[4:5]
-
-    return(conf_int)
-}
-
-determine_mean_p_value <- function(data_1,data_2, bootstrap.rep = 10000) {
-	require(boot);
     
-	boot_samp_1 = boot(data_1, function(values,indexes) mean(values[indexes],na.rm=T), bootstrap.rep);
-	boot_samp_2 = boot(data_2, function(values,indexes) mean(values[indexes],na.rm=T), bootstrap.rep);
-	
-    results = list();
+    return(out_mat)
+}
 
-	results$p.value = find_p_val_from_bootstrap(boot_samp_1, boot_samp_2);
-    results$mean_vals = c(boot_samp_1$t0, boot_samp_2$t0);
+colMedians <- function(this_mat,na.rm=T) {
+    medis = c()
+    for (i in 1:dim(this_mat)[2]) {
+        medis = c(medis,median(this_mat[,i],na.rm=na.rm))
+    }
+    return(medis)
+}
 
+colConfUpper <- function(this_mat) {
+    upper = c()
+    for (i in 1:dim(this_mat)[2]) {
+        if (all(is.na(this_mat[,i]))) {
+            upper = c(upper,NA);
+        } else {
+            temp = t.test(this_mat[,i],conf.level=0.95)
+            if (is.nan(temp$conf.int[2])) {
+                upper = c(upper,0)
+            } else {
+                upper = c(upper,temp$conf.int[2])
+            }
+        }
+    }
+    return(upper)
+}
+
+colConfLower <- function(this_mat) {
+    lower = c()
+    for (i in 1:dim(this_mat)[2]) {
+        if (all(is.na(this_mat[,i]))) {
+            lower = c(lower,NA);
+        } else {
+            temp = t.test(this_mat[,i],conf.level=0.95)
+            if (is.nan(temp$conf.int[1])) {
+                lower = c(lower,0)
+            } else {
+                lower = c(lower,temp$conf.int[1])
+            }
+        }
+    }
+    return(lower)
+}
+
+#######################################
+# Split Property Measurements
+#######################################
+count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T) {
+    library(zoo)
+    
+    #dim returns null if the exp_data variable is a single dimension, in that
+    #case we want to just use the provided variable as is without taking the
+    #column mean
+    if (!is.null(dim(exp_data))) {
+        average_elong = colMeans(exp_data,na.rm=T);
+    } else {
+        average_elong = exp_data;
+    }
+
+    average_elong_before = average_elong[1:split.time]
+    average_elong_after = average_elong[-1:-split.time]
+
+    average_elong_before = rollmean(average_elong_before,20,na.pad=T,align='right')
+    average_elong_after = rollmean(average_elong_after,20,na.pad=T,align='left')
+    
+    if (exp.norm) {
+        mean_before = mean(average_elong_before,na.rm=T)
+        # mean_before = tail(average_elong_before,1)
+        average_elong_before = average_elong_before-mean_before
+        average_elong_after = average_elong_after-mean_before
+    }
+
+    averages = list()
+    averages$before = average_elong_before
+    averages$after = average_elong_after
+
+    return(averages)
+}
+
+summarize_split_matrix <- function(exp_data) {
+
+    before_temp = matrix_from_list(exp_data$before,lineup='end')
+    before_temp = t(tail(t(before_temp),20))
+    
+    after_temp = matrix_from_list(exp_data$after)
+    after_temp = t(head(t(after_temp),70))
+    
+    results = list()
+
+    results$mat$before = before_temp
+    results$mat$after = after_temp
+
+    results$mean$before = colMeans(before_temp,na.rm=T)
+    results$mean$after = colMeans(after_temp,na.rm=T)
+
+    results$upper_conf$before = colConfUpper(before_temp)
+    results$upper_conf$after = colConfUpper(after_temp)
+    
+    results$lower_conf$before = colConfLower(before_temp)
+    results$lower_conf$after = colConfLower(after_temp)
+    
     return(results);
 }
 
-determine_median_ratio_conf <- function(data_1,data_2, bootstrap.rep=10000) {
-	require(boot);
+find_mean_split_prop <- function(prop, lineage_props, split.time, min.area = NA, min.data.points=5) {
+    prop_size = dim(prop)
     
-    data_package = list(one = data_1, two = data_2);
-    boot_ratio = boot(data_package, function(values, indexes) ratio_samp(values$one, values$two), bootstrap.rep);
-    boot_ratio_conf = boot.ci(boot_ratio,type="bca", conf=0.99)
+    prop_before = prop[,1:split.time]
+    prop_after = prop[,(split.time+1):prop_size[2]]
+    
+    #filter out adhesions where we don't see the full lifecycle either before
+    #or after drug addition
+    before_filter = is.na(prop_before[,1]) & is.na(prop_before[,length(prop_before)])
+    after_filter = is.na(prop_after[,1]) & is.na(prop_after[,length(prop_after)])
+    
+    #filter out adhesions without enough time points
+    before_filter = before_filter & rowSums(!is.na(prop_before)) >= min.data.points
+    after_filter = after_filter & rowSums(!is.na(prop_after)) >= min.data.points
+    
+    #apply area filter if requested
+    if (!is.na(min.area)) {
+        before_filter = before_filter & lineage_props$mean_area >= min.area
+        after_filter = after_filter & lineage_props$mean_area >= min.area
+    }
 
-    return(boot_ratio_conf)
+    #apply filters
+    prop_before = prop_before[before_filter,]
+    prop_after = prop_after[after_filter,]
+
+    means = list()
+    means$before = rowMeans(prop_before,na.rm=T)
+    means$after = rowMeans(prop_after,na.rm=T)
+    
+    means$area_before = lineage_props$mean_area[before_filter]
+    means$area_after = lineage_props$mean_area[after_filter]
+
+    means$longev_before = lineage_props$longevity[before_filter]
+    means$longev_after = lineage_props$longevity[after_filter]
+    
+    return(means)
 }
 
-determine_median_p_value <- function(data_1,data_2, bootstrap.rep = 10000) {
-	require(boot);
+find_cross_split_mean_prop <- function(prop, lineage_props, split.time, area,
+    min.area=NA, min.data.points=5) {
     
-    results = list()
-	
-    boot_samp_1 = boot(data_1, function(values,indexes) median(values[indexes],na.rm=T), bootstrap.rep);
-	boot_samp_2 = boot(data_2, function(values,indexes) median(values[indexes],na.rm=T), bootstrap.rep);
+    #build a filter that only includes adhesions that cross the drug addition
+    #time
+    all_filter = !is.na(prop[,split.time]) & !is.na(prop[,split.time+1])
+    
+    prop_size = dim(prop)
+    prop_before = prop[,1:split.time]
+    prop_after = prop[,(split.time+1):prop_size[2]]
+    
+    #a minimum length filters to build the before and after addition filters
+    before_filter = all_filter & rowSums(!is.na(prop_before)) >= min.data.points
+    after_filter = all_filter & rowSums(!is.na(prop_after)) >= min.data.points
+    
+    #apply area filter if requested
+    if (!is.na(min.area)) {
+        before_filter = before_filter & lineage_props$mean_area >= min.area
+        after_filter = after_filter & lineage_props$mean_area >= min.area
+    }
+    
+    #apply filters
+    prop_before = prop_before[before_filter & after_filter,]
+    prop_after = prop_after[before_filter & after_filter,]
+    
+    #split the areas
+    area_before = area[,1:split.time]
+    area_after = area[,(split.time+1):prop_size[2]]
+    area_before = area_before[before_filter & after_filter,]
+    area_after = area_after[before_filter & after_filter,]
 
-	results$p.value = find_p_val_from_bootstrap(boot_samp_1, boot_samp_2);
-	results$median_vals = c(boot_samp_1$t0, boot_samp_2$t0);
+    means = list()
+    means$before = rowMeans(prop_before,na.rm=T)
+    means$after = rowMeans(prop_after,na.rm=T)
+    means$diff = means$after-means$before
     
-	return(results);
+    means$area_before = rowMeans(area_before,na.rm=T)
+    means$area_after = rowMeans(area_after,na.rm=T)
+    means$area_diff = means$area_after-means$area_before
+
+    return(means)
 }
 
 ratio_samp <- function(data_1, data_2) {
@@ -820,63 +1235,25 @@ gather_stage_lengths <- function(results_1, results_2, bootstrap.rep = 50000, de
 	return_data
 }
 
-find_p_val_from_bootstrap <- function(boot_one, boot_two) {
-    p_vals_to_test = c(seq(0.99,0.01,by=-0.01),1E-3,1E-4,1E-5)
+gather_barplot_properties <- function(data_sets, bootstrap.rep = 10000) {
+    plot_props = list()
+    if (is.numeric(data_sets)) {
+        plot_props$mean = mean(data_sets);
+        temp_conf_data = determine_mean_conf_int(data_sets, bootstrap.rep);
 
-	stopifnot(class(boot_one) == "boot")
-	stopifnot(class(boot_two) == "boot")
-	
-    overlap = rep(NA,length(p_vals_to_test));
-    overlap[length(overlap)] = bootstrap_overlap(boot_one, boot_two, 1-p_vals_to_test[length(p_vals_to_test)])
-    #if the lowest p-value doesn't produce overlapping intervals, return the
-    #lowest p-value from the function, otherwise, begin binary search for
-    #p-value cutoff
-    if (! overlap[length(overlap)]) {
-        return(p_vals_to_test[length(p_vals_to_test)])
-    }
-    overlap[1] = bootstrap_overlap(boot_one, boot_two, 1-p_vals_to_test[1])
-    
-    upper = length(p_vals_to_test)
-    lower = 1
-    middle = floor(mean(c(upper,lower)))
+        plot_props$yminus = temp_conf_data[1];
+        plot_props$yplus = temp_conf_data[2];
+    } else {
+        for (i in 1:length(data_sets)) {
+            plot_props$mean = c(plot_props$mean, mean(data_sets[[i]]));
 
-    while (middle != lower && middle != upper) {
-        overlap[middle] = bootstrap_overlap(boot_one, boot_two, 1-p_vals_to_test[middle])
-        if (overlap[middle]) {
-            upper = middle;
-            middle = floor(mean(c(upper,lower)))
-        } else {
-            lower = middle;
-            middle = floor(mean(c(upper,lower)))
+            temp_conf_data = determine_mean_conf_int(data_sets[[i]], bootstrap.rep);
+
+            plot_props$yminus = c(plot_props$yminus, temp_conf_data[1]);
+            plot_props$yplus = c(plot_props$yplus, temp_conf_data[2]);
         }
     }
-
-    overlap_indexes = which(overlap)
-    no_overlap_indexes = which(!overlap)
-    
-    p_val_range = c(p_vals_to_test[no_overlap_indexes[length(no_overlap_indexes)]],
-        p_vals_to_test[overlap_indexes[1]])
-    
-    # these lines deal with a strange bug where R decides that some of the
-    # p-values are not quantized property, i.e. 0.05 as 0.04999999..., adding
-    # this sprintf to deal with those problems
-    if (p_val_range[1] > 1E-3) { p_val_range[1] = sprintf('%0.2f',as.numeric(p_val_range[1])) }
-    if (p_val_range[2] > 1E-3) { p_val_range[2] = sprintf('%0.2f',as.numeric(p_val_range[2])) }
-    
-    return(p_val_range)
-}
-
-bootstrap_overlap <- function(boot_one,boot_two,p_val, type="bca") {
-    conf_int_one = boot.ci(boot_one, type=type, conf=p_val)
-    conf_int_two = boot.ci(boot_two, type=type, conf=p_val)
-    
-    #occassionally, very large confidence intervals yield NA values, we will
-    #assume that those confidence intervals overlap
-    if (any(is.na(c(conf_int_one$bca[4:5], conf_int_two$bca[4:5])))) {
-        return(TRUE)
-    }
-
-    return(ranges_overlap(conf_int_one$bca[4:5], conf_int_two$bca[4:5]))
+    return(plot_props);
 }
 
 ranges_overlap <- function(range_1, range_2) {
@@ -893,67 +1270,22 @@ ranges_overlap <- function(range_1, range_2) {
 	return(FALSE);
 }
 
-gather_general_dynamic_props <- function(results, min.longevity=NA, debug=FALSE) {
-	points = list()
+count_adhesions_per_image <- function(results,time.spacing=1,time.unit=10) {
+    data = list();
 	for (i in 1:length(results)) {
-		res = results[[i]]
-        if (debug) {
-            print(paste("Working on", i))
-        }
-
-        filt = ! res$exp_props$split_birth_status & res$exp_props$death_status
+		res = results[[i]];
         
-        if (! is.na(min.longevity)) {
-            filt = filt & !is.na(res$exp_props$longevity) & res$exp_props$longevity >= min.longevity;
-        }
+        num_time_units = (dim(res$exp_data)[[2]]*time.spacing)/time.unit
+        num_adhesions = dim(res$exp_data)[[1]]
 
-		points$longevity = c(points$longevity, res$exp_props$longevity[filt])
-		points$mean_area = c(points$mean_area, res$exp_props$mean_area[filt])
-		points$mean_axial_ratio = c(points$mean_axial_ratio, res$exp_props$mean_axial_ratio[filt])
-		points$mean_edge_dist = c(points$mean_edge_dist, res$exp_props$mean_edge_dist[filt])
-		points$largest_area = c(points$largest_area, res$exp_props$largest_area[filt])
-		points$ad_sig = c(points$ad_sig, res$exp_props$ad_sig[filt])
-		points$average_speed = c(points$average_speed, res$exp_props$average_speeds[filt])
-		points$exp_num = c(points$exp_num, rep(i,length(which(filt))))
+        data$counts = c(data$counts, num_adhesions/num_time_units);
+        data$exp_num = c(data$exp_num, i);
 	}
-    
-    points$exp_num = as.factor(points$exp_num);
 
-	points = as.data.frame(points)
-	points
-}
+    data$exp_num = as.factor(data$exp_num);
+    data = as.data.frame(data);
 
-gather_dynamics_summary <- function(data,debug=FALSE) {
-    data_summary = list()
-
-    data_summary$counts = lapply(data,length);
-    data_summary$mean = lapply(data,function(x) mean(x,na.rm=T));
-
-    data_summary$t_conf = lapply(data, function(x) t.test(x)$conf.int[1:2])
-    
-    return(data_summary);
-}
-
-gather_static_props <- function(ind_results, debug=FALSE) {
-	ind_data = list();
-	
-	for (i in 1:length(ind_results)) {
-		res = ind_results[[i]]
-        if (debug) {
-            print(paste("Working on", i))
-        }
-		filt_by_area = res$Area >= min(res$Area)# & res$I_num == 1
-		ind_data$Area = c(ind_data$Area, res$Area[filt_by_area]);
-		ind_data$ad_sig = c(ind_data$ad_sig, res$Average_adhesion_signal[filt_by_area]);
-		ind_data$ad_var = c(ind_data$ad_var, res$Variance_adhesion_signal[filt_by_area]);
-		ind_data$axial_r = c(ind_data$axial_r, res$MajorAxisLength[filt_by_area]/res$MinorAxisLength[filt_by_area]);
-	
-		ind_data$cent_dist = c(ind_data$cent_dist, res$Centroid_dist_from_edge[filt_by_area]);
-        ind_data$exp_num = c(ind_data$exp_num, rep(i, length(filt_by_area)));
-	}
-    
-    ind_data$exp_num = as.factor(ind_data$exp_num);
-	as.data.frame(ind_data)
+    return(data);
 }
 
 ################################################################################
@@ -1085,9 +1417,9 @@ output_phase_lengths_from_filtered <- function(signif_data,raw_data, dirs = NA) 
     }
 }
 
-########################################
+###############################################################################
 #Spacial Functions
-########################################
+###############################################################################
 correlate_signal_vs_dist <- function(intensities, cent_x, cent_y, min_overlap=40) {
 	correlations = c()
 	distances = c()
