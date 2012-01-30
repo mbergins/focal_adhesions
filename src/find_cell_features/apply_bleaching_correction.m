@@ -8,16 +8,8 @@ tic;
 i_p = inputParser;
 
 i_p.addRequired('exp_dir',@(x)exist(x,'dir') == 7);
-
-i_p.parse(exp_dir);
-
-i_p.addParamValue('output_dir',fullfile(exp_dir,'adhesion_props'),@ischar);
 i_p.addOptional('debug',0,@(x)x == 1 | x == 0);
 i_p.parse(exp_dir,varargin{:});
-
-if (not(exist(i_p.Results.output_dir,'dir')))
-    mkdir(i_p.Results.output_dir);
-end
 
 %Add the folder with all the scripts used in this master program
 addpath(genpath('matlab_scripts'));
