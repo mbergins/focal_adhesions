@@ -10,8 +10,6 @@ function [varargout] = find_focal_adhesions(I_file,varargin)
 %
 %       -cell_mask: file which contains the cell mask
 %       -filter_size: size of the averaging filter to use, defaults to 23
-%       -filter_thresh: threshold used to identify focal adhesions in the
-%        average filtered image, defaults to 0.1
 %       -output_dir: folder used to hold all the results, defaults to the
 %        same folder as the image file, 'I'
 %       -debug: set to 1 to output debugging information, defaults to 0
@@ -29,7 +27,6 @@ i_p.parse(I_file);
 %Adhesion filtering parameters
 i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
-i_p.addParamValue('filter_thresh',0.1,@isnumeric);
 i_p.addParamValue('min_independent_size',14,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
 i_p.addParamValue('max_adhesion_count', Inf, @(x) isnumeric(x));
