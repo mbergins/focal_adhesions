@@ -30,6 +30,10 @@ temp_image = imread(fullfile(base_dir,image_dirs(1).name,filenames.focal_image))
 all_images = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
 all_high_passed = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Collect all the images
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 for i_num = 1:size(image_dirs,1)
     puncta_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));            
     
@@ -43,8 +47,13 @@ for i_num = 1:size(image_dirs,1)
         disp([i_num,size(image_dirs,1)])
     end
 end
-trimmed_pix_values = trim_data_set(all_images(:),1E-6);
-min_max = [min(trimmed_pix_values),max(trimmed_pix_values)];
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Determine min/max and identification thresholds
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+trimmed_pix_values = trim_data_set(all_images(:),1E-4);
+min_max = [trimmed_pix_values(1),trimmed_pix_values(end)];
 
 output_file = fullfile(base_dir,image_dirs(1).name,filenames.focal_image_min_max);
 [output_folder,~,~] = fileparts(output_file);
@@ -53,9 +62,8 @@ if (not(exist(output_folder,'dir')))
 end
 csvwrite(output_file,min_max);
 
-trimmed_high_pass = trim_data_set(all_high_passed(:),1E-6);
-high_pass_mean = mean(trimmed_high_pass);
-high_pass_std = std(trimmed_high_pass);
+high_pass_mean = mean(all_high_passed(:));
+high_pass_std = std(all_high_passed(:));
 csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),...
     [high_pass_mean,high_pass_std]);
 
@@ -68,7 +76,7 @@ for i_num = 1:size(image_dirs,1)
 end
 
 %diagnostic diagram
-hist(trimmed_high_pass,100);
+hist(all_high_passed(:),100);
 xlabel('High Pass Filtered Intensity','FontSize',16,'FontName','Helvetica');
 ylabel('Pixel Count','FontSize',16,'FontName','Helvetica');
 y_limits = ylim();
