@@ -20,7 +20,12 @@ if ($opt{no_time}) {
     $time_str = '';
 }
 
-my $command = "$time_str" . "rsync $progress_str" . "-a --exclude data.stor ../../results/* $opt{server}:~/Documents/Projects/focal_adhesions/trunk/results/";
+my $rsync_command = "rsync";
+if (-e "/nas02/home/m/b/mbergins/bin/rsync") { 
+	$rsync_command = "/nas02/home/m/b/mbergins/bin/rsync";
+}
+
+my $command = "$time_str" . "$rsync_command $progress_str" . "-a --exclude data.stor ../../results/* $opt{server}:~/Documents/Projects/focal_adhesions/trunk/results/";
 if ($opt{server} eq "NOSERVER" || $opt{debug}) {
     print "$command\n";
 } else {
