@@ -51,9 +51,9 @@ $|  = 1;
 #commands in.
 my @overall_command_seq = (
 	[ [ "../find_cell_features",      "./collect_mask_image_set.pl" ], ],
-	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script apply_adhesion_bleaching_correction.m" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_exp_thresholds"], ],
 	[ [ "../find_cell_features",      "./collect_fa_image_set.pl" ], ],
+	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script apply_adhesion_bleaching_correction.m" ], ],
 	[ [ "../find_cell_features",      "./collect_fa_properties.pl" ], ],
 	[ [ "../analyze_cell_features",   "./build_tracking_data.pl" ], ],
 	[ [ "../analyze_cell_features",   "./track_adhesions.pl" ], ],
