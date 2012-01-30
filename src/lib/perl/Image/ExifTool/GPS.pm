@@ -12,7 +12,7 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool::Exif;
 
-$VERSION = '1.20';
+$VERSION = '1.36';
 
 my %coordConv = (
     ValueConv    => 'Image::ExifTool::GPS::ToDegrees($val)',
@@ -27,15 +27,10 @@ my %coordConv = (
     CHECK_PROC => \&Image::ExifTool::Exif::CheckExif,
     WRITABLE => 1,
     WRITE_GROUP => 'GPS',
-    NOTES => q{
-        When adding GPS information to an image, it is important to set all of the
-        following tags: GPSLatitude, GPSLatitudeRef, GPSLongitude, GPSLongitudeRef,
-        GPSAltitude and GPSAltitudeRef.  ExifTool will write the required
-        GPSVersionID tag automatically if new a GPS IFD is added to an image.
-    },
     0x0000 => {
         Name => 'GPSVersionID',
         Writable => 'int8u',
+        Mandatory => 1,
         Count => 4,
         PrintConv => '$val =~ tr/ /./; $val',
         PrintConvInv => '$val =~ tr/./ /; $val',
@@ -45,6 +40,15 @@ my %coordConv = (
         Writable => 'string',
         Count => 2,
         PrintConv => {
+            # extract N/S if written from Composite:GPSLatitude
+            # (also allow writing from a signed number)
+            OTHER => sub {
+                my ($val, $inv) = @_;
+                return undef unless $inv;
+                return uc $1 if $val =~ /\b([NS])$/i;
+                return $1 eq '-' ? 'S' : 'N' if $val =~ /^([-+]?)\d+(\.\d*)?$/;
+                return undef;
+            },
             N => 'North',
             S => 'South',
         },
@@ -60,6 +64,15 @@ my %coordConv = (
         Writable => 'string',
         Count => 2,
         PrintConv => {
+            # extract E/W if written from Composite:GPSLongitude
+            # (also allow writing from a signed number)
+            OTHER => sub {
+                my ($val, $inv) = @_;
+                return undef unless $inv;
+                return uc $1 if $val =~ /\b([EW])$/i;
+                return $1 eq '-' ? 'W' : 'E' if $val =~ /^([-+]?)\d+(\.\d*)?$/;
+                return undef;
+            },
             E => 'East',
             W => 'West',
         },
@@ -81,7 +94,9 @@ my %coordConv = (
     0x0006 => {
         Name => 'GPSAltitude',
         Writable => 'rational64u',
-        PrintConv => '$val eq "inf" ? $val : "$val m"',
+        # extricate unsigned decimal number from string
+        ValueConvInv => '$val=~/((?=\d|\.\d)\d*(?:\.\d*)?)/ ? $1 : undef',
+        PrintConv => '$val =~ /^(inf|undef)$/ ? $val : "$val m"',
         PrintConvInv => '$val=~s/\s*m$//;$val',
     },
     0x0007 => {
@@ -90,29 +105,32 @@ my %coordConv = (
         Writable => 'rational64u',
         Count => 3,
         Shift => 'Time',
-        ValueConv => sub {
-            my $val = shift;
-            my ($h,$m,$s) = split ' ', $val;
-            my $f = (($h || 0) * 60 + ($m || 0)) * 60 + ($s || 0);
-            $h = int($f / 3600); $f -= $h * 3600;
-            $m = int($f / 60);   $f -= $m * 60;
-            $s = int($f);        $f -= $s;
-            $f = int($f * 1000000 + 0.5);
-            if ($f) {
-                ($f = sprintf(".%.6d", $f)) =~ s/0+$//;
-            } else {
-                $f = ''
-            }
-            return sprintf("%.2d:%.2d:%.2d$f",$h,$m,$s);
+        Notes => q{
+            when writing, date is stripped off if present, and time is adjusted to UTC
+            if it includes a timezone
         },
+        ValueConv => 'Image::ExifTool::GPS::ConvertTimeStamp($val)',
         ValueConvInv => '$val=~tr/:/ /;$val',
         # pull time out of any format date/time string
-        # (eventually handle timezones? -- timestamp should be UTC)
+        # (converting to UTC if a timezone is given)
         PrintConvInv => sub {
             my $v = shift;
-            $v =~ s/[-+].*//s; # remove timezone
+            my @tz;
+            if ($v =~ s/([-+])(.*)//s) {    # remove timezone
+                my $s = $1 eq '-' ? 1 : -1; # opposite sign to convert back to UTC
+                my $t = $2;
+                @tz = ($s*$1, $s*$2) if $t =~ /^(\d{2}):?(\d{2})\s*$/;
+            }
             my @a = ($v =~ /((?=\d|\.\d)\d*(?:\.\d*)?)/g);
             push @a, '00' while @a < 3;
+            if (@tz) {
+                # adjust to UTC
+                $a[-2] += $tz[1];
+                $a[-3] += $tz[0];
+                while ($a[-2] >= 60) { $a[-2] -= 60; ++$a[-3] }
+                while ($a[-2] < 0)   { $a[-2] += 60; --$a[-3] }
+                $a[-3] = ($a[-3] + 24) % 24;
+            }
             return "$a[-3]:$a[-2]:$a[-1]";
         },
     },
@@ -248,6 +266,7 @@ my %coordConv = (
     0x001b => {
         Name => 'GPSProcessingMethod',
         Writable => 'undef',
+        Notes => 'values of "GPS", "CELLID", "WLAN" or "MANUAL" by the EXIF spec.',
         RawConv => 'Image::ExifTool::Exif::ConvertExifText($self,$val)',
         RawConvInv => 'Image::ExifTool::Exif::EncodeExifText($self,$val)',
     },
@@ -261,13 +280,24 @@ my %coordConv = (
         Name => 'GPSDateStamp',
         Groups => { 2 => 'Time' },
         Writable => 'string',
-        Notes => 'YYYY:MM:DD',
+        Format => 'undef', # (Casio EX-H20G uses "\0" instead of ":" as a separator)
         Count => 11,
         Shift => 'Time',
+        Notes => q{
+            when writing, time is stripped off if present, after adjusting date/time to
+            UTC if time includes a timezone.  Format is YYYY:mm:dd
+        },
         ValueConv => 'Image::ExifTool::Exif::ExifDate($val)',
         ValueConvInv => '$val',
         # pull date out of any format date/time string
-        PrintConvInv => '$val=~/(\d{4}).*?(\d{2}).*?(\d{2})/ ? "$1:$2:$3" : $val',
+        # (and adjust to UTC if this is a full date/time/timezone value)
+        PrintConvInv => q{
+            my $secs;
+            if ($val =~ /[-+]/ and ($secs = Image::ExifTool::GetUnixTime($val, 1))) {
+                $val = Image::ExifTool::ConvertUnixTime($secs);
+            }
+            return $val =~ /(\d{4}).*?(\d{2}).*?(\d{2})/ ? "$1:$2:$3" : undef;
+        },
     },
     0x001e => {
         Name => 'GPSDifferential',
@@ -277,21 +307,33 @@ my %coordConv = (
             1 => 'Differential Corrected',
         },
     },
+    0x001f => {
+        Name => 'GPSHPositioningError',
+        Description => 'GPS Horizontal Positioning Error',
+        PrintConv => '"$val m"',
+        PrintConvInv => '$val=~s/\s*m$//; $val',
+        Writable => 'rational64u',
+    },
 );
 
 # Composite GPS tags
 %Image::ExifTool::GPS::Composite = (
+    GROUPS => { 2 => 'Location' },
     GPSDateTime => {
         Description => 'GPS Date/Time',
         Groups => { 2 => 'Time' },
+        SubDoc => 1,    # generate for all sub-documents
         Require => {
             0 => 'GPS:GPSDateStamp',
             1 => 'GPS:GPSTimeStamp',
         },
-        ValueConv => '"$val[0] $val[1]"',
+        ValueConv => '"$val[0] $val[1]Z"',
         PrintConv => '$self->ConvertDateTime($val)',
     },
+    # Note: The following tags are used by other modules
+    # which must therefore require this module as necessary
     GPSLatitude => {
+        SubDoc => 1,    # generate for all sub-documents
         Require => {
             0 => 'GPS:GPSLatitude',
             1 => 'GPS:GPSLatitudeRef',
@@ -300,6 +342,7 @@ my %coordConv = (
         PrintConv => 'Image::ExifTool::GPS::ToDMS($self, $val, 1, "N")',
     },
     GPSLongitude => {
+        SubDoc => 1,    # generate for all sub-documents
         Require => {
             0 => 'GPS:GPSLongitude',
             1 => 'GPS:GPSLongitudeRef',
@@ -307,10 +350,52 @@ my %coordConv = (
         ValueConv => '$val[1] =~ /^W/i ? -$val[0] : $val[0]',
         PrintConv => 'Image::ExifTool::GPS::ToDMS($self, $val, 1, "E")',
     },
+    GPSAltitude => {
+        SubDoc => 1,    # generate for all sub-documents
+        Desire => {
+            0 => 'GPS:GPSAltitude',
+            1 => 'GPS:GPSAltitudeRef',
+            2 => 'XMP:GPSAltitude',
+            3 => 'XMP:GPSAltitudeRef',
+        },
+        # Require either GPS:GPSAltitudeRef or XMP:GPSAltitudeRef
+        RawConv => '(defined $val[1] or defined $val[3]) ? $val : undef',
+        ValueConv => q{
+            my $alt = $val[0];
+            $alt = $val[2] unless defined $alt;
+            return undef unless defined $alt;
+            return ($val[1] || $val[3]) ? -$alt : $alt;
+        },
+        PrintConv => q{
+            $val = int($val * 10) / 10;
+            return ($val =~ s/^-// ? "$val m Below" : "$val m Above") . " Sea Level";
+        },
+    },
 );
 
 # add our composite tags
 Image::ExifTool::AddCompositeTags('Image::ExifTool::GPS');
+
+#------------------------------------------------------------------------------
+# Convert GPS timestamp value
+# Inputs: 0) raw timestamp value string
+# Returns: EXIF-formatted time string
+sub ConvertTimeStamp($)
+{
+    my $val = shift;
+    my ($h,$m,$s) = split ' ', $val;
+    my $f = (($h || 0) * 60 + ($m || 0)) * 60 + ($s || 0);
+    $h = int($f / 3600); $f -= $h * 3600;
+    $m = int($f / 60);   $f -= $m * 60;
+    $s = int($f);        $f -= $s;
+    $f = int($f * 1000000 + 0.5);
+    if ($f) {
+        ($f = sprintf(".%.6d", $f)) =~ s/0+$//;
+    } else {
+        $f = ''
+    }
+    return sprintf("%.2d:%.2d:%.2d$f",$h,$m,$s);
+}
 
 #------------------------------------------------------------------------------
 # Convert degrees to DMS, or whatever the current settings are
@@ -330,6 +415,7 @@ sub ToDMS($$;$$)
         }
         $ref = " $ref" unless $doPrintConv and $doPrintConv eq '2';
     } else {
+        $val = abs($val);
         $ref = '';
     }
     if ($doPrintConv) {
@@ -364,8 +450,8 @@ sub ToDMS($$;$$)
 sub ToDegrees($;$)
 {
     my ($val, $doSign) = @_;
-    # extract decimal values out of any other garbage
-    my ($d, $m, $s) = ($val =~ /((?:[+-]?)(?=\d|\.\d)\d*(?:\.\d*)?)/g);
+    # extract decimal or floating point values out of any other garbage
+    my ($d, $m, $s) = ($val =~ /((?:[+-]?)(?=\d|\.\d)\d*(?:\.\d*)?(?:[Ee][+-]\d+)?)/g);
     my $deg = ($d || 0) + (($m || 0) + ($s || 0)/60) / 60;
     # make negative if S or W coordinate
     $deg = -$deg if $doSign ? $val =~ /[^A-Z](S|W)$/i : $deg < 0;
@@ -392,7 +478,7 @@ GPS (Global Positioning System) meta information in EXIF data.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

@@ -11,11 +11,9 @@
 #               2) http://www.faqs.org/docs/png/
 #               3) http://www.libpng.org/pub/mng/
 #               4) http://www.libpng.org/pub/png/spec/register/
+#               5) ftp://ftp.simplesystems.org/pub/png/documents/pngext-1.4.0-pdg.html
 #
-# Notes:        I haven't found a sample PNG image with a 'iTXt' chunk, so
-#               this part of the code is still untested.
-#
-#               Writing meta information in PNG images is a pain in the butt
+# Notes:        Writing meta information in PNG images is a pain in the butt
 #               for a number of reasons:  One biggie is that you have to
 #               decompress then decode the ASCII/hex profile information before
 #               you can edit it, then you have to ASCII/hex-encode, recompress
@@ -28,7 +26,7 @@ use strict;
 use vars qw($VERSION $AUTOLOAD);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.17';
+$VERSION = '1.26';
 
 sub ProcessPNG_tEXt($$$);
 sub ProcessPNG_iTXt($$$);
@@ -37,6 +35,8 @@ sub CalculateCRC($;$$$);
 sub HexEncode($);
 sub AddChunks($$);
 sub Add_iCCP($$);
+sub GetLangInfo($$);
+sub BuildTextChunk($$$$$);
 
 my $noCompressLib;
 
@@ -47,6 +47,25 @@ my %pngLookup = (
     "\x8bJNG\r\n\x1a\n" => ['JNG', 'JHDR', 'IEND' ],
 );
 
+# map for directories in PNG images
+my %pngMap = (
+    IFD1         => 'IFD0',
+    EXIF         => 'IFD0', # to write EXIF as a block
+    ExifIFD      => 'IFD0',
+    GPS          => 'IFD0',
+    SubIFD       => 'IFD0',
+    GlobParamIFD => 'IFD0',
+    PrintIM      => 'IFD0',
+    InteropIFD   => 'ExifIFD',
+    MakerNotes   => 'ExifIFD',
+    IFD0         => 'PNG',
+    XMP          => 'PNG',
+    ICC_Profile  => 'PNG',
+    Photoshop    => 'PNG',
+    IPTC         => 'Photoshop',
+    MakerNotes   => 'ExifIFD',
+);
+
 # color type of current image
 $Image::ExifTool::PNG::colorType = -1;
 
@@ -54,6 +73,12 @@ $Image::ExifTool::PNG::colorType = -1;
 %Image::ExifTool::PNG::Main = (
     WRITE_PROC => \&Image::ExifTool::DummyWriteProc,
     GROUPS => { 2 => 'Image' },
+    PREFERRED => 1, # always add these tags when writing
+    NOTES => q{
+        Tags extracted from PNG images.  See
+        L<http://www.libpng.org/pub/png/spec/1.2/> for the official PNG 1.2
+        specification.
+    },
     bKGD => {
         Name => 'BackgroundColor',
         ValueConv => 'join(" ",unpack(length($val) < 2 ? "C" : "n*", $val))',
@@ -61,6 +86,10 @@ $Image::ExifTool::PNG::colorType = -1;
     cHRM => {
         Name => 'PrimaryChromaticities',
         SubDirectory => { TagTable => 'Image::ExifTool::PNG::PrimaryChromaticities' },
+    },
+    dSIG => {
+        Name => 'DigitalSignature',
+        Binary => 1,
     },
     fRAc => {
         Name => 'FractalParameters',
@@ -130,6 +159,10 @@ $Image::ExifTool::PNG::colorType = -1;
         Name => 'SignificantBits',
         ValueConv => 'join(" ",unpack("C*",$val))',
     },
+    sCAL => { # png 1.4.0
+        Name => 'SubjectScale',
+        SubDirectory => { TagTable => 'Image::ExifTool::PNG::SubjectScale' },
+    },
     sPLT => {
         Name => 'SuggestedPalette',
         Binary => 1,
@@ -144,6 +177,10 @@ $Image::ExifTool::PNG::colorType = -1;
             2 => 'Saturation',
             3 => 'Absolute Colorimetric',
         },
+    },
+    sTER => { # png 1.4.0
+        Name => 'StereoImage',
+        SubDirectory => { TagTable => 'Image::ExifTool::PNG::StereoImage' },
     },
     tEXt => {
         Name => 'TextualData',
@@ -172,8 +209,12 @@ $Image::ExifTool::PNG::colorType = -1;
     },
     tXMP => {
         Name => 'XMP',
-        Notes => 'obsolete location specified by older XMP draft',
+        Notes => 'obsolete location specified by a September 2001 XMP draft',
         SubDirectory => { TagTable => 'Image::ExifTool::XMP::Main' },
+    },
+    vpAg => { # private imagemagick chunk
+        Name => 'VirtualPage',
+        SubDirectory => { TagTable => 'Image::ExifTool::PNG::VirtualPage' },
     },
     zTXt => {
         Name => 'CompressedText',
@@ -255,6 +296,51 @@ $Image::ExifTool::PNG::colorType = -1;
     },
 );
 
+# PNG sCAL chunk
+%Image::ExifTool::PNG::SubjectScale = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 2 => 'Image' },
+    0 => {
+        Name => 'SubjectUnits',
+        PrintConv => { 1 => 'Meters', 2 => 'Radians' },
+    },
+    1 => {
+        Name => 'SubjectPixelWidth',
+        Format => 'var_string',
+    },
+    2 => {
+        Name => 'SubjectPixelHeight',
+        Format => 'var_string',
+    },
+);
+
+# PNG vpAg chunk
+%Image::ExifTool::PNG::VirtualPage = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 2 => 'Image' },
+    FORMAT => 'int32u',
+    0 => 'VirtualImageWidth',
+    1 => 'VirtualImageHeight',
+    2 => {
+        Name => 'VirtualPageUnits',
+        Format => 'int8u',
+        # what is the conversion for this?
+    },
+);
+
+# PNG sTER chunk
+%Image::ExifTool::PNG::StereoImage = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 2 => 'Image' },
+    0 => {
+        Name => 'StereoMode',
+        PrintConv => {
+            0 => 'Cross-fuse Layout',
+            1 => 'Diverging-fuse Layout',
+        },
+    },
+);
+
 my %unreg = ( Notes => 'unregistered' );
 
 # Tags for PNG tEXt zTXt and iTXt chunks
@@ -265,22 +351,30 @@ my %unreg = ( Notes => 'unregistered' );
     WRITABLE => 'string',
     PREFERRED => 1, # always add these tags when writing
     GROUPS => { 2 => 'Image' },
+    LANG_INFO => \&GetLangInfo,
     NOTES => q{
-The PNG TextualData format allows aribrary tag names to be used.  The tags
-listed below are the only ones that can be written (unless new user-defined
-tags are added via the configuration file), however ExifTool will extract
-any other TextualData tags that are found.
+        The PNG TextualData format allows arbitrary tag names to be used.  The tags
+        listed below are the only ones that can be written (unless new user-defined
+        tags are added via the configuration file), however ExifTool will extract
+        any other TextualData tags that are found.
+        
+        These tags may be stored as tEXt, zTXt or iTXt chunks in the PNG image.  By
+        default ExifTool writes new string-value tags as as uncompressed tEXt, or
+        compressed zTXt if the Compress (-z) option is used and Compress::Zlib is
+        available.  Alternate language tags and values containing special characters
+        (unless the Latin character set is used) are written as iTXt, and compressed
+        if the Compress option is used and Compress::Zlib is available.  Raw profile
+        information is always created as compressed zTXt if Compress::Zlib is
+        available, or tEXt otherwise.  Standard XMP is written as uncompressed iTXt.
 
-Data for the TextualData tags may be stored as tEXt, zTXt or iTXt chunks in
-the PNG image.  ExifTool will read and edit tags in their original form, but
-new string tags are created as uncompressed tEXt by default, or as
-compressed zTXt if the -z (Compress) option is used and Compress::Zlib is
-available. Raw profile information is always created as compressed zTXt if
-Compress::Zlib is available.
+        Alternate languages are accessed by suffixing the tag name with a '-',
+        followed by an RFC 3066 language code (ie. "PNG:Comment-fr", or
+        "Title-en-US").  See L<http://www.ietf.org/rfc/rfc3066.txt> for the RFC 3066
+        specification.
 
-Some of the tags below are not registered as part of the PNG specification,
-but are included here because they are generated by other software such as
-ImageMagick.
+        Some of the tags below are not registered as part of the PNG specification,
+        but are included here because they are generated by other software such as
+        ImageMagick.
     },
     Title       => { },
     Author      => { Groups => { 2 => 'Author' } },
@@ -306,13 +400,34 @@ ImageMagick.
     Label       => { %unreg },
     Make        => { %unreg, Groups => { 2 => 'Camera' } },
     Model       => { %unreg, Groups => { 2 => 'Camera' } },
+   'create-date'=> {
+        Name => 'CreateDate',
+        Groups => { 2 => 'Time' },
+        Shift => 'Time',
+        %unreg,
+        ValueConv => 'require Image::ExifTool::XMP; Image::ExifTool::XMP::ConvertXMPDate($val)',
+        ValueConvInv => 'require Image::ExifTool::XMP; Image::ExifTool::XMP::FormatXMPDate($val)',
+        PrintConv => '$self->ConvertDateTime($val)',
+        PrintConvInv => '$self->InverseDateTime($val,undef,1)',
+    },
+   'modify-date'=> {
+        Name => 'ModDate', # (to distinguish from tIME chunk "ModifyDate")
+        Groups => { 2 => 'Time' },
+        Shift => 'Time',
+        %unreg,
+        ValueConv => 'require Image::ExifTool::XMP; Image::ExifTool::XMP::ConvertXMPDate($val)',
+        ValueConvInv => 'require Image::ExifTool::XMP; Image::ExifTool::XMP::FormatXMPDate($val)',
+        PrintConv => '$self->ConvertDateTime($val)',
+        PrintConvInv => '$self->InverseDateTime($val,undef,1)',
+    },
     TimeStamp   => { %unreg, Groups => { 2 => 'Time' }, Shift => 'Time' },
     URL         => { %unreg },
    'XML:com.adobe.xmp' => {
         Name => 'XMP',
         Notes => q{
-            location according to the XMP specification -- this is where ExifTool will
-            add a new XMP chunk if the image didn't already contain XMP
+            unregistered, but this is the location according to the current XMP
+            specification (June 2002 or later), and is where ExifTool will add a new XMP
+            chunk if the image didn't already contain XMP
         },
         SubDirectory => {
             TagTable => 'Image::ExifTool::XMP::Main',
@@ -323,6 +438,7 @@ ImageMagick.
             # EXIF table must come first because we key on this in ProcessProfile()
             # (No condition because this is just for BuildTagLookup)
             Name => 'APP1_Profile',
+            %unreg,
             SubDirectory => {
                 TagTable=>'Image::ExifTool::Exif::Main',
                 ProcessProc => \&ProcessProfile,
@@ -338,6 +454,7 @@ ImageMagick.
     ],
    'Raw profile type exif' => {
         Name => 'EXIF_Profile',
+        %unreg,
         SubDirectory => {
             TagTable=>'Image::ExifTool::Exif::Main',
             ProcessProc => \&ProcessProfile,
@@ -345,6 +462,7 @@ ImageMagick.
     },
    'Raw profile type icc' => {
         Name => 'ICC_Profile',
+        %unreg,
         SubDirectory => {
             TagTable => 'Image::ExifTool::ICC_Profile::Main',
             ProcessProc => \&ProcessProfile,
@@ -352,6 +470,7 @@ ImageMagick.
     },
    'Raw profile type icm' => {
         Name => 'ICC_Profile',
+        %unreg,
         SubDirectory => {
             TagTable => 'Image::ExifTool::ICC_Profile::Main',
             ProcessProc => \&ProcessProfile,
@@ -359,6 +478,7 @@ ImageMagick.
     },
    'Raw profile type iptc' => {
         Name => 'IPTC_Profile',
+        %unreg,
         SubDirectory => {
             TagTable => 'Image::ExifTool::Photoshop::Main',
             ProcessProc => \&ProcessProfile,
@@ -366,6 +486,7 @@ ImageMagick.
     },
    'Raw profile type xmp' => {
         Name => 'XMP_Profile',
+        %unreg,
         SubDirectory => {
             TagTable => 'Image::ExifTool::XMP::Main',
             ProcessProc => \&ProcessProfile,
@@ -382,26 +503,63 @@ sub AUTOLOAD
 }
 
 #------------------------------------------------------------------------------
+# Get standard case for language code (this routine copied from XMP.pm)
+# Inputs: 0) Language code
+# Returns: Language code in standard case
+sub StandardLangCase($)
+{
+    my $lang = shift;
+    # make 2nd subtag uppercase only if it is 2 letters
+    return lc($1) . uc($2) . lc($3) if $lang =~ /^([a-z]{2,3}|[xi])(-[a-z]{2})\b(.*)/i;
+    return lc($lang);
+}
+
+#------------------------------------------------------------------------------
+# Get localized version of tagInfo hash
+# Inputs: 0) tagInfo hash ref, 1) language code (ie. "x-default")
+# Returns: new tagInfo hash ref, or undef if invalid
+sub GetLangInfo($$)
+{
+    my ($tagInfo, $lang) = @_;
+    $lang =~ tr/_/-/;   # RFC 3066 specifies '-' as a separator
+    # no alternate languages for XMP or raw profile directories
+    return undef if $$tagInfo{SubDirectory};
+    # language code must normalized for use in tag ID
+    return Image::ExifTool::GetLangInfo($tagInfo, StandardLangCase($lang));
+}
+
+#------------------------------------------------------------------------------
 # Found a PNG tag -- extract info from subdirectory or decompress data if necessary
 # Inputs: 0) ExifTool object reference, 1) Pointer to tag table,
 #         2) Tag ID, 3) Tag value, 4) [optional] compressed data flag:
 #            0=not compressed, 1=unknown compression, 2-N=compression with type N-2
-#         5) optional output buffer reference
+#         5) optional output buffer ref, 6) character encoding (tEXt/zTXt/iTXt only)
+#         6) optional language code
 # Returns: 1 on success
-sub FoundPNG($$$$;$$)
+sub FoundPNG($$$$;$$$$)
 {
-    my ($exifTool, $tagTablePtr, $tag, $val, $compressed, $outBuff) = @_;
-    my ($wasCompressed, $deflateErr);
+    my ($exifTool, $tagTablePtr, $tag, $val, $compressed, $outBuff, $enc, $lang) = @_;
     return 0 unless defined $val;
-#
-# First, uncompress data if requested
-#
     my $verbose = $exifTool->Options('Verbose');
-    my $out = $exifTool->Options('TextOut');
-    my $tagInfo = $exifTool->GetTagInfo($tagTablePtr, $tag) ||
+    my $id = $tag;  # generate tag ID which include language code
+    if ($lang) {
+        # case of language code must be normalized since they are case insensitive
+        $lang = StandardLangCase($lang);
+        $id .= '-' . $lang;
+    }
+    my $tagInfo = $exifTool->GetTagInfo($tagTablePtr, $id) ||
                   # (some software forgets to capitalize first letter)
-                  $exifTool->GetTagInfo($tagTablePtr, ucfirst($tag));
-
+                  $exifTool->GetTagInfo($tagTablePtr, ucfirst($id));
+    # create alternate language tag if necessary
+    if (not $tagInfo and $lang) {
+        $tagInfo = $exifTool->GetTagInfo($tagTablePtr, $tag) ||
+                   $exifTool->GetTagInfo($tagTablePtr, ucfirst($tag));
+        $tagInfo = GetLangInfo($tagInfo, $lang) if $tagInfo;
+    }
+#
+# uncompress data if necessary
+#
+    my ($wasCompressed, $deflateErr);
     if ($compressed and $compressed > 1) {
         if ($compressed == 2) { # Inflate/Deflate compression
             if (eval 'require Compress::Zlib') {
@@ -416,9 +574,7 @@ sub FoundPNG($$$$;$$)
                     $deflateErr = "Error inflating $tag";
                 }
             } elsif (not $noCompressLib) {
-                $noCompressLib = 1;
-                my $verb = $outBuff ? 'write' : 'decode';
-                $deflateErr = "Install Compress::Zlib to $verb compressed information";
+                $deflateErr = "Install Compress::Zlib to read compressed information";
             } else {
                 $deflateErr = '';   # flag deflate error but no warning
             }
@@ -429,7 +585,17 @@ sub FoundPNG($$$$;$$)
         if ($compressed and $verbose and $tagInfo and $$tagInfo{SubDirectory}) {
             $exifTool->VerboseDir("Unable to decompress $$tagInfo{Name}", 0, length($val));
         }
-        $exifTool->Warn($deflateErr) if $deflateErr and not $outBuff;
+        # issue warning if relevant
+        if ($deflateErr and (not $outBuff or
+            ($tagInfo and $$tagInfo{SubDirectory} and $$exifTool{EDIT_DIRS}{$$tagInfo{Name}})))
+        {
+            $exifTool->Warn($deflateErr);
+            $noCompressLib = 1 if $deflateErr =~ /^Install/;
+        }
+    }
+    # translate character encoding if necessary (tEXt/zTXt/iTXt string values only)
+    if ($enc and not $compressed and not ($tagInfo and $$tagInfo{SubDirectory})) {
+        $val = $exifTool->Decode($val, $enc);
     }
 #
 # extract information from subdirectory if available
@@ -444,9 +610,7 @@ sub FoundPNG($$$$;$$)
                     my $name = $tagName;
                     $wasCompressed and $name = "Decompressed $name";
                     $exifTool->VerboseDir($name, 0, $len);
-                    my %parms = ( Prefix => $exifTool->{INDENT}, Out => $out );
-                    $parms{MaxLen} = 96 unless $verbose > 3;
-                    Image::ExifTool::HexDump(\$val, undef, %parms);
+                    $exifTool->VerboseDump(\$val);
                 }
                 # don't indent next directory (since it is really the same data)
                 $exifTool->{INDENT} =~ s/..$//;
@@ -457,14 +621,14 @@ sub FoundPNG($$$$;$$)
             my $subTable = GetTagTable($$subdir{TagTable});
             return 1 if $outBuff and not $$subTable{WRITE_PROC};
             my %subdirInfo = (
-                DataPt => \$val,
+                DataPt   => \$val,
                 DirStart => 0,
-                DataLen => $len,
-                DirLen => $len,
-                DirName => $tagName,
-                TagInfo => $tagInfo,
+                DataLen  => $len,
+                DirLen   => $len,
+                DirName  => $tagName,
+                TagInfo  => $tagInfo,
                 ReadOnly => 1, # (only used by WriteXMP)
-                OutBuff => $outBuff,
+                OutBuff  => $outBuff,
             );
             # no need to re-decompress if already done
             undef $processProc if $wasCompressed and $processProc eq \&ProcessPNG_Compressed;
@@ -482,49 +646,50 @@ sub FoundPNG($$$$;$$)
         }
         if ($outBuff) {
             my $writable = $tagInfo->{Writable};
+            my $isOverwriting;
             if ($writable or ($$tagTablePtr{WRITABLE} and
                 not defined $writable and not $$tagInfo{SubDirectory}))
             {
                 # write new value for this tag if necessary
-                my ($isOverwriting, $newVal);
+                my $newVal;
                 if ($exifTool->{DEL_GROUP}->{PNG}) {
                     # remove this tag now, but keep in ADD_PNG list to add back later
                     $isOverwriting = 1;
                 } else {
                     # remove this from the list of PNG tags to add
-                    delete $exifTool->{ADD_PNG}->{$tag};
+                    delete $exifTool->{ADD_PNG}->{$id};
                     # (also handle case of tEXt tags written with lowercase first letter)
-                    delete $exifTool->{ADD_PNG}->{ucfirst($tag)};
-                    my $newValueHash = $exifTool->GetNewValueHash($tagInfo);
-                    $isOverwriting = Image::ExifTool::IsOverwriting($newValueHash);
+                    delete $exifTool->{ADD_PNG}->{ucfirst($id)};
+                    my $nvHash = $exifTool->GetNewValueHash($tagInfo);
+                    $isOverwriting = $exifTool->IsOverwriting($nvHash);
                     if (defined $deflateErr) {
-                        $newVal = Image::ExifTool::GetNewValues($newValueHash);
-                        # can only write tag now if unconditionally deleting it
-                        if ($isOverwriting > 0 and not defined $newVal) {
+                        $newVal = $exifTool->GetNewValues($nvHash);
+                        # can only write tag now if always overwriting
+                        if ($isOverwriting > 0) {
                             $val = '<deflate error>';
-                        } else {
-                            $isOverwriting = 0; # can't rewrite this compressed text
+                        } elsif ($isOverwriting) {
+                            $isOverwriting = 0; # can't overwrite
                             $exifTool->Warn($deflateErr) if $deflateErr;
                         }
                     } else {
                         if ($isOverwriting < 0) {
-                            $isOverwriting = Image::ExifTool::IsOverwriting($newValueHash, $val);
+                            $isOverwriting = $exifTool->IsOverwriting($nvHash, $val);
                         }
                         # (must get new value after IsOverwriting() in case it was shifted)
-                        $newVal = Image::ExifTool::GetNewValues($newValueHash);
+                        $newVal = $exifTool->GetNewValues($nvHash);
                     }
                 }
                 if ($isOverwriting) {
-                    $$outBuff =  (defined $newVal) ? $newVal : '';
+                    $$outBuff = (defined $newVal) ? $newVal : '';
                     ++$exifTool->{CHANGED};
-                    if ($verbose > 1) {
-                        print $out "    - PNG:$tagName = '",$exifTool->Printable($val),"'\n";
-                        print $out "    + PNG:$tagName = '",$exifTool->Printable($newVal),"'\n" if defined $newVal;
-                    }
+                    $exifTool->VerboseValue("- PNG:$tagName", $val);
+                    $exifTool->VerboseValue("+ PNG:$tagName", $newVal) if defined $newVal;
                 }
             }
-            if ($$outBuff) {
-                if ($wasCompressed) {
+            if (defined $$outBuff and length $$outBuff) {
+                if ($enc) { # must be tEXt/zTXt/iTXt if $enc is set
+                    $$outBuff = BuildTextChunk($exifTool, $tag, $tagInfo, $$outBuff, $lang);
+                } elsif ($wasCompressed) {
                     # re-compress the output data
                     my $deflate;
                     if (eval 'require Compress::Zlib') {
@@ -537,8 +702,6 @@ sub FoundPNG($$$$;$$)
                         }
                     }
                     $$outBuff or $exifTool->Warn("PNG:$tagName not written (compress error)");
-                } elsif ($exifTool->Options('Compress')) {
-                    $exifTool->Warn("PNG:$tagName not compressed (uncompressed tag existed)", 1);
                 }
             }
             return 1;
@@ -548,6 +711,7 @@ sub FoundPNG($$$$;$$)
         my $name;
         ($name = $tag) =~ s/\s+(.)/\u$1/g;   # remove white space from tag name
         $tagInfo = { Name => $name };
+        $$tagInfo{LangCode} = $lang if $lang;
         # make unknown profiles binary data type
         $$tagInfo{Binary} = 1 if $tag =~ /^Raw profile type /;
         Image::ExifTool::AddTagToTable($tagTablePtr, $tag, $tagInfo);
@@ -605,12 +769,7 @@ sub ProcessProfile($$$)
     if ($verbose) {
         if ($verbose > 2) {
             $exifTool->VerboseDir("Decoded $tagName", 0, $len);
-            my %parms = (
-                Prefix => $exifTool->{INDENT},
-                Out => $exifTool->Options('TextOut'),
-            );
-            $parms{MaxLen} = 96 unless $verbose > 3;
-            Image::ExifTool::HexDump(\$buff, undef, %parms);
+            $exifTool->VerboseDump(\$buff);
         }
         # don't indent next directory (since it is really the same data)
         $exifTool->{INDENT} =~ s/..$//;
@@ -647,14 +806,13 @@ sub ProcessProfile($$$)
         my $hdrLen = length($Image::ExifTool::exifAPP1hdr);
         $dirInfo{DirStart} += $hdrLen;
         $dirInfo{DirLen} -= $hdrLen;
-        $processed = $exifTool->ProcessTIFF(\%dirInfo);
         if ($outBuff) {
-            if ($$outBuff) {
-                $$outBuff = $Image::ExifTool::exifAPP1hdr . $$outBuff if $$outBuff;
-            } else {
-                $$outBuff = '' if $processed;
-            }
+            $$outBuff = $exifTool->WriteDirectory(\%dirInfo, $tagTablePtr,
+                                                  \&Image::ExifTool::WriteTIFF);
+            $$outBuff = $Image::ExifTool::exifAPP1hdr . $$outBuff if $$outBuff;
             delete $$addDirs{IFD0};
+        } else {
+            $processed = $exifTool->ProcessTIFF(\%dirInfo);
         }
     } elsif ($buff =~ /^$Image::ExifTool::xmpAPP1hdr/) {
         # APP1 XMP information
@@ -673,21 +831,20 @@ sub ProcessProfile($$$)
     } elsif ($buff =~ /^(MM\0\x2a|II\x2a\0)/) {
         # TIFF information (haven't seen this, but what the heck...)
         return 1 if $outBuff and not $$editDirs{IFD0};
-        $processed = $exifTool->ProcessTIFF(\%dirInfo);
         if ($outBuff) {
-            if ($$outBuff) {
-                $$outBuff = $Image::ExifTool::exifAPP1hdr . $$outBuff if $$outBuff;
-            } else {
-                $$outBuff = '' if $processed;
-            }
+            $$outBuff = $exifTool->WriteDirectory(\%dirInfo, $tagTablePtr,
+                                                  \&Image::ExifTool::WriteTIFF);
+            $$outBuff = $Image::ExifTool::exifAPP1hdr . $$outBuff if $$outBuff;
             delete $$addDirs{IFD0};
+        } else {
+            $processed = $exifTool->ProcessTIFF(\%dirInfo);
         }
     } else {
         my $profName = $profileType;
         $profName =~ tr/\x00-\x1f\x7f-\xff/./;
         $exifTool->Warn("Unknown raw profile '$profName'");
     }
-    if ($outBuff and $$outBuff) {
+    if ($outBuff and defined $$outBuff and length $$outBuff) {
         if ($exifTool->{CHANGED} != $oldChanged) {
             my $hdr = sprintf("\n%s\n%8d\n", $profileType, length($$outBuff));
             # hex encode the data
@@ -703,6 +860,7 @@ sub ProcessProfile($$$)
 # Process PNG compressed zTXt or iCCP chunk
 # Inputs: 0) ExifTool object reference, 1) DirInfo reference, 2) Pointer to tag table
 # Returns: 1 on success
+# Notes: writes new chunk data to ${$$dirInfo{OutBuff}} if writing tag
 sub ProcessPNG_Compressed($$$)
 {
     my ($exifTool, $dirInfo, $tagTablePtr) = @_;
@@ -712,37 +870,38 @@ sub ProcessPNG_Compressed($$$)
     my $compressed = 2 + unpack('C', $val);
     my $hdr = $tag . "\0" . substr($val, 0, 1);
     $val = substr($val, 1); # remove compression method byte
+    my $success;
+    my $outBuff = $$dirInfo{OutBuff};
     # use the PNG chunk tag instead of the embedded tag name for iCCP chunks
     if ($$dirInfo{TagInfo} and $$dirInfo{TagInfo}->{Name} eq 'ICC_Profile') {
         $tag = 'iCCP';
         $tagTablePtr = \%Image::ExifTool::PNG::Main;
+        $success = FoundPNG($exifTool, $tagTablePtr, $tag, $val, $compressed, $outBuff);
+        $$outBuff = $hdr . $$outBuff if $outBuff and $$outBuff;
+    } else {
+        $success = FoundPNG($exifTool, $tagTablePtr, $tag, $val, $compressed, $outBuff, 'Latin');
     }
-    my $outBuff = $$dirInfo{OutBuff};
-    my $rtnVal = FoundPNG($exifTool, $tagTablePtr, $tag, $val, $compressed, $outBuff);
-    # add header back onto this chunk if we are writing
-    $$outBuff = $hdr . $$outBuff if $outBuff and $$outBuff;
-    return $rtnVal;
+    return $success;
 }
 
 #------------------------------------------------------------------------------
 # Process PNG tEXt chunk
 # Inputs: 0) ExifTool object reference, 1) DirInfo reference, 2) Pointer to tag table
 # Returns: 1 on success
+# Notes: writes new chunk data to ${$$dirInfo{OutBuff}} if writing tag
 sub ProcessPNG_tEXt($$$)
 {
     my ($exifTool, $dirInfo, $tagTablePtr) = @_;
     my ($tag, $val) = split /\0/, ${$$dirInfo{DataPt}}, 2;
     my $outBuff = $$dirInfo{OutBuff};
-    my $rtnVal = FoundPNG($exifTool, $tagTablePtr, $tag, $val, undef, $outBuff);
-    # add header back onto this chunk if we are writing
-    $$outBuff = $tag . "\0" . $$outBuff if $outBuff and $$outBuff;
-    return $rtnVal;
+    return FoundPNG($exifTool, $tagTablePtr, $tag, $val, undef, $outBuff, 'Latin');
 }
 
 #------------------------------------------------------------------------------
 # Process PNG iTXt chunk
 # Inputs: 0) ExifTool object reference, 1) DirInfo reference, 2) Pointer to tag table
 # Returns: 1 on success
+# Notes: writes new chunk data to ${$$dirInfo{OutBuff}} if writing tag
 sub ProcessPNG_iTXt($$$)
 {
     my ($exifTool, $dirInfo, $tagTablePtr) = @_;
@@ -753,11 +912,7 @@ sub ProcessPNG_iTXt($$$)
     # set compressed flag so we will decompress it in FoundPNG()
     $compressed and $compressed = 2 + $meth;
     my $outBuff = $$dirInfo{OutBuff};
-    my $rtnVal = FoundPNG($exifTool, $tagTablePtr, $tag, $val, $compressed, $outBuff);
-    if ($outBuff and $$outBuff) {
-        $$outBuff = $tag . "\0" . substr($dat, 0, 2) . "$lang\0$trans\0" . $$outBuff;
-    }
-    return $rtnVal;
+    return FoundPNG($exifTool, $tagTablePtr, $tag, $val, $compressed, $outBuff, 'UTF8', $lang);
 }
 
 #------------------------------------------------------------------------------
@@ -777,13 +932,14 @@ sub ProcessPNG($$)
     # check to be sure this is a valid PNG/MNG/JNG image
     return 0 unless $raf->Read($sig,8) == 8 and $pngLookup{$sig};
     if ($outfile) {
+        delete $$exifTool{TextChunkType};
         Write($outfile, $sig) or $err = 1 if $outfile;
         # can only add tags in Main and TextualData tables
         $exifTool->{ADD_PNG} = $exifTool->GetNewTagInfoHash(
             \%Image::ExifTool::PNG::Main,
             \%Image::ExifTool::PNG::TextualData);
-        # initialize with same directories as JPEG, but PNG tags take priority
-        $exifTool->InitWriteDirs('JPEG','PNG');
+        # initialize with same directories, with PNG tags taking priority
+        $exifTool->InitWriteDirs(\%pngMap,'PNG');
     }
     my ($fileType, $hdrChunk, $endChunk) = @{$pngLookup{$sig}};
     $exifTool->SetFileType($fileType);  # set the FileType tag
@@ -864,11 +1020,7 @@ sub ProcessPNG($$)
                 next;
             }
             print $out "$fileType $chunk ($len bytes):\n";
-            if ($verbose > 2) {
-                my %dumpParms = ( Out => $out, Addr => $raf->Tell() - $len - 4 );
-                $dumpParms{MaxLen} = 96 if $verbose <= 4;
-                Image::ExifTool::HexDump(\$dbuf, undef, %dumpParms);
-            }
+            $exifTool->VerboseDump(\$dbuf, Addr => $raf->Tell() - $len - 4) if $verbose > 2;
         }
         # only extract information from chunks in our tables
         my ($theBuff, $outBuff);
@@ -879,14 +1031,18 @@ sub ProcessPNG($$)
             FoundPNG($exifTool, $mngTablePtr, $chunk, $dbuf, undef, $outBuff);
         }
         if ($outfile) {
-            if ($theBuff) {
-                $hbuf = pack('Na4',length($theBuff), $chunk);
+            if (defined $theBuff) {
+                next unless length $theBuff; # empty if we deleted the information
+                # change chunk type if necessary
+                if ($$exifTool{TextChunkType}) {
+                    $chunk = $$exifTool{TextChunkType};
+                    delete $$exifTool{TextChunkType};
+                }
+                $hbuf = pack('Na4', length($theBuff), $chunk);
                 $dbuf = $theBuff;
                 my $crc = CalculateCRC(\$hbuf, undef, 4);
                 $crc = CalculateCRC(\$dbuf, $crc);
                 $cbuf = pack('N', $crc);
-            } elsif (defined $theBuff) {
-                next;   # empty if we deleted the information
             }
             Write($outfile, $hbuf, $dbuf, $cbuf) or $err = 1;
         }
@@ -915,7 +1071,7 @@ and JNG (JPEG Network Graphics) images.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

@@ -12,9 +12,11 @@
 package Image::ExifTool::PDF;
 
 use strict;
+use vars qw($lastFetched);
 
 sub WriteObject($$);
 sub EncodeString($);
+sub CryptObject($);
 
 # comments to mark beginning and end of ExifTool incremental update
 my $beginComment = '%BeginExifToolUpdate';
@@ -23,6 +25,11 @@ my $endComment   = '%EndExifToolUpdate ';
 my $keyExt;     # crypt key extension
 my $pdfVer;     # version of PDF file we are currently writing
 
+# internal tags used in dictionary objects
+my %myDictTags = (
+    _tags => 1, _stream => 1, _decrypted => 1, _needCrypt => 1,
+    _filtered => 1, _entry_size => 1, _table => 1,
+);
 
 #------------------------------------------------------------------------------
 # Validate raw PDF values for writing (string date integer real boolean name)
@@ -35,7 +42,7 @@ sub CheckPDF($$$)
     if (not $format) {
         return 'No writable format';
     } elsif ($format eq 'string') {
-        # no constraints
+        # (encode later because list-type string tags need to be encoded as a unit)
     } elsif ($format eq 'date') {
         # be flexible about this for now
         return 'Bad date format' unless $$valPtr =~ /^\d{4}/;
@@ -55,18 +62,20 @@ sub CheckPDF($$$)
 
 #------------------------------------------------------------------------------
 # Format value for writing to PDF file
-# Inputs: 0) value, 1) format string (string,date,integer,real,boolean,name)
+# Inputs: 0) ExifTool ref, 1) value, 2) format string (string,date,integer,real,boolean,name)
 # Returns: formatted value or undef on error
 # Notes: Called at write time, so $pdfVer may be checked
-sub WritePDFValue($$)
+sub WritePDFValue($$$)
 {
-    my ($val, $format) = @_;
+    my ($exifTool, $val, $format) = @_;
     if (not $format) {
         return undef;
     } elsif ($format eq 'string') {
+        # encode as UCS2 if it contains any special characters
+        $val = "\xfe\xff" . $exifTool->Encode($val,'UCS2','MM') if $val =~ /[\x80-\xff]/;
         EncodeString(\$val);
     } elsif ($format eq 'date') {
-        # convert date to "D:YYYYMMDDHHMMSS+-hh'mm'" format
+        # convert date to "D:YYYYmmddHHMMSS+-HH'MM'" format
         $val =~ s/([-+]\d{2}):(\d{2})/$1'$2'/;  # change timezone delimiters if necessary
         $val =~ tr/ ://d;                       # remove spaces and colons
         $val =  "D:$val";                       # add leading "D:"
@@ -101,7 +110,7 @@ sub EncodeString($)
         }
         return;
     }
-    Crypt($strPt, $keyExt);  # encrypt if necessary
+    Crypt($strPt, $keyExt, 1);  # encrypt if necessary
     # encode as hex if we have any control characters (except tab)
     if ($$strPt=~/[\x00-\x08\x0a-\x1f\x7f\xff]/) {
         # encode as hex
@@ -119,6 +128,46 @@ sub EncodeString($)
     } else {
         $$strPt =~ s/([()\\])/\\$1/g;   # must escape round brackets and backslashes
         $$strPt = "($$strPt)";
+    }
+}
+
+#------------------------------------------------------------------------------
+# Encrypt an object
+# Inputs: 0) PDF object (encrypts in place)
+# Notes: Encrypts according to "_needCrypt" dictionary entry,
+#        then deletes "_needCrypt" when done
+sub CryptObject($)
+{
+    my $obj = $_[0];
+    if (not ref $obj) {
+        # only literal strings and hex strings are encrypted
+        if ($obj =~ /^[(<]/) {
+            undef $lastFetched; # (reset this just in case)
+            my $val = ReadPDFValue($obj);
+            EncodeString(\$val);
+            $_[0] = $val;
+        }
+    } elsif (ref $obj eq 'HASH') {
+        my $tag;
+        my $needCrypt = $$obj{_needCrypt};
+        foreach $tag (keys %$obj) {
+            next if $myDictTags{$tag};
+            # re-encrypt necessary objects only (others are still encrypted)
+            # (this is really annoying, but is necessary because objects stored
+            # in encrypted streams are decrypted when extracting, but strings stored
+            # as direct objects are decrypted later since they must be decoded
+            # before being decrypted)
+            if ($needCrypt) {
+                next unless defined $$needCrypt{$tag} ? $$needCrypt{$tag} : $$needCrypt{'*'};
+            }
+            CryptObject($$obj{$tag});
+        }
+        delete $$obj{_needCrypt};   # avoid re-re-crypting
+    } elsif (ref $obj eq 'ARRAY') {
+        my $val;
+        foreach $val (@$obj) {
+            CryptObject($val);
+        }
     }
 }
 
@@ -178,16 +227,23 @@ sub WriteObject($$)
         # write dictionary
         my $tag;
         Write($outfile, $/, '<<') or return 0;
-        # add "Length" entry if this is a stream
+        # prepare object as required if it has a stream
         if ($$obj{_stream}) {
+            # encrypt stream if necessary (must be done before determining Length)
+            CryptStream($obj, $keyExt) if $$obj{_decrypted};
+            # write "Length" entry in dictionary
             $$obj{Length} = length $$obj{_stream};
             push @{$$obj{_tags}}, 'Length';
+            # delete Filter-related entries since we don't yet write filtered streams
+            delete $$obj{Filter};
+            delete $$obj{DecodeParms};
+            delete $$obj{DL};
         }
         # don't write my internal entries
-        my %wrote = ( _tags => 1, _stream => 1, _decrypted => 1,
-                      _oldFilter => 1, _entry_size => 1, _table => 1 );
+        my %wrote = %myDictTags;
         # write tags in original order, adding new ones later alphabetically
         foreach $tag (@{$$obj{_tags}}, sort keys %$obj) {
+            # ignore already-written or missing entries
             next if $wrote{$tag} or not defined $$obj{$tag};
             Write($outfile, $/, "/$tag") or return 0;
             WriteObject($outfile, $$obj{$tag}) or return 0;
@@ -195,13 +251,9 @@ sub WriteObject($$)
         }
         Write($outfile, $/, '>>') or return 0;
         if ($$obj{_stream}) {
+            # write object stream
             # (a single 0x0d may not follow 'stream', so use 0x0d+0x0a here to be sure)
             Write($outfile, $/, "stream\x0d\x0a") or return 0;
-            # encrypt stream if necessary
-            if ($$obj{_decrypted}) {
-                delete $$obj{_decrypted};
-                CryptStream($obj, $keyExt);
-            }
             Write($outfile, $$obj{_stream}, $/, 'endstream') or return 0;
         }
     } else {
@@ -222,19 +274,28 @@ sub WritePDF($$)
     my ($exifTool, $dirInfo) = @_;
     my $raf = $$dirInfo{RAF};
     my $outfile = $$dirInfo{OutFile};
-    my ($buff, $len, %capture, %newXRef, %newObj, $objRef);
+    my ($buff, %capture, %newXRef, %newObj, $objRef);
     my ($out, $id, $gen, $obj);
+
+    # make sure this is a PDF file
+    my $pos = $raf->Tell();
+    $raf->Read($buff, 10) >= 8 or return 0;
+    $buff =~ /^%PDF-(\d+\.\d+)/ or return 0;
+    $raf->Seek($pos, 0);
 
     # create a new ExifTool object and use it to read PDF and XMP information
     my $newTool = new Image::ExifTool;
     $newTool->Options(List => 1);
+    $newTool->Options(Password => $exifTool->Options('Password'));
     $$newTool{PDF_CAPTURE} = \%capture;
     my $info = $newTool->ImageInfo($raf, 'XMP', 'PDF:*', 'Error', 'Warning');
     # not a valid PDF file unless we got a version number
-    $pdfVer = $$info{PDFVersion} or return 0;
-
+    # (note: can't just check $$info{PDFVersion} due to possibility of XMP-pdf:PDFVersion)
+    my $vers = $newTool->GetInfo('PDF:PDFVersion');
+    ($pdfVer) = values %$vers;
+    $pdfVer or $exifTool->Error('Missing PDF:PDFVersion'), return 0;
     # check version number
-    if ($pdfVer > 1.6) {
+    if ($pdfVer > 1.7) {
         if ($pdfVer >= 2.0) {
             $exifTool->Error("Can't yet write PDF version $pdfVer"); # (future major version changes)
             return 1;
@@ -256,20 +317,15 @@ sub WritePDF($$)
     }
 
     # copy file up to start of previous exiftool update or end of file
+    # (comment, startxref & EOF with 11-digit offsets and 2-byte newlines is 63 bytes)
     $raf->Seek(-64,2) and $raf->Read($buff,64) and $raf->Seek(0,0) or return -1;
     my $rtn = 1;
     my $prevUpdate;
-    if ($buff =~ /$endComment(\d+)\s+$/s) {
+    # (now $endComment is before "startxref", but pre-7.41 we wrote it after the EOF)
+    if ($buff =~ /$endComment(\d+)\s+(startxref\s+\d+\s+%%EOF\s+)?$/s) {
         $prevUpdate = $1;
         # rewrite the file up to the original EOF
-        my $size = $prevUpdate;
-        for (;;) {
-            last unless $size;
-            my $n = $size > 65536 ? 65536 : $size;
-            $raf->Read($buff, $n) == $n or $rtn = -1, last;
-            Write($outfile, $buff) or $rtn = -1;
-            $size -= $n;
-        }
+        Image::ExifTool::CopyBlock($raf, $outfile, $prevUpdate) or $rtn = -1;
         # verify that we are now at the start of an ExifTool update
         unless ($raf->Read($buff, length $beginComment) and $buff eq $beginComment) {
             $exifTool->Error('Previous ExifTool update is corrupted');
@@ -335,16 +391,18 @@ sub WritePDF($$)
     my $infoRef = $prevInfoRef || \ "$nextObject 0 R";
     $keyExt = $$infoRef;
 
+    # must encrypt all values in dictionary if they came from an encrypted stream
+    CryptObject($infoDict) if $$infoDict{_needCrypt};
+    
     # must set line separator before calling WritePDFValue()
-    my $oldSep = $/;
-    $/ = $capture{newline};
+    local $/ = $capture{newline};
 
     # rewrite PDF Info tags
     my $newTags = $exifTool->GetNewTagInfoHash(\%Image::ExifTool::PDF::Info);
     my $tagID;
     foreach $tagID (sort keys %$newTags) {
         my $tagInfo = $$newTags{$tagID};
-        my $newValueHash = $exifTool->GetNewValueHash($tagInfo);
+        my $nvHash = $exifTool->GetNewValueHash($tagInfo);
         my (@vals, $deleted);
         my $tag = $$tagInfo{Name};
         my $val = $$info{$tag};
@@ -361,9 +419,9 @@ sub WritePDF($$)
                 $val = shift @oldVals;
             }
             for (;;) {
-                if (Image::ExifTool::IsOverwriting($newValueHash, $val) > 0) {
+                if ($exifTool->IsOverwriting($nvHash, $val) > 0) {
                     $deleted = 1;
-                    print $out "    - PDF:$tag = '",$exifTool->Printable($val),"'\n" if $out;
+                    $exifTool->VerboseValue("- PDF:$tag", $val);
                     ++$infoChanged;
                 } else {
                     push @vals, $val;
@@ -379,13 +437,13 @@ sub WritePDF($$)
         next unless $deleted or $$tagInfo{List} or not exists $$infoDict{$tagID};
 
         # add new values to existing ones
-        my @newVals = Image::ExifTool::GetNewValues($newValueHash);
+        my @newVals = $exifTool->GetNewValues($nvHash);
         if (@newVals) {
             push @vals, @newVals;
             ++$infoChanged;
             if ($out) {
                 foreach $val (@newVals) {
-                    print $out "    + PDF:$tag = '",$exifTool->Printable($val),"'\n";
+                    $exifTool->VerboseValue("+ PDF:$tag", $val);
                 }
             }
         }
@@ -397,15 +455,15 @@ sub WritePDF($$)
         # format value(s) for writing to PDF file
         my $writable = $$tagInfo{Writable} || $Image::ExifTool::PDF::Info{WRITABLE};
         if (not $$tagInfo{List}) {
-            $val = WritePDFValue(shift @vals, $writable);
+            $val = WritePDFValue($exifTool, shift(@vals), $writable);
         } elsif ($$tagInfo{List} eq 'array') {
             foreach $val (@vals) {
-                $val = WritePDFValue($val, $writable);
+                $val = WritePDFValue($exifTool, $val, $writable);
                 defined $val or undef(@vals), last;
             }
             $val = @vals ? \@vals : undef;
         } else {
-            $val = WritePDFValue(join(', ', @vals), $writable);
+            $val = WritePDFValue($exifTool, join($exifTool->Options('ListSep'), @vals), $writable);
         }
         if (defined $val) {
             $$infoDict{$tagID} = $val;
@@ -442,7 +500,7 @@ sub WritePDF($$)
         DataPt => $$info{XMP},
         Parent => 'PDF',
     );
-    my $xmpTable = GetTagTable('Image::ExifTool::XMP::Main');
+    my $xmpTable = Image::ExifTool::GetTagTable('Image::ExifTool::XMP::Main');
     my $oldChanged = $$exifTool{CHANGED};
     my $newXMP = $exifTool->WriteDirectory(\%xmpInfo, $xmpTable);
     $newXMP = $$info{XMP} ? ${$$info{XMP}} : '' unless defined $newXMP;
@@ -476,9 +534,9 @@ sub WritePDF($$)
                 Type       => '/Metadata',
                 Subtype    => '/XML',
               # Length     => length $newXMP, (set by WriteObject)
-                _tags      => [ qw(Type Subtype Length) ],
+                _tags      => [ qw(Type Subtype) ],
                 _stream    => $newXMP,
-                _decrypted => 1,
+                _decrypted => 1, # (this will be ignored if EncryptMetadata is false)
             };
         } elsif ($capture{Root}->{Metadata}) {
             # free existing metadata object
@@ -491,7 +549,6 @@ sub WritePDF($$)
     my $rootRef = $$mainDict{Root};
     unless ($rootRef) {
         $exifTool->Error("Can't find Root dictionary");
-        $/ = $oldSep;
         return $rtn;
     }
     if (not $rootChanged and $prevUpdate) {
@@ -510,7 +567,7 @@ sub WritePDF($$)
 
         # write new objects
         foreach $objRef (sort keys %newObj) {
-            $objRef =~ /^(\d+) (\d+)/ or $rtn = -1, print("xxx $objRef-\n"), last;
+            $objRef =~ /^(\d+) (\d+)/ or $rtn = -1, last;
             ($id, $gen) = ($1, $2);
             if (not $newObj{$objRef}) {
                 ++$gen if $gen < 65535;
@@ -582,10 +639,6 @@ sub WritePDF($$)
         # must write xref as a stream in xref-stream-only files
         if ($$mainDict{Type} and $$mainDict{Type} eq '/XRef') {
 
-            # delete encoding-related entries since we aren't encoding our stream
-            delete $$mainDict{Filter};
-            delete $$mainDict{DecodeParms};
-            delete $$mainDict{DL};
             # create entry for the xref stream object itself
             $newXRef{$nextObject++} = [ Tell($outfile) + length($/), 0, 'n' ];
             $$mainDict{Size} = $nextObject;
@@ -633,16 +686,16 @@ sub WritePDF($$)
                 # write this (contiguous-numbered object) section of the xref table
                 Write($outfile, $startID, ' ', $id - $startID + 1, $/, $buff) or $rtn = -1;
             }
-     
-            # write main (trailer) dictionary        
+
+            # write main (trailer) dictionary
             Write($outfile, 'trailer') or $rtn = -1;
             WriteObject($outfile, $mainDict) or $rtn = -1;
         }
-        # write pointer to main xref table and EOF marker
-        Write($outfile, $/, 'startxref', $/, $startxref, $/, '%%EOF', $/) or $rtn = -1;
+        # write trailing comment (marker to allow edits to be reverted)
+        Write($outfile, $/, $endComment, $oldEOF, $/) or $rtn = -1;
 
-        # write trailing comment to allow our edit to be easily reverted
-        Write($outfile, $endComment, $oldEOF, $/) or $rtn = -1;
+        # write pointer to main xref table and EOF marker
+        Write($outfile, 'startxref', $/, $startxref, $/, '%%EOF', $/) or $rtn = -1;
 
     } elsif ($prevUpdate) {
 
@@ -654,7 +707,6 @@ sub WritePDF($$)
     }
     undef $newTool;
     undef %capture;
-    $/ = $oldSep;   # restore original separator
     return $rtn;
 }
 
@@ -684,7 +736,7 @@ C<PDF-update> pseudo group).
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

@@ -114,7 +114,7 @@ sub Add_iCCP($$)
     my ($exifTool, $outfile) = @_;
     if ($exifTool->{ADD_DIRS}->{ICC_Profile}) {
         # write new ICC data
-        my $tagTablePtr = GetTagTable('Image::ExifTool::ICC_Profile::Main');
+        my $tagTablePtr = Image::ExifTool::GetTagTable('Image::ExifTool::ICC_Profile::Main');
         my %dirInfo = ( Parent => 'PNG', DirName => 'ICC_Profile' );
         my $buff = $exifTool->WriteDirectory(\%dirInfo, $tagTablePtr);
         if (defined $buff and length $buff and WriteProfile($outfile, 'icm', \$buff)) {
@@ -123,6 +123,71 @@ sub Add_iCCP($$)
         }
     }
     return 1;
+}
+
+#------------------------------------------------------------------------------
+# Generate tEXt, zTXt or iTXt data for writing
+# Inputs: 0) ExifTool ref, 1) tagID, 2) tagInfo ref, 3) value string, 4) language code
+# Returns: chunk data (not including 8-byte chunk header)
+# Notes: Sets ExifTool TextChunkType member to the type of chunk written
+sub BuildTextChunk($$$$$)
+{
+    my ($exifTool, $tag, $tagInfo, $val, $lang) = @_;
+    my ($xtra, $compVal, $iTXt, $comp);
+    if ($$tagInfo{SubDirectory}) {
+        if ($$tagInfo{Name} eq 'XMP') {
+            $iTXt = 2;      # write as iTXt but flag to avoid encoding
+            # (never compress XMP)
+        } else {
+            $comp = 2;      # compress raw profile if possible
+        }
+    } else {
+        # compress if specified
+        $comp = 1 if $exifTool->Options('Compress');
+        if ($lang) {
+            $iTXt = 1;      # write as iTXt if it has a language code
+            $tag =~ s/-$lang$//;    # remove language code from tagID
+        } elsif ($$exifTool{OPTIONS}{Charset} ne 'Latin' and $val =~  /[\x80-\xff]/) {
+            $iTXt = 1;      # write as iTXt if it contains non-Latin special characters
+        }
+    }
+    if ($comp) {
+        my $warn;
+        if (eval 'require Compress::Zlib') {
+            my $deflate = Compress::Zlib::deflateInit();
+            $compVal = $deflate->deflate($val) if $deflate;
+            if (defined $compVal) {
+                $compVal .= $deflate->flush();
+                # only compress if it actually saves space
+                unless (length($compVal) < length($val)) {
+                    undef $compVal;
+                    $warn = 'uncompressed data is smaller';
+                }
+            } else {
+                $warn = 'deflate error';
+            }
+        } else {
+            $warn = 'Compress::Zlib not available';
+        }
+        # warn if any user-specified compression fails
+        if ($warn and $comp == 1) {
+            $exifTool->Warn("PNG:$$tagInfo{Name} not compressed ($warn)", 1);
+        }
+    }
+    # decide whether to write as iTXt, zTXt or tEXt
+    if ($iTXt) {
+        $$exifTool{TextChunkType} = 'iTXt';
+        $xtra = (defined $compVal ? "\x01\0" : "\0\0") . ($lang || '') . "\0\0";
+        # iTXt is encoded as UTF-8 (but note that XMP is already UTF-8)
+        $val = $exifTool->Encode($val, 'UTF8') if $iTXt == 1;
+    } elsif (defined $compVal) {
+        $$exifTool{TextChunkType} = 'zTXt';
+        $xtra = "\0";
+    } else {
+        $$exifTool{TextChunkType} = 'tEXt';
+        $xtra = '';
+    }
+    return $tag . "\0" . $xtra . (defined $compVal ? $compVal : $val);
 }
 
 #------------------------------------------------------------------------------
@@ -139,44 +204,23 @@ sub AddChunks($$)
 
     foreach $tag (sort keys %$addTags) {
         my $tagInfo = $$addTags{$tag};
-        my $newValueHash = $exifTool->GetNewValueHash($tagInfo);
+        my $nvHash = $exifTool->GetNewValueHash($tagInfo);
         # (always create native PNG information, so don't check IsCreating())
-        next unless Image::ExifTool::IsOverwriting($newValueHash) > 0;
-        my $val = Image::ExifTool::GetNewValues($newValueHash);
+        next unless $exifTool->IsOverwriting($nvHash) > 0;
+        my $val = $exifTool->GetNewValues($nvHash);
         if (defined $val) {
             my $data;
             if ($$tagInfo{Table} eq \%Image::ExifTool::PNG::TextualData) {
-                $data = "tEXt$tag\0$val";
+                $data = BuildTextChunk($exifTool, $tag, $tagInfo, $val, $$tagInfo{LangCode});
+                $data = $$exifTool{TextChunkType} . $data;
+                delete $$exifTool{TextChunkType};
             } else {
                 $data = "$tag$val";
-            }
-            # write as compressed zTXt if specified
-            if ($exifTool->Options('Compress')) {
-                my $warn;
-                if (eval 'require Compress::Zlib') {
-                    my $buff;
-                    my $deflate = Compress::Zlib::deflateInit();
-                    $buff = $deflate->deflate($val) if $deflate;
-                    if (defined $buff) {
-                        $buff .= $deflate->flush();
-                        # only write as zTXt if it actually saves space
-                        if (length($buff) < length($val) - 1) {
-                            $data = "zTXt$tag\0\0$buff";
-                        } else {
-                            $warn = 'uncompressed data is smaller';
-                        }
-                    } else {
-                        $warn = 'deflate error';
-                    }
-                } else {
-                    $warn = 'Compress::Zlib not available'; 
-                }
-                $warn and $exifTool->Warn("PNG:$$tagInfo{Name} not compressed ($warn)", 1);
             }
             my $hdr = pack('N', length($data) - 4);
             my $cbuf = pack('N', CalculateCRC(\$data, undef));
             Write($outfile, $hdr, $data, $cbuf) or $err = 1;
-            $exifTool->VPrint(1, "    + PNG:$$tagInfo{Name} = '",$exifTool->Printable($val),"'\n");
+            $exifTool->VerboseValue("+ PNG:$$tagInfo{Name}", $val);
             ++$exifTool->{CHANGED};
         }
     }
@@ -191,25 +235,15 @@ sub AddChunks($$)
         if ($dir eq 'IFD0') {
             $exifTool->VPrint(0, "Creating EXIF profile:\n");
             $exifTool->{TIFF_TYPE} = 'APP1';
-            $tagTablePtr = GetTagTable('Image::ExifTool::Exif::Main');
-            # use specified byte ordering or ordering from maker notes if set
-            my $byteOrder = $exifTool->Options('ByteOrder') ||
-                $exifTool->GetNewValues('ExifByteOrder') || $exifTool->{MAKER_NOTE_BYTE_ORDER} || 'MM';
-            unless (SetByteOrder($byteOrder)) {
-                warn "Invalid byte order '$byteOrder'\n";
-                $byteOrder = $exifTool->{MAKER_NOTE_BYTE_ORDER} || 'MM';
-                SetByteOrder($byteOrder);
-            }
-            $dirInfo{NewDataPos} = 8,   # new data will come after TIFF header
-            $buff = $exifTool->WriteDirectory(\%dirInfo, $tagTablePtr);
+            $tagTablePtr = Image::ExifTool::GetTagTable('Image::ExifTool::Exif::Main');
+            $buff = $exifTool->WriteDirectory(\%dirInfo, $tagTablePtr, \&Image::ExifTool::WriteTIFF);
             if (defined $buff and length $buff) {
-                my $tiffHdr = $byteOrder . Set16u(42) . Set32u(8);
-                $buff = $Image::ExifTool::exifAPP1hdr . $tiffHdr . $buff;
+                $buff = $Image::ExifTool::exifAPP1hdr . $buff;
                 WriteProfile($outfile, 'APP1', \$buff, 'generic') or $err = 1;
             }
         } elsif ($dir eq 'XMP') {
             $exifTool->VPrint(0, "Creating XMP iTXt chunk:\n");
-            $tagTablePtr = GetTagTable('Image::ExifTool::XMP::Main');
+            $tagTablePtr = Image::ExifTool::GetTagTable('Image::ExifTool::XMP::Main');
             $dirInfo{ReadOnly} = 1;
             $buff = $exifTool->WriteDirectory(\%dirInfo, $tagTablePtr);
             if (defined $buff and length $buff and
@@ -228,7 +262,7 @@ sub AddChunks($$)
         } elsif ($dir eq 'IPTC') {
             $exifTool->VPrint(0, "Creating IPTC profile:\n");
             # write new IPTC data
-            $tagTablePtr = GetTagTable('Image::ExifTool::Photoshop::Main');
+            $tagTablePtr = Image::ExifTool::GetTagTable('Image::ExifTool::Photoshop::Main');
             $buff = $exifTool->WriteDirectory(\%dirInfo, $tagTablePtr);
             if (defined $buff and length $buff) {
                 WriteProfile($outfile, 'iptc', \$buff, 'IPTC') or $err = 1;
@@ -236,11 +270,11 @@ sub AddChunks($$)
         } elsif ($dir eq 'ICC_Profile') {
             $exifTool->VPrint(0, "Creating ICC profile:\n");
             # write new ICC data (only done if we couldn't create iCCP chunk)
-            $tagTablePtr = GetTagTable('Image::ExifTool::ICC_Profile::Main');
+            $tagTablePtr = Image::ExifTool::GetTagTable('Image::ExifTool::ICC_Profile::Main');
             $buff = $exifTool->WriteDirectory(\%dirInfo, $tagTablePtr);
             if (defined $buff and length $buff) {
                 WriteProfile($outfile, 'icm', \$buff, 'ICC') or $err = 1;
-                $exifTool->Warn('Wrote ICC as generic profile (no Compress::Zlib)');
+                $exifTool->Warn('Wrote ICC as a raw profile (no Compress::Zlib)');
             }
         }
     }
@@ -281,7 +315,7 @@ strings).
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

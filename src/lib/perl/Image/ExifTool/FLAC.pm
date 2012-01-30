@@ -14,7 +14,7 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.01';
+$VERSION = '1.04';
 
 sub ProcessBitStream($$$);
 
@@ -28,10 +28,20 @@ sub ProcessBitStream($$$);
         Name => 'StreamInfo',
         SubDirectory => { TagTable => 'Image::ExifTool::FLAC::StreamInfo' },
     },
+    1 => { Name => 'Padding',     Binary => 1, Unknown => 1 },
+    2 => { Name => 'Application', Binary => 1, Unknown => 1 },
+    3 => { Name => 'SeekTable',   Binary => 1, Unknown => 1 },
     4 => {
         Name => 'VorbisComment',
         SubDirectory => { TagTable => 'Image::ExifTool::Vorbis::Comments' },
     },
+    5 => { Name => 'CueSheet',    Binary => 1, Unknown => 1 },
+    6 => {
+        Name => 'Picture',
+        SubDirectory => { TagTable => 'Image::ExifTool::FLAC::Picture' },
+    },
+    # 7-126 - Reserved
+    # 127 - Invalid
 );
 
 %Image::ExifTool::FLAC::StreamInfo = (
@@ -54,15 +64,65 @@ sub ProcessBitStream($$$);
     'Bit108-143' => 'TotalSamples',
 );
 
+%Image::ExifTool::FLAC::Picture = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 2 => 'Image' },
+    FORMAT => 'int32u',
+    0 => {
+        Name => 'PictureType',
+        PrintConv => { # (Note: Duplicated in ID3, ASF and FLAC modules!)
+            0 => 'Other',
+            1 => '32x32 PNG Icon',
+            2 => 'Other Icon',
+            3 => 'Front Cover',
+            4 => 'Back Cover',
+            5 => 'Leaflet',
+            6 => 'Media',
+            7 => 'Lead Artist',
+            8 => 'Artist',
+            9 => 'Conductor',
+            10 => 'Band',
+            11 => 'Composer',
+            12 => 'Lyricist',
+            13 => 'Recording Studio or Location',
+            14 => 'Recording Session',
+            15 => 'Performance',
+            16 => 'Capture from Movie or Video',
+            17 => 'Bright(ly) Colored Fish',
+            18 => 'Illustration',
+            19 => 'Band Logo',
+            20 => 'Publisher Logo',
+        },
+    },
+    1 => {
+        Name => 'PictureMIMEType',
+        Format => 'var_pstr32',
+    },
+    2 => {
+        Name => 'PictureDescription',
+        Format => 'var_pstr32',
+        ValueConv => '$self->Decode($val, "UTF8")',
+    },
+    3 => 'PictureWidth',
+    4 => 'PictureHeight',
+    5 => 'PictureBitsPerPixel',
+    6 => 'PictureIndexedColors',
+    7 => 'PictureLength',
+    8 => {
+        Name => 'Picture',
+        Format => 'undef[$val{7}]',
+        Binary => 1,
+    },
+);
+
 # FLAC composite tags
 %Image::ExifTool::FLAC::Composite = (
     Duration => {
         Require => {
             0 => 'FLAC:SampleRate',
-            1 => 'FLAC:Channels',
-            2 => 'FLAC:TotalSamples',
+            1 => 'FLAC:TotalSamples',
         },
-        ValueConv => '$val[0] and $val[1] and $val[2] ? $val[2] / ($val[0] * $val[1]) : undef',
+        ValueConv => '$val[0] and $val[1] ? $val[1] / $val[0] : undef',
         PrintConv => 'ConvertDuration($val)',
     },
 );
@@ -158,7 +218,7 @@ sub ProcessFLAC($$)
     my ($exifTool, $dirInfo) = @_;
 
     # must first check for leading/trailing ID3 information
-    unless ($exifTool->{DONE_ID3}) {
+    unless ($exifTool->{DoneID3}) {
         require Image::ExifTool::ID3;
         Image::ExifTool::ID3::ProcessID3($exifTool, $dirInfo) and return 1;
     }
@@ -169,7 +229,7 @@ sub ProcessFLAC($$)
 
     # check FLAC signature
     $raf->Read($buff, 4) == 4 and $buff eq 'fLaC' or return 0;
-    $exifTool->SetFileType() unless $exifTool->{VALUE}->{FileType};
+    $exifTool->SetFileType();
     SetByteOrder('MM');
     my $tagTablePtr = GetTagTable('Image::ExifTool::FLAC::Main');
     for (;;) {
@@ -213,7 +273,7 @@ information from Free Lossless Audio Codec (FLAC) audio files.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
@@ -229,6 +289,7 @@ under the same terms as Perl itself.
 =head1 SEE ALSO
 
 L<Image::ExifTool::TagNames/FLAC Tags>,
+L<Image::ExifTool::TagNames/Ogg Tags>,
 L<Image::ExifTool(3pm)|Image::ExifTool>
 
 =cut

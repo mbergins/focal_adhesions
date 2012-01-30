@@ -16,7 +16,7 @@ use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Canon;
 
-$VERSION = '1.02';
+$VERSION = '1.04';
 
 sub ProcessRealMeta($$$);
 sub ProcessRealProperties($$$);
@@ -90,8 +90,8 @@ my %metadataFlag = (
     PROCESS_PROC => \&Image::ExifTool::Canon::ProcessSerialData,
     VARS => { ID_LABEL => 'Sequence' },
     FORMAT => 'int32u',
-    0  => 'MaxBitRate',
-    1  => 'AvgBitRate',
+    0  => { Name => 'MaxBitrate', PrintConv => 'ConvertBitrate($val)' },
+    1  => { Name => 'AvgBitrate', PrintConv => 'ConvertBitrate($val)' },
     2  => 'MaxPacketSize',
     3  => 'AvgPacketSize',
     4  => 'NumPackets',
@@ -119,8 +119,8 @@ my %metadataFlag = (
     FORMAT => 'int32u',
     PRIORITY => 0,  # first stream takes priority
     0  => { Name => 'StreamNumber',  Format => 'int16u' },
-    1  => { Name => 'StreamMaxBitRate' },
-    2  => { Name => 'StreamAvgBitRate' },
+    1  => { Name => 'StreamMaxBitrate', PrintConv => 'ConvertBitrate($val)' },
+    2  => { Name => 'StreamAvgBitrate', PrintConv => 'ConvertBitrate($val)' },
     3  => { Name => 'StreamMaxPacketSize' },
     4  => { Name => 'StreamAvgPacketSize' },
     5  => { Name => 'StreamStartTime' },
@@ -534,7 +534,7 @@ sub ProcessReal($$)
         my $ext = $exifTool->{FILE_EXT};
         $type = ($ext and $ext eq 'RPM') ? 'RPM' : 'RAM';
         require Image::ExifTool::PostScript;
-        my $oldSep = Image::ExifTool::PostScript::SetInputRecordSeparator($raf);
+        local $/ = Image::ExifTool::PostScript::GetInputRecordSeparator($raf) || "\n";
         $raf->Seek(0,0);
         while ($raf->ReadLine($buff)) {
             last if length $buff > 256;
@@ -550,7 +550,6 @@ sub ProcessReal($$)
             my $tag = $buff =~ m{^[a-z]{3,4}://} ? 'url' : 'txt';
             $exifTool->HandleTag($tagTablePtr, $tag, $buff);
         }
-        $/ = $oldSep if $oldSep;
         return 1;
     }
 
@@ -651,7 +650,7 @@ sub ProcessReal($$)
     # override MIMEType with stream MIME type if we only have one stream
     if (@mimeTypes == 1 and length $mimeTypes[0]) {
         $exifTool->{VALUE}->{MIMEType} = $mimeTypes[0];
-        $verbose and $exifTool->VPrint(0, "  MIMEType = $mimeTypes[0]\n");
+        $exifTool->VPrint(0, "  MIMEType = $mimeTypes[0]\n");
     }
 #
 # Process footer containing Real metadata and ID3 information
@@ -713,7 +712,7 @@ little-endian, but the Real format is big-endian.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

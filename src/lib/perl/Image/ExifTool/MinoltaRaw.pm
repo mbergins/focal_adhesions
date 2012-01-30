@@ -7,6 +7,7 @@
 #
 # References:   1) http://www.cybercom.net/~dcoffin/dcraw/
 #               2) http://www.chauveau-central.net/mrw-format/
+#               3) Igal Milchtaich private communication (A100)
 #------------------------------------------------------------------------------
 
 package Image::ExifTool::MinoltaRaw;
@@ -14,15 +15,18 @@ package Image::ExifTool::MinoltaRaw;
 use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
+use Image::ExifTool::Minolta;
 
-$VERSION = '1.03';
+$VERSION = '1.12';
 
 sub ProcessMRW($$;$);
+sub WriteMRW($$;$);
 
 # Minolta MRW tags
 %Image::ExifTool::MinoltaRaw::Main = (
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     PROCESS_PROC => \&Image::ExifTool::MinoltaRaw::ProcessMRW,
+    WRITE_PROC => \&Image::ExifTool::MinoltaRaw::WriteMRW,
     NOTES => 'These tags are used in Minolta RAW format (MRW) images.',
     "\0TTW" => { # TIFF Tags
         Name => 'MinoltaTTW',
@@ -114,10 +118,19 @@ sub ProcessMRW($$;$);
         Name => 'WBScale',
         Format => 'int8u[4]',
     },
-    4 => {
-        Name => 'WBLevels',
-        Format => 'int16u[4]',
-    },
+    4 => [
+        {
+            Condition => '$$self{Model} =~ /DiMAGE A200\b/',
+            Name => 'WB_GBRGLevels',
+            Format => 'int16u[4]',
+            Notes => 'DiMAGE A200',
+        },
+        {
+            Name => 'WB_RGGBLevels',
+            Format => 'int16u[4]',
+            Notes => 'other models',
+        },
+    ],
 );
 
 # Minolta MRW RIF information (ref 2)
@@ -153,36 +166,117 @@ sub ProcessMRW($$;$);
             3 => 'Night Portrait',
             4 => 'Sunset',
             5 => 'Sports',
+            # have seen these values in Sony ARW images: - PH
+            # 7, 128, 129, 160
         },
     },
     6 => {
         Name => 'ISOSetting',
-        ValueConv => '2 ** (($val-48)/8) * 100',
-        ValueConvInv => '48 + 8*log($val/100)/log(2)',
-        PrintConv => 'int($val + 0.5)',
-        PrintConvInv => '$val',
-    },
-    7 => {
-        Name => 'ColorMode',
-        PrintHex => 1,
-        PrintConv => {
-            0 => 'Normal',
-            1 => 'Black & White',
-            2 => 'Vivid color',
-            3 => 'Solarization',
-            4 => 'Adobe RGB',
-            13 => 'Natural sRGB',
-            14 => 'Natural+ sRGB',
-            0x84 => 'Adobe RGB', # what does the high bit mean?
+        RawConv => '$val == 255 ? undef : $val',
+        PrintConv => { #3
+            0 => 'Auto',
+            48 => 100,
+            56 => 200,
+            64 => 400,
+            72 => 800,
+            80 => 1600,
+            174 => '80 (Zone Matching Low)',
+            184 => '200 (Zone Matching High)',
+            OTHER => sub {
+                my ($val, $inv) = @_;
+                return int(2 ** (($val-48)/8) * 100 + 0.5) unless $inv;
+                return 48 + 8*log($val/100)/log(2) if Image::ExifTool::IsFloat($val);
+                return undef;
+            },
         },
+        #ValueConv => '2 ** (($val-48)/8) * 100',
+        #ValueConvInv => '48 + 8*log($val/100)/log(2)',
+        #PrintConv => 'int($val + 0.5)',
+        #PrintConvInv => '$val',
+    },
+    7 => [
+        {
+            Name => 'ColorMode',
+            Condition => '$$self{Make} !~ /^SONY/',
+            Priority => 0,
+            Writable => 'int32u',
+            PrintConv => \%Image::ExifTool::Minolta::minoltaColorMode,
+        },
+        { #3
+            Name => 'ColorMode',
+            Condition => '$$self{Model} eq "DSLR-A100"',
+            Writable => 'int32u',
+            Notes => 'Sony A100',
+            Priority => 0,
+            PrintHex => 1,
+            PrintConv => \%Image::ExifTool::Minolta::sonyColorMode,
+        },
+    ],
+    # NOTE: some of these WB_RBLevels may apply to other models too...
+    8  => { #3
+        Name => 'WB_RBLevelsTungsten',
+        Condition => '$$self{Model} eq "DSLR-A100"',
+        Format => 'int16u[2]',
+        Notes => 'these WB_RBLevels currently decoded only for the Sony A100',
+    },
+    12 => { #3
+        Name => 'WB_RBLevelsDaylight',
+        Condition => '$$self{Model} eq "DSLR-A100"',
+        Format => 'int16u[2]',
+    },
+    16 => { #3
+        Name => 'WB_RBLevelsCloudy',
+        Condition => '$$self{Model} eq "DSLR-A100"',
+        Format => 'int16u[2]',
+    },
+    20 => { #3
+        Name => 'WB_RBLevelsCoolWhiteF',
+        Condition => '$$self{Model} eq "DSLR-A100"',
+        Format => 'int16u[2]',
+    },
+    24 => { #3
+        Name => 'WB_RBLevelsFlash',
+        Condition => '$$self{Model} eq "DSLR-A100"',
+        Format => 'int16u[2]',
+    },
+    28 => { #3
+        Name => 'WB_RBLevelsUnknown',
+        Condition => '$$self{Model} eq "DSLR-A100"',
+        Format => 'int16u[2]',
+        Unknown => 1,
+    },
+    32 => { #3
+        Name => 'WB_RBLevelsShade',
+        Condition => '$$self{Model} eq "DSLR-A100"',
+        Format => 'int16u[2]',
+    },
+    36 => { #3
+        Name => 'WB_RBLevelsDaylightF',
+        Condition => '$$self{Model} eq "DSLR-A100"',
+        Format => 'int16u[2]',
+    },
+    40 => { #3
+        Name => 'WB_RBLevelsDayWhiteF',
+        Condition => '$$self{Model} eq "DSLR-A100"',
+        Format => 'int16u[2]',
+    },
+    44 => { #3
+        Name => 'WB_RBLevelsWhiteF',
+        Condition => '$$self{Model} eq "DSLR-A100"',
+        Format => 'int16u[2]',
     },
     56 => {
         Name => 'ColorFilter',
+        Condition => '$$self{Make} !~ /^SONY/',
         Format => 'int8s',
+        Notes => 'Minolta models',
     },
     57 => 'BWFilter',
     58 => {
         Name => 'ZoneMatching',
+        Condition => '$$self{Make} !~ /^SONY/',
+        Priority => 0,
+        Notes => 'Minolta models',
         PrintConv => {
             0 => 'ISO Setting Used',
             1 => 'High Key',
@@ -195,8 +289,49 @@ sub ProcessMRW($$;$);
     },
     60 => {
         Name => 'ColorTemperature',
+        Condition => '$$self{Make} !~ /^SONY/',
+        Notes => 'Minolta models',
         ValueConv => '$val * 100',
         ValueConvInv => '$val / 100',
+    },
+    74 => { #3
+        Name => 'ZoneMatching',
+        Condition => '$$self{Make} =~ /^SONY/',
+        Priority => 0,
+        Notes => 'Sony models',
+        PrintConv => {
+            0 => 'ISO Setting Used',
+            1 => 'High Key',
+            2 => 'Low Key',
+        },
+    },
+    76 => { #3
+        Name => 'ColorTemperature',
+        Condition => '$$self{Make} =~ /^SONY/ and $$self{Model} eq "DSLR-A100"',
+        Notes => 'A100',
+        ValueConv => '$val * 100',
+        ValueConvInv => '$val / 100',
+        PrintConv => '$val ? $val : "Auto"',
+        PrintConvInv => '$val=~/Auto/i ? 0 : $val',
+    },
+    77 => { #3
+        Name => 'ColorFilter',
+        Condition => '$$self{Make} =~ /^SONY/ and $$self{Model} eq "DSLR-A100"',
+        Notes => 'A100',
+    },
+    78 => { #3
+        Name => 'ColorTemperature',
+        Condition => '$$self{Make} =~ /^SONY/ and $$self{Model} =~ /^DSLR-A(200|700)$/',
+        Notes => 'A200 and A700',
+        ValueConv => '$val * 100',
+        ValueConvInv => '$val / 100',
+        PrintConv => '$val ? $val : "Auto"',
+        PrintConvInv => '$val=~/Auto/i ? 0 : $val',
+    },
+    79 => { #3
+        Name => 'ColorFilter',
+        Condition => '$$self{Make} =~ /^SONY/ and $$self{Model} =~ /^DSLR-A(200|700)$/',
+        Notes => 'A200 and A700',
     },
 );
 
@@ -226,9 +361,24 @@ sub ConvertWBMode($)
 }
 
 #------------------------------------------------------------------------------
+# Write MRW directory (ie. in ARW images)
+# Inputs: 0) ExifTool object ref, 1) dirInfo ref, 2) optional tag table ref
+# Returns: new MRW data or undef on error
+sub WriteMRW($$;$)
+{
+    my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    $exifTool or return 1;      # allow dummy access
+    my $buff = '';
+    $$dirInfo{OutFile} = \$buff;
+    ProcessMRW($exifTool, $dirInfo, $tagTablePtr) > 0 or undef $buff;
+    return $buff;
+}
+
+#------------------------------------------------------------------------------
 # Read or write Minolta MRW file
-# Inputs: 0) ExifTool object reference, 1) dirInfo reference
+# Inputs: 0) ExifTool object ref, 1) dirInfo ref, 2) optional tag table ref
 # Returns: 1 on success, 0 if this wasn't a valid MRW file, or -1 on write error
+# Notes: File pointer must be set to start of MRW in RAF upon entry
 sub ProcessMRW($$;$)
 {
     my ($exifTool, $dirInfo, $tagTablePtr) = @_;
@@ -248,15 +398,16 @@ sub ProcessMRW($$;$)
     # "\0MRM" for big-endian (MRW images), and
     # "\0MRI" for little-endian (MRWInfo in ARW images)
     $data =~ /^\0MR([MI])/ or return 0;
+    my $hdr = "\0MR$1";
     SetByteOrder($1 . $1);
-    $exifTool->SetFileType() unless $exifTool->{VALUE}->{FileType};
+    $exifTool->SetFileType();
     $tagTablePtr = GetTagTable('Image::ExifTool::MinoltaRaw::Main');
     if ($outfile) {
         $exifTool->InitWriteDirs('TIFF'); # use same write dirs as TIFF
         $outBuff = '';
     }
-    my $offset = Get32u(\$data, 4) + 8;
-    my $pos = 8;
+    my $pos = $raf->Tell();
+    my $offset = Get32u(\$data, 4) + $pos;
     my $rtnVal = 1;
     $verbose and printf $out "  [MRW Data Offset: 0x%x]\n", $offset;
     # loop through MRW segments (ref 1)
@@ -269,15 +420,15 @@ sub ProcessMRW($$;$)
             print $out "MRW ",$exifTool->Printable($tag)," segment ($len bytes):\n";
             if ($verbose > 2) {
                 $raf->Read($data,$len) == $len and $raf->Seek($pos,0) or $err = 1, last;
-                my %parms = (Addr => $pos, Out => $out);
-                $parms{MaxLen} = 96 unless $verbose > 3;
-                Image::ExifTool::HexDump(\$data,undef,%parms);
+                $exifTool->VerboseDump(\$data);
             }
         }
         my $tagInfo = $exifTool->GetTagInfo($tagTablePtr, $tag);
         if ($tagInfo and $$tagInfo{SubDirectory}) {
             my $subTable = GetTagTable($tagInfo->{SubDirectory}->{TagTable});
             my $buff;
+            # save shift for values stored with wrong base offset
+            $$exifTool{MRW_WrongBase} = -($raf->Tell());
             $raf->Read($buff, $len) == $len or $err = 1, last;
             my %subdirInfo = (
                 DataPt => \$buff,
@@ -318,13 +469,17 @@ sub ProcessMRW($$;$)
 
     if ($outfile) {
         # write the file header then the buffered meta information
-        Write($outfile, "\0MRM", Set32u(length $outBuff), $outBuff) or $rtnVal = -1;
+        Write($outfile, $hdr, Set32u(length $outBuff), $outBuff) or $rtnVal = -1;
         # copy over image data
         while ($raf->Read($outBuff, 65536)) {
             Write($outfile, $outBuff) or $rtnVal = -1;
         }
+        # Sony IDC utility corrupts MRWInfo when writing ARW images,
+        # so make this a minor error for these images
+        $err and $exifTool->Error("MRW format error", $$exifTool{TIFF_TYPE} eq 'ARW');
+    } else {
+        $err and $exifTool->Warn("MRW format error");
     }
-    $err and $exifTool->Error("MRW format error");
     return $rtnVal;
 }
 
@@ -347,7 +502,7 @@ write Konica-Minolta RAW (MRW) images.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

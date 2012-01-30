@@ -16,7 +16,7 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.04';
+$VERSION = '1.06';
 
 #------------------------------------------------------------------------------
 # Read or write information in a PPM/PGM/PBM image
@@ -84,15 +84,13 @@ sub ProcessPPM($$)
 # rewrite the file if requested
 #
     if ($outfile) {
-        my $newValueHash;
-        my $newComment = $exifTool->GetNewValues('Comment', \$newValueHash);
+        my $nvHash;
+        my $newComment = $exifTool->GetNewValues('Comment', \$nvHash);
         my $oldComment = $info{Comment};
-        if (Image::ExifTool::IsOverwriting($newValueHash, $oldComment)) {
+        if ($exifTool->IsOverwriting($nvHash, $oldComment)) {
             ++$exifTool->{CHANGED};
-            if ($verbose > 1) {
-                print $out "    - Comment = '$oldComment'\n" if defined $oldComment;
-                print $out "    + Comment = '$newComment'\n" if defined $newComment;
-            }
+            $exifTool->VerboseValue('- Comment', $oldComment) if defined $oldComment;
+            $exifTool->VerboseValue('+ Comment', $newComment) if defined $newComment;
         } else {
             $newComment = $oldComment;  # use existing comment
         }
@@ -145,7 +143,7 @@ BitMap) images.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

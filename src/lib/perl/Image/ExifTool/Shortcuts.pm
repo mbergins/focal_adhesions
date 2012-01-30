@@ -15,7 +15,7 @@ package Image::ExifTool::Shortcuts;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = '1.20';
+$VERSION = '1.43';
 
 # this is a special table used to define command-line shortcuts
 %Image::ExifTool::Shortcuts::Main = (
@@ -55,7 +55,7 @@ $VERSION = '1.20';
         'FocalLength',
         'ImageSize',
         'Quality',
-        'FlashOn',
+        'Flash',
         'FlashType',
         'ConditionalFEC',
         'RedEyeReduction',
@@ -66,42 +66,8 @@ $VERSION = '1.20';
         'Sharpness',
         'Saturation',
         'ColorTone',
-        'FileSize',
-        'FileNumber',
-        'DriveMode',
-        'OwnerName',
-        'SerialNumber',
-    ],
-    # courtesy of Christian Koller
-    Canon20D => [
-        'FileName',
-        'Model',
-        'DateTimeOriginal',
-        'ShootingMode',
-        'ShutterSpeedValue', #changed for 20D
-        'ApertureValue', #changed for 20D
-        'MeteringMode',
-        'ExposureCompensation',
-        'ISO',
-        'Lens',
-        'FocalLength',
-        #'ImageSize', #wrong in CR2
-        'ExifImageWidth', #instead
-        'ExifImageHeight', #instead
-        'Quality',
-        'FlashOn',
-        'FlashType',
-        'ConditionalFEC',
-        'RedEyeReduction',
-        'ShutterCurtainHack',
-        'WhiteBalance',
-        'FocusMode',
-        'Contrast',
-        'Sharpness',
-        'Saturation',
-        'ColorTone',
-        'ColorSpace', # new
-        'LongExposureNoiseReduction', #new
+        'ColorSpace',
+        'LongExposureNoiseReduction',
         'FileSize',
         'FileNumber',
         'DriveMode',
@@ -146,6 +112,9 @@ $VERSION = '1.20';
         'MakerNoteCasio',
         'MakerNoteCasio2',
         'MakerNoteFujiFilm',
+        'MakerNoteGE',
+        'MakerNoteGE2',
+        'MakerNoteHasselblad',
         'MakerNoteHP',
         'MakerNoteHP2',
         'MakerNoteHP4',
@@ -164,6 +133,8 @@ $VERSION = '1.20';
         'MakerNoteKodak7',
         'MakerNoteKodak8a',
         'MakerNoteKodak8b',
+        'MakerNoteKodak9',
+        'MakerNoteKodak10',
         'MakerNoteKodakUnknown',
         'MakerNoteKyocera',
         'MakerNoteMinolta',
@@ -177,14 +148,24 @@ $VERSION = '1.20';
         'MakerNoteLeica',
         'MakerNoteLeica2',
         'MakerNoteLeica3',
+        'MakerNoteLeica4',
+        'MakerNoteLeica5',
+        'MakerNoteLeica6',
         'MakerNotePanasonic',
         'MakerNotePanasonic2',
         'MakerNotePentax',
         'MakerNotePentax2',
         'MakerNotePentax3',
         'MakerNotePentax4',
+        'MakerNotePentax5',
+        'MakerNotePentax6',
+        'MakerNotePhaseOne',
+        'MakerNoteReconyx',
         'MakerNoteRicoh',
         'MakerNoteRicohText',
+        'MakerNoteSamsung1a',
+        'MakerNoteSamsung1b',
+        'MakerNoteSamsung2',
         'MakerNoteSanyo',
         'MakerNoteSanyoC4',
         'MakerNoteSanyoPatch',
@@ -193,21 +174,69 @@ $VERSION = '1.20';
         'MakerNoteSony2',
         'MakerNoteSony3',
         'MakerNoteSony4',
+        'MakerNoteSonyEricsson',
         'MakerNoteSonySRF',
+        'MakerNoteUnknownText',
         'MakerNoteUnknown',
+    ],
+    # "unsafe" tags we normally don't copy in JPEG images, defined
+    # as a shortcut to use when rebuilding JPEG EXIF from scratch
+    Unsafe => [
+        'IFD0:YCbCrPositioning',
+        'IFD0:YCbCrCoefficients',
+        'IFD0:TransferFunction',
+        'ExifIFD:ComponentsConfiguration',
+        'ExifIFD:CompressedBitsPerPixel',
+        'InteropIFD:InteropIndex',
+        'InteropIFD:InteropVersion',
+        'InteropIFD:RelatedImageWidth',
+        'InteropIFD:RelatedImageHeight',
+    ],
+    # common metadata tags found in IFD0 of TIFF images
+    CommonIFD0 => [
+        # standard EXIF
+        'IFD0:ImageDescription',
+        'IFD0:Make',
+        'IFD0:Model',
+        'IFD0:Software',
+        'IFD0:ModifyDate',
+        'IFD0:Artist',
+        'IFD0:Copyright',
+        # other TIFF tags
+        'IFD0:Rating', 
+        'IFD0:RatingPercent',
+        'IFD0:DNGLensInfo',
+        'IFD0:PanasonicTitle',
+        'IFD0:PanasonicTitle2',
+        'IFD0:XPTitle',
+        'IFD0:XPComment',
+        'IFD0:XPAuthor',
+        'IFD0:XPKeywords',
+        'IFD0:XPSubject',
     ],
 );
 
+#------------------------------------------------------------------------------
 # load user-defined shortcuts if available
-if (defined %Image::ExifTool::Shortcuts::UserDefined) {
+# Inputs: reference to user-defined shortcut hash
+sub LoadShortcuts($)
+{
+    my $shortcuts = shift;
     my $shortcut;
-    foreach $shortcut (keys %Image::ExifTool::Shortcuts::UserDefined) {
-        my $val = $Image::ExifTool::Shortcuts::UserDefined{$shortcut};
+    foreach $shortcut (keys %$shortcuts) {
+        my $val = $$shortcuts{$shortcut};
         # also allow simple aliases
         $val = [ $val ] unless ref $val eq 'ARRAY';
         # save the user-defined shortcut or alias
         $Image::ExifTool::Shortcuts::Main{$shortcut} = $val;
     }
+}
+# (for backward compatibility, renamed in ExifTool 7.75)
+if (%Image::ExifTool::Shortcuts::UserDefined) {
+    LoadShortcuts(\%Image::ExifTool::Shortcuts::UserDefined);
+}
+if (%Image::ExifTool::UserDefined::Shortcuts) {
+    LoadShortcuts(\%Image::ExifTool::UserDefined::Shortcuts);
 }
 
 
@@ -231,13 +260,13 @@ Image::ExifTool.  You can customize this file to add your own shortcuts.
 Individual users may also add their own shortcuts to the .ExifTool_config
 file in their home directory (or the directory specified by the
 EXIFTOOL_HOME environment variable).  The shortcuts are defined in a hash
-called %Image::ExifTool::Shortcuts::UserDefined.  The keys of the hash are
+called %Image::ExifTool::UserDefined::Shortcuts.  The keys of the hash are
 the shortcut names, and the elements are either tag names or references to
 lists of tag names.
 
 An example shortcut definition in .ExifTool_config:
 
-    %Image::ExifTool::Shortcuts::UserDefined = (
+    %Image::ExifTool::UserDefined::Shortcuts = (
         MyShortcut => ['createdate','exif:exposuretime','aperture'],
         MyAlias => 'FocalLengthIn35mmFormat',
     );
@@ -248,7 +277,7 @@ FocalLengthIn35mmFormat.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

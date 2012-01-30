@@ -3,12 +3,13 @@
 #
 # Description:  Read ICC Profile meta information
 #
-# Revisions:    11/16/04 - P. Harvey Created
+# Revisions:    11/16/2004 - P. Harvey Created
 #
 # References:   1) http://www.color.org/icc_specs2.html (ICC.1:2003-09)
 #               2) http://www.color.org/icc_specs2.html (ICC.1:2001-04)
 #               3) http://developer.apple.com/documentation/GraphicsImaging/Reference/ColorSync_Manager/ColorSync_Manager.pdf
 #               4) http://www.color.org/privatetag2007-01.pdf
+#               5) http://www.color.org/icc_specs2.xalter (approved revisions, 2010-07-16)
 #
 # Notes:        The ICC profile information is different: the format of each
 #               tag is embedded in the information instead of in the directory
@@ -22,11 +23,12 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.14';
+$VERSION = '1.24';
 
 sub ProcessICC($$);
 sub ProcessICC_Profile($$$);
 sub WriteICC_Profile($$;$);
+sub ProcessMetadata($$$);
 sub ValidateICC($);
 
 # illuminant type definitions
@@ -58,10 +60,12 @@ my %profileClass = (
     WRITE_PROC => \&WriteICC_Profile,
     NOTES => q{
         ICC profile information is used in many different file types including JPEG,
-        TIFF, PDF, PostScript, Photoshop, PNG, MIFF, PICT, QuickTime and some RAW
-        formats.  While the tags listed below are not individually writable, the
+        TIFF, PDF, PostScript, Photoshop, PNG, MIFF, PICT, QuickTime, XCF and some
+        RAW formats.  While the tags listed below are not individually writable, the
         entire profile itself can be accessed via the extra 'ICC_Profile' tag, but
-        this tag is neither extracted nor written unless specified explicitly.
+        this tag is neither extracted nor written unless specified explicitly.  See
+        L<http://www.color.org/icc_specs2.xalter> for the official ICC
+        specification.
     },
     A2B0 => 'AToB0',
     A2B1 => 'AToB1',
@@ -79,10 +83,14 @@ my %profileClass = (
         Groups => { 2 => 'Time' },
         PrintConv => '$self->ConvertDateTime($val)',
     },
-    targ => 'CharTarget',
+    targ => {
+        Name => 'CharTarget',
+        ValueConv => 'length $val > 128 ? \$val : $val',
+    },
     chad => 'ChromaticAdaptation',
     chrm => {
         Name => 'Chromaticity',
+        Groups => { 1 => 'ICC_Profile#' }, #(just for the group list)
         SubDirectory => {
             TagTable => 'Image::ExifTool::ICC_Profile::Chromaticity',
             Validate => '$type eq "chrm"',
@@ -96,7 +104,14 @@ my %profileClass = (
             Validate => '$type eq "clrt"',
         },
     },
-    cprt => 'ProfileCopyright',
+    clot => { # new in version 4.2
+        Name => 'ColorantTableOut',
+        Binary => 1,
+    },
+    cprt => {
+        Name => 'ProfileCopyright',
+        ValueConv => '$val=~s/\0.*//; $val', # may be null terminated
+    },
     crdi => 'CRDInfo', #2
     dmnd => {
         Name => 'DeviceMfgDesc',
@@ -142,7 +157,7 @@ my %profileClass = (
     psd1 => 'PostScript2CRD1', #2
     psd2 => 'PostScript2CRD2', #2
     ps2s => 'PostScript2CSA', #2
-    ps2i => 'PS2RenteringIntent', #2
+    ps2i => 'PS2RenderingIntent', #2
     rXYZ => 'RedMatrixColumn', # (called RedColorant in ref 2)
     rTRC => {
         Name => 'RedTRC',
@@ -152,7 +167,7 @@ my %profileClass = (
     scrn => 'Screening',
    'bfd '=> {
         Name => 'UCRBG',
-        Description => 'Under Color Removal & Black Gen.',
+        Description => 'Under Color Removal and Black Gen.',
     },
     tech => {
         Name => 'Technology',
@@ -179,6 +194,10 @@ my %profileClass = (
             offs => 'Offset Lithography',
             silk => 'Silkscreen',
             flex => 'Flexography',
+            mpfs => 'Motion Picture Film Scanner', #5
+            mpfr => 'Motion Picture Film Recorder', #5
+            dmpc => 'Digital Motion Picture Camera', #5
+            dcpj => 'Digital Cinema Projector', #5
         },
     },
     vued => 'ViewingCondDesc',
@@ -189,13 +208,51 @@ my %profileClass = (
             Validate => '$type eq "view"',
         },
     },
+    ciis => 'ColorimetricIntentImageState', #5
+    scoe => 'SceneColorimetryEstimates', #5
+    sape => 'SceneAppearanceEstimates', #5
+    fpce => 'FocalPlaneColorimetryEstimates', #5
+    rhoc => 'ReflectionHardcopyOrigColorimetry', #5
+    rpoc => 'ReflectionPrintOutputColorimetry', #5
+    psid => { #5
+        Name => 'ProfileSequenceIdentifier',
+        Binary => 1,
+    },
+    B2D0 => { Name => 'BToD0', Binary => 1 }, #5
+    B2D1 => { Name => 'BToD1', Binary => 1 }, #5
+    B2D2 => { Name => 'BToD2', Binary => 1 }, #5
+    B2D3 => { Name => 'BToD3', Binary => 1 }, #5
+    D2B0 => { Name => 'DToB0', Binary => 1 }, #5
+    D2B1 => { Name => 'DToB1', Binary => 1 }, #5
+    D2B2 => { Name => 'DToB2', Binary => 1 }, #5
+    D2B3 => { Name => 'DToB3', Binary => 1 }, #5
+    rig0 => { #5
+        Name => 'PerceptualRenderingIntentGamut',
+        PrintConv => {
+            prmg => 'Perceptual Reference Medium Gamut',
+        },
+    },
+    rig2 => { #5
+        Name => 'SaturationRenderingIntentGamut',
+        PrintConv => {
+            prmg => 'Perceptual Reference Medium Gamut',
+        },
+    },
+    meta => { #5 (EVENTUALLY DECODE THIS ONCE WE HAVE A SAMPLE!!)
+        Name => 'Metadata',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::ICC_Profile::Metadata',
+            Validate => '$type eq "meta"',
+        },
+    },
+
     # ColorSync custom tags (ref 3)
     psvm => 'PS2CRDVMSize',
     vcgt => 'VideoCardGamma',
     mmod => 'MakeAndModel',
     dscm => 'ProfileDescriptionML',
     ndin => 'NativeDisplayInfo',
-    
+
     # Microsoft custom tags (ref http://msdn2.microsoft.com/en-us/library/ms536870.aspx)
     MS00 => 'WCSProfiles',
 
@@ -269,10 +326,12 @@ my %profileClass = (
     48 => {
         Name => 'DeviceManufacturer',
         Format => 'string[4]',
+        # KODA = Kodak
     },
     52 => {
         Name => 'DeviceModel',
         Format => 'string[4]',
+        # ROMM = Refrence Output Medium Metric
     },
     56 => {
         Name => 'DeviceAttributes',
@@ -302,6 +361,7 @@ my %profileClass = (
     80 => {
         Name => 'ProfileCreator',
         Format => 'string[4]',
+        # KODA = Kodak
     },
     84 => {
         Name => 'ProfileID',
@@ -441,6 +501,19 @@ my %profileClass = (
     },
 );
 
+# metadata (meta) tags
+%Image::ExifTool::ICC_Profile::Metadata = (
+    PROCESS_PROC => \&ProcessMetadata,
+    GROUPS => { 0 => 'ICC_Profile', 1 => 'ICC-meta', 2 => 'Image' },
+    VARS => { NO_ID => 1 },
+    NOTES => q{
+        Only these few tags have been pre-defined, but ExifTool will extract any
+        Metadata tags that exist.
+    },
+    ManufacturerName => { },
+    MediaColor       => { },
+    MediaWeight      => { },
+);
 
 #------------------------------------------------------------------------------
 # print ICC Profile ID in hex
@@ -466,6 +539,7 @@ sub HexID($)
 # The following types are not currently handled (most are large tables):
 #  curveType, lut16Type, lut8Type, lutAtoBType, lutBtoAType, namedColor2Type,
 #  parametricCurveType, profileSeqDescType, responseCurveSet16Type
+# The multiLocalizedUnicodeType must be handled by the calling routine.
 sub FormatICCTag($$$)
 {
     my ($dataPt, $offset, $size) = @_;
@@ -498,17 +572,6 @@ sub FormatICCTag($$$)
                Get16u($dataPt, $offset+8),  Get16u($dataPt, $offset+10),
                Get16u($dataPt, $offset+12), Get16u($dataPt, $offset+14),
                Get16u($dataPt, $offset+16), Get16u($dataPt, $offset+18));
-    }
-    # multiLocalizedUnicodeType (replaces textDescriptionType of ref 2)
-    if ($type eq 'mluc' and $size >= 28) {
-        # take first language in list (pray that it is ascii)
-        my $len = Get32u($dataPt, $offset + 20);
-        my $pos = Get32u($dataPt, $offset + 24);
-        if ($size >= $pos + $len) {
-            my $str = substr($$dataPt, $offset + $pos, $len);
-            $str =~ tr/\x00-\x1f\x80-\xff//d; # remove control characters and non-ascii
-            return $str;
-        }
     }
     # s15Fixed16ArrayType
     if ($type eq 'sf32') {
@@ -559,6 +622,64 @@ sub FormatICCTag($$$)
 }
 
 #------------------------------------------------------------------------------
+# Process ICC metadata record (ref 5) (UNTESTED!)
+# Inputs: 0) ExifTool ref, 1) dirInfo ref, 2) tag table ref
+# Returns: 1 on success
+sub ProcessMetadata($$$)
+{
+    my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    my $dataPt = $$dirInfo{DataPt};
+    my $dirStart = $$dirInfo{DirStart};
+    my $dirLen = $$dirInfo{DirLen};
+    my $dirEnd = $dirStart + $dirLen;
+    
+    if ($dirLen < 16 or substr($$dataPt, $dirStart, 4) ne 'dict') {
+        $exifTool->Warn('Invalid ICC meta dictionary');
+        return 0;
+    }
+    my $num = Get32u($dataPt, $dirStart + 8);
+    $exifTool->VerboseDir('Metadata', $num);
+    my $size = Get32u($dataPt, $dirStart + 12);
+    $size < 16 and $exifTool->Warn('Invalid ICC meta record size'), return 0;
+    # NOTE: In the example the minimum offset is 20,
+    # but this doesn't jive with the table (both in ref 5)
+    my $minPtr = 16 + $size * $num;
+    my $index;
+    for ($index=0; $index<$num; ++$index) {
+        my $entry = $dirStart + 16 + $size * $index;
+        if ($entry + $size > $dirEnd) {
+            $exifTool->Warn('Truncated ICC meta dictionary');
+            last;
+        }
+        my $namePtr = Get32u($dataPt, $entry);
+        my $nameLen = Get32u($dataPt, $entry + 4);
+        my $valuePtr = Get32u($dataPt, $entry + 8);
+        my $valueLen = Get32u($dataPt, $entry + 16);
+        next unless $namePtr and $valuePtr;   # ignore if offsets are zero
+        if ($namePtr < $minPtr or $namePtr + $nameLen > $dirLen or
+            $valuePtr < $minPtr or $valuePtr + $valueLen > $dirLen)
+        {
+            $exifTool->Warn('Corrupted ICC meta dictionary');
+            last;
+        }
+        my $tag = substr($dataPt, $dirStart + $namePtr, $nameLen);
+        my $val = substr($dataPt, $dirStart + $valuePtr, $valueLen);
+        $tag = $exifTool->Decode($tag, 'UTF16', 'MM', 'UTF8');
+        $val = $exifTool->Decode($val, 'UTF16', 'MM');
+        # generate tagInfo if it doesn't exist
+        unless ($$tagTablePtr{$tag}) {
+            my $name = ucfirst $tag;
+            $name =~ s/\s+(.)/\u$1/g;
+            $name =~ tr/-_a-zA-Z0-9//dc;
+            next unless length $name;
+            Image::ExifTool::AddTagToTable($tagTablePtr, $tag, { Name => $name });
+        }
+        $exifTool->HandleTag($tagTablePtr, $tag, $val);
+    }
+    return 1;
+}
+
+#------------------------------------------------------------------------------
 # Write ICC profile file
 # Inputs: 0) ExifTool object reference, 1) Reference to directory information
 # Returns: 1 on success, 0 if this wasn't a valid ICC file,
@@ -581,7 +702,7 @@ sub WriteICC($$)
 }
 
 #------------------------------------------------------------------------------
-# Write ICC data record
+# Write ICC data as a block
 # Inputs: 0) ExifTool object reference, 1) source dirInfo reference,
 #         2) tag table reference
 # Returns: ICC data block (may be empty if no ICC data)
@@ -593,9 +714,9 @@ sub WriteICC_Profile($$;$)
     my $dirName = $$dirInfo{DirName} || 'ICC_Profile';
     # (don't write AsShotICCProfile or CurrentICCProfile here)
     return undef unless $dirName eq 'ICC_Profile';
-    my $newValueHash = $exifTool->GetNewValueHash($Image::ExifTool::Extra{$dirName});
-    return undef unless Image::ExifTool::IsOverwriting($newValueHash);
-    my $val = Image::ExifTool::GetNewValues($newValueHash);
+    my $nvHash = $exifTool->GetNewValueHash($Image::ExifTool::Extra{$dirName});
+    return undef unless $exifTool->IsOverwriting($nvHash);
+    my $val = $exifTool->GetNewValues($nvHash);
     $val = '' unless defined $val;
     ++$exifTool->{CHANGED};
     return $val;
@@ -662,13 +783,15 @@ sub ProcessICC_Profile($$$)
 {
     my ($exifTool, $dirInfo, $tagTablePtr) = @_;
     my $dataPt = $$dirInfo{DataPt};
-    my $dirStart = $$dirInfo{DirStart};
+    my $dirStart = $$dirInfo{DirStart} || 0;
     my $dirLen = $$dirInfo{DirLen};
     my $verbose = $exifTool->Options('Verbose');
-    my $raf;
+
+    return 0 if $dirLen < 4;
 
     # extract binary ICC_Profile data block if binary mode or requested
-    if ($exifTool->{OPTIONS}->{Binary} or $exifTool->{REQ_TAG_LOOKUP}->{icc_profile} and
+    if ((($exifTool->{OPTIONS}{Binary} and not $exifTool->{EXCL_TAG_LOOKUP}{icc_profile}) or
+        $exifTool->{REQ_TAG_LOOKUP}{icc_profile}) and
         # (don't extract from AsShotICCProfile or CurrentICCProfile)
         (not $$dirInfo{Name} or $$dirInfo{Name} eq 'ICC_Profile'))
     {
@@ -736,10 +859,48 @@ sub ProcessICC_Profile($$$)
 
         my $subdir = $$tagInfo{SubDirectory};
         # format the value unless this is a subdirectory
-        my $value;
+        my ($value, $fmt);
+        if ($size > 4) {
+            $fmt = substr($$dataPt, $valuePtr, 4);
+            # handle multiLocalizedUnicodeType
+            if ($fmt eq 'mluc' and not $subdir) {
+                next if $size < 28;
+                my $count = Get32u($dataPt, $valuePtr + 8);
+                my $recLen = Get32u($dataPt, $valuePtr + 12);
+                next if $recLen < 12;
+                my $i;
+                for ($i=0; $i<$count; ++$i) {
+                    my $recPos = $valuePtr + 16 + $i * $recLen;
+                    last if $recPos + $recLen > $valuePtr + $size;
+                    my $lang = substr($$dataPt, $recPos, 4);
+                    my $langInfo;
+                    # validate language code and change to standard case (just in case)
+                    if ($lang =~ s/^([a-z]{2})([A-Z]{2})$/\L$1-\U$2/i and $lang ne 'en-US') {
+                        $langInfo = Image::ExifTool::GetLangInfo($tagInfo, $lang);
+                    }
+                    my $strLen = Get32u($dataPt, $recPos + 4);
+                    my $strPos = Get32u($dataPt, $recPos + 8);
+                    last if $strPos + $strLen > $size; 
+                    my $str = substr($$dataPt, $valuePtr + $strPos, $strLen);
+                    $str = $exifTool->Decode($str, 'UTF16');
+                    $exifTool->HandleTag($tagTablePtr, $tagID, $str,
+                        TagInfo => $langInfo || $tagInfo,
+                        Table  => $tagTablePtr,
+                        Index  => $index,
+                        Value  => $str,
+                        DataPt => $dataPt,
+                        Size   => $strLen,
+                        Start  => $valuePtr + $strPos,
+                        Format => "type '$fmt'",
+                    );
+                }
+                $exifTool->Warn("Corrupted $$tagInfo{Name} data") if $i < $count;
+                next;
+            }
+        } else {
+            $fmt = 'err ';
+        }
         $value = FormatICCTag($dataPt, $valuePtr, $size) unless $subdir;
-        my $fmt;
-        $fmt = substr($$dataPt, $valuePtr, 4) if $size > 4;
         $verbose and $exifTool->VerboseInfo($tagID, $tagInfo,
             Table  => $tagTablePtr,
             Index  => $index,
@@ -783,7 +944,6 @@ sub ProcessICC_Profile($$$)
         } else {
             $value = substr($$dataPt, $valuePtr, $size);
             # treat unsupported formats as binary data
-            my $oldValueConv = $$tagInfo{ValueConv};
             $$tagInfo{ValueConv} = '\$val' unless defined $$tagInfo{ValueConv};
             $exifTool->FoundTag($tagInfo, $value);
         }
@@ -814,7 +974,7 @@ data created on one device into another device's native color space.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

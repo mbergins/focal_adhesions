@@ -14,7 +14,7 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess);
 
-$VERSION = '1.06';
+$VERSION = '1.09';
 
 sub ProcessAPP12($$$);
 sub ProcessDucky($$$);
@@ -113,8 +113,8 @@ sub WriteDucky($$$);
         Priority => 0,
         Avoid => 1,
         # (ignore 4-byte character count at start of value)
-        ValueConv => '$self->Unicode2Charset(substr($val,4),"MM")',
-        ValueConvInv => 'pack("N",length $val) . $self->Charset2Unicode($val,"MM")',
+        ValueConv => '$self->Decode(substr($val,4),"UCS2","MM")',
+        ValueConvInv => 'pack("N",length $val) . $self->Encode($val,"UCS2","MM")',
     },
     3 => { #PH
         Name => 'Copyright',
@@ -122,8 +122,8 @@ sub WriteDucky($$$);
         Avoid => 1,
         Groups => { 2 => 'Author' },
         # (ignore 4-byte character count at start of value)
-        ValueConv => '$self->Unicode2Charset(substr($val,4),"MM")',
-        ValueConvInv => 'pack("N",length $val) . $self->Charset2Unicode($val,"MM")',
+        ValueConv => '$self->Decode(substr($val,4),"UCS2","MM")',
+        ValueConvInv => 'pack("N",length $val) . $self->Encode($val,"UCS2","MM")',
     },
 );
 
@@ -139,8 +139,6 @@ sub WriteDucky($$$)
     my $pos = $$dirInfo{DirStart};
     my $newTags = $exifTool->GetNewTagInfoHash($tagTablePtr);
     my @addTags = sort { $a <=> $b } keys(%$newTags);
-    my $verbose = $exifTool->Options('Verbose');
-    my $out = $exifTool->Options('TextOut');
     my ($dirEnd, %doneTags);
     if ($dataPt) {
         $dirEnd = $pos + $$dirInfo{DirLen};
@@ -172,28 +170,22 @@ sub WriteDucky($$$)
         $doneTags{$tag} = 1;
         my $tagInfo = $$newTags{$tag};
         if ($tagInfo) {
-            my $newValueHash = $exifTool->GetNewValueHash($tagInfo);
+            my $nvHash = $exifTool->GetNewValueHash($tagInfo);
             my $isNew;
             if (defined $val) {
-                if (Image::ExifTool::IsOverwriting($newValueHash, $val)) {
-                    if ($verbose > 1) {
-                        my $pval = $exifTool->Printable($val);
-                        print $out "    - Ducky:$$tagInfo{Name} = '$pval'\n";
-                    }
+                if ($exifTool->IsOverwriting($nvHash, $val)) {
+                    $exifTool->VerboseValue("- Ducky:$$tagInfo{Name}", $val);
                     $isNew = 1;
                 }
             } else {
-                next unless Image::ExifTool::IsCreating($newValueHash);
+                next unless Image::ExifTool::IsCreating($nvHash);
                 $isNew = 1;
             }
             if ($isNew) {
-                $val = Image::ExifTool::GetNewValues($newValueHash);
+                $val = $exifTool->GetNewValues($nvHash);
                 ++$exifTool->{CHANGED};
                 next unless defined $val;   # next if tag is being deleted
-                if ($verbose > 1) {
-                    my $pval = $exifTool->Printable($val);
-                    print $out "    + Ducky:$$tagInfo{Name} = '$pval'\n";
-                }
+                $exifTool->VerboseValue("+ Ducky:$$tagInfo{Name}", $val);
             }
         }
         $newData .= pack('nn', $tag, length $val) . $val;
@@ -282,7 +274,7 @@ sub ProcessAPP12($$$)
         $verbose and $exifTool->VerboseInfo($tag, $tagInfo, Value => $val);
         unless ($tagInfo) {
             # add new tag to table
-            $tagInfo = { Name => $tag };
+            $tagInfo = { Name => ucfirst $tag };
             # put in Camera group if information in "Camera" section
             $$tagInfo{Groups} = { 2 => 'Camera' } if $section =~ /camera/i;
             Image::ExifTool::AddTagToTable($tagTablePtr, $tag, $tagInfo);
@@ -312,7 +304,7 @@ APP12 meta information.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

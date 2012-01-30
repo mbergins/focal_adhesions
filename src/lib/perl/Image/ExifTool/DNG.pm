@@ -5,7 +5,7 @@
 #
 # Revisions:    01/09/2006 - P. Harvey Created
 #
-# References:   1) http://www.adobe.com/products/dng/pdfs/dng_spec.pdf
+# References:   1) http://www.adobe.com/products/dng/
 #------------------------------------------------------------------------------
 
 package Image::ExifTool::DNG;
@@ -17,7 +17,7 @@ use Image::ExifTool::Exif;
 use Image::ExifTool::MakerNotes;
 use Image::ExifTool::CanonRaw;
 
-$VERSION = '1.08';
+$VERSION = '1.18';
 
 sub ProcessOriginalRaw($$$);
 sub ProcessAdobeData($$$);
@@ -26,6 +26,7 @@ sub ProcessAdobeCRW($$$);
 sub ProcessAdobeRAF($$$);
 sub ProcessAdobeMRW($$$);
 sub ProcessAdobeSR2($$$);
+sub ProcessAdobeIFD($$$);
 sub WriteAdobeStuff($$$);
 
 # data in OriginalRawFileData
@@ -55,16 +56,15 @@ sub WriteAdobeStuff($$$);
 
         The maker notes ('MakN') are processed by ExifTool, but some information may
         have been lost by the Adobe DNG Converter.  This is because the Adobe DNG
-        Converter (as of version 4.3) doesn't properly handle information referenced
+        Converter (as of version 6.3) doesn't properly handle information referenced
         from inside the maker notes that lies outside the original maker notes
-        block, and this information is lost when only the maker note block is copied
-        to the DNG image.   While this isn't a big problem for most camera makes, it
-        is serious for some makes like Olympus.
+        block.  This information is lost when only the maker note block is copied to
+        the DNG image.   While this doesn't effect all makes of cameras, it is a
+        problem for some major brands such as Olympus and Sony.
 
-        The CRW data is from DNG-converted CRW images, but it has been restructured
-        to a proprietary Adobe format (which results in a loss of the original
-        hierarchical information structure, and creates extra work for everyone else
-        who wants to use this information).
+        Other entries in this table represent proprietary information that is
+        extracted from the original RAW image and restructured to a different (but
+        still proprietary) Adobe format.
     },
     MakN  => [ ],   # (filled in later)
    'CRW ' => {
@@ -97,6 +97,27 @@ sub WriteAdobeStuff($$$);
             ProcessProc => \&ProcessAdobeRAF,
         },
     },
+    'Pano' => {
+        Name => 'AdobePano',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::PanasonicRaw::Main',
+            ProcessProc => \&ProcessAdobeIFD,
+        },
+    },
+    'Koda' => {
+        Name => 'AdobeKoda',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Kodak::IFD',
+            ProcessProc => \&ProcessAdobeIFD,
+        },
+    },
+    'Leaf' => {
+        Name => 'AdobeLeaf',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Leaf::SubIFD',
+            ProcessProc => \&ProcessAdobeIFD,
+        },
+    },
 );
 
 # fill in maker notes
@@ -110,6 +131,7 @@ sub WriteAdobeStuff($$$);
         }
         my %copy = %$tagInfo;
         delete $copy{Groups};
+        delete $copy{GotGroups};
         delete $copy{Table};
         push @$list, \%copy;
     }
@@ -146,8 +168,9 @@ sub ProcessOriginalRaw($$$)
             $pos + $hdrLen > $end and $err = '', last;
             my $tag = $$tagInfo{Name};
             # only extract this information if requested (because it takes time)
-            if ($exifTool->{OPTIONS}->{Binary} or
-                $exifTool->{REQ_TAG_LOOKUP}->{lc($tag)})
+            my $lcTag = lc $tag;
+            if (($exifTool->{OPTIONS}{Binary} and not $exifTool->{EXCL_TAG_LOOKUP}{$lcTag}) or
+                $exifTool->{REQ_TAG_LOOKUP}{$lcTag})
             {
                 unless (eval 'require Compress::Zlib') {
                     $err = 'Install Compress::Zlib to extract compressed images';
@@ -209,8 +232,11 @@ sub ProcessAdobeData($$$)
     return 0 unless $$dataPt =~ /^Adobe\0/;
     unless ($outfile) {
         $exifTool->VerboseDir($dirInfo);
+        # don't parse makernotes if FastScan > 1
+        my $fast = $exifTool->Options('FastScan');
+        return 1 if $fast and $fast > 1;
     }
-    $htmlDump and $exifTool->HtmlDump($dataPos, 6, 'Adobe DNGPrivateData header');
+    $htmlDump and $exifTool->HDump($dataPos, 6, 'Adobe DNGPrivateData header');
     SetByteOrder('MM'); # always big endian
     $pos += 6;
     while ($pos + 8 <= $end) {
@@ -221,19 +247,22 @@ sub ProcessAdobeData($$$)
         if ($htmlDump) {
             my $name = "Adobe$tag";
             $name =~ tr/ //d;
-            $exifTool->HtmlDump($dataPos + $pos - 8, 8, "$name header", "Data Size: $size bytes");
+            $exifTool->HDump($dataPos + $pos - 8, 8, "$name header", "Data Size: $size bytes");
             # dump non-EXIF format data
             unless ($tag =~ /^(MakN|SR2 )$/) {
-                $exifTool->HtmlDump($dataPos + $pos, $size, "$name data");
+                $exifTool->HDump($dataPos + $pos, $size, "$name data");
             }
         }
-        $verbose and not $outfile and $exifTool->VerboseInfo($tag,
-            ref $tagInfo eq 'HASH' ? $tagInfo : undef,
-            DataPt => $dataPt,
-            DataPos => $dataPos,
-            Start => $pos,
-            Size => $size,
-        );
+        if ($verbose and not $outfile) {
+            $tagInfo or $exifTool->VPrint(0, "$$exifTool{INDENT}Unsupported DNGAdobeData record: ($tag)\n");
+            $exifTool->VerboseInfo($tag,
+                ref $tagInfo eq 'HASH' ? $tagInfo : undef,
+                DataPt => $dataPt,
+                DataPos => $dataPos,
+                Start => $pos,
+                Size => $size,
+            );
+        }
         my $value;
         while ($tagInfo) {
             my ($subTable, $subName, $processProc);
@@ -360,7 +389,7 @@ sub ProcessAdobeCRW($$$)
                 my $subdir = $$tagInfo{SubDirectory};
                 if ($subdir and $$subdir{TagTable}) {
                     my $name = $$tagInfo{Name};
-                    my $newTagTable = Image::ExifTool::GetTagTable($$subdir{TagTable});
+                    my $newTagTable = GetTagTable($$subdir{TagTable});
                     return 0 unless $newTagTable;
                     my $subdirStart = 0;
                     #### eval Start ()
@@ -389,9 +418,9 @@ sub ProcessAdobeCRW($$$)
                         }
                     }
                 } elsif ($$newTags{$tagID}) {
-                    my $newValueHash = $exifTool->GetNewValueHash($tagInfo);
-                    if (Image::ExifTool::IsOverwriting($newValueHash, $val)) {
-                        my $newVal = Image::ExifTool::GetNewValues($newValueHash);
+                    my $nvHash = $exifTool->GetNewValueHash($tagInfo);
+                    if ($exifTool->IsOverwriting($nvHash, $val)) {
+                        my $newVal = $exifTool->GetNewValues($nvHash);
                         my $verboseVal;
                         $verboseVal = $newVal if $verbose > 1;
                         # convert to specified format if necessary
@@ -399,13 +428,8 @@ sub ProcessAdobeCRW($$$)
                             $newVal = WriteValue($newVal, $format, $count);
                         }
                         if (defined $newVal) {
-                            if ($verbose > 1) {
-                                my $oldStr = $exifTool->Printable($value);
-                                my $newStr = $exifTool->Printable($verboseVal);
-                                my $out = $exifTool->Options('TextOut');
-                                print $out "    - CanonRaw:$$tagInfo{Name} = '$oldStr'\n";
-                                print $out "    + CanonRaw:$$tagInfo{Name} = '$newStr'\n";
-                            }
+                            $exifTool->VerboseValue("- CanonRaw:$$tagInfo{Name}", $value);
+                            $exifTool->VerboseValue("+ CanonRaw:$$tagInfo{Name}", $verboseVal);
                             $value = $newVal;
                             ++$exifTool->{CHANGED};
                         }
@@ -490,14 +514,11 @@ sub ProcessAdobeMRW($$$)
 sub ProcessAdobeRAF($$$)
 {
     my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    return 0 if $$dirInfo{OutFile}; # (can't write this yet)
     my $dataPt = $$dirInfo{DataPt};
     my $pos = $$dirInfo{DirStart};
     my $dirEnd = $$dirInfo{DirLen} + $pos;
     my ($readIt, $warn);
-
-    # we don't yet write this information, but don't issue
-    # warning just because data isn't edited
-    return 0 if $$dirInfo{OutFile};
 
     # set byte order according to first 2 bytes of Adobe RAF data
     if ($pos + 2 <= $dirEnd and SetByteOrder(substr($$dataPt, $pos, 2))) {
@@ -541,10 +562,10 @@ sub ProcessAdobeRAF($$$)
 sub ProcessAdobeSR2($$$)
 {
     my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    return 0 if $$dirInfo{OutFile}; # (can't write this yet)
     my $dataPt = $$dirInfo{DataPt};
     my $start = $$dirInfo{DirStart};
     my $len = $$dirInfo{DirLen};
-    return 0 if $$dirInfo{OutFile}; # (can't write this yet)
 
     return 0 if $len < 6;
     SetByteOrder('MM');
@@ -569,10 +590,70 @@ sub ProcessAdobeSR2($$$)
         Parent    => $$dirInfo{DirName},
     );
     if ($exifTool->Options('HtmlDump')) {
-        $exifTool->HtmlDump($dataPos + $start, 6, 'Adobe SR2 data');
+        $exifTool->HDump($dataPos + $start, 6, 'Adobe SR2 data');
     }
     # parse the SR2 directory
     $exifTool->ProcessDirectory(\%subdirInfo, $tagTablePtr);
+    return 1;
+}
+
+#------------------------------------------------------------------------------
+# Process Adobe-mutilated IFD directory
+# Inputs: 0) ExifTool object ref, 1) dirInfo ref, 2) tag table ref
+# Returns: 1 on success, otherwise returns 0 and sets a Warning
+# Notes: data has 2 byte header (byte order of the data)
+sub ProcessAdobeIFD($$$)
+{
+    my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    return 0 if $$dirInfo{OutFile}; # (can't write this yet)
+    my $dataPt = $$dirInfo{DataPt};
+    my $pos = $$dirInfo{DirStart};
+    my $dataPos = $$dirInfo{DataPos};
+
+    return 0 if $$dirInfo{DirLen} < 4;
+    my $dataOrder = substr($$dataPt, $pos, 2);
+    return 0 unless SetByteOrder($dataOrder);   # validate byte order of data
+
+    # parse the mutilated IFD.  This is similar to a TIFF IFD, except:
+    # - data follows directly after Count entry in IFD
+    # - byte order of IFD entires is always big-endian, but byte order of data changes
+    SetByteOrder('MM');     # IFD structure is always big-endian
+    my $entries = Get16u($dataPt, $pos + 2);
+    $exifTool->VerboseDir($dirInfo, $entries);
+    $pos += 4;
+
+    my $end = $pos + $$dirInfo{DirLen};
+    my $index;
+    for ($index=0; $index<$entries; ++$index) {
+        last if $pos + 8 > $end;
+        SetByteOrder('MM'); # directory entries always big-endian (doh!)
+        my $tagID = Get16u($dataPt, $pos);
+        my $format = Get16u($dataPt, $pos+2);
+        my $count = Get32u($dataPt, $pos+4);
+        if ($format < 1 or $format > 13) {
+            # warn unless the IFD was just padded with zeros
+            $format and $exifTool->Warn(
+                sprintf("Unknown format ($format) for $$dirInfo{DirName} tag 0x%x",$tagID));
+            return 0; # must be corrupted
+        }
+        my $size = $Image::ExifTool::Exif::formatSize[$format] * $count;
+        last if $pos + 8 + $size > $end;
+        my $formatStr = $Image::ExifTool::Exif::formatName[$format];
+        SetByteOrder($dataOrder);   # data stored in native order
+        my $val = ReadValue($dataPt, $pos + 8, $formatStr, $count, $size);
+        $exifTool->HandleTag($tagTablePtr, $tagID, $val,
+            Index   => $index,
+            DataPt  => $dataPt,
+            DataPos => $dataPos,
+            Start   => $pos + 8,
+            Size    => $size
+        );
+        $pos += 8 + $size;
+    }
+    if ($index < $entries) {
+        $exifTool->Warn("Truncated $$dirInfo{DirName} directory");
+        return 0;
+    }
     return 1;
 }
 
@@ -626,8 +707,8 @@ sub ProcessAdobeMakN($$$)
         return 0;
     }
     if ($exifTool->Options('HtmlDump')) {
-        $exifTool->HtmlDump($dataPos + $start, 6, 'Adobe MakN data');
-        $exifTool->HtmlDump($dataPos + $dirStart, $loc, "$$tagInfo{Name} header") if $loc;
+        $exifTool->HDump($dataPos + $start, 6, 'Adobe MakN data');
+        $exifTool->HDump($dataPos + $dirStart, $loc, "$$tagInfo{Name} header") if $loc;
     }
 
     my $fix = 0;
@@ -661,6 +742,8 @@ sub ProcessAdobeMakN($$$)
             # shift offsets to position of original maker notes
             $fixup->{Shift} += $originalPos;
         }
+        # if we wrote the directory as a block the header is already included
+        $loc = 0 if $subdirInfo{BlockWrite};
         $fixup->{Shift} += $loc;    # adjust for makernotes header
         $fixup->ApplyFixup(\$buff); # fix up pointer offsets
         # get copy of original Adobe header (6) and makernotes header ($loc)
@@ -672,7 +755,7 @@ sub ProcessAdobeMakN($$$)
         $exifTool->ProcessDirectory(\%subdirInfo, $subTable, $$subdir{ProcessProc});
         # extract maker notes as a block if specified
         if ($exifTool->Options('MakerNotes') or
-            $exifTool->{REQ_TAG_LOOKUP}->{lc($$tagInfo{Name})})
+            $exifTool->{REQ_TAG_LOOKUP}{lc($$tagInfo{Name})})
         {
             my $val;
             if ($$tagInfo{MakerNotes}) {
@@ -682,7 +765,9 @@ sub ProcessAdobeMakN($$$)
                 $subdirInfo{DirLen}   = $dirLen;
                 # rebuild the maker notes to identify all offsets that require fixing up
                 $val = Image::ExifTool::Exif::RebuildMakerNotes($exifTool, $subTable, \%subdirInfo);
-                defined $val or $exifTool->Warn('Error rebuilding maker notes (may be corrupt)');
+                if (not defined $val and $dirLen > 4) {
+                    $exifTool->Warn('Error rebuilding maker notes (may be corrupt)');
+                }
             } else {
                 # extract this directory as a block if specified
                 return 1 unless $$tagInfo{Writable};
@@ -728,7 +813,7 @@ information in DNG (Digital Negative) images.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
@@ -737,7 +822,7 @@ under the same terms as Perl itself.
 
 =over 4
 
-=item L<http://www.adobe.com/products/dng/pdfs/dng_spec.pdf>
+=item L<http://www.adobe.com/products/dng/>
 
 =back
 

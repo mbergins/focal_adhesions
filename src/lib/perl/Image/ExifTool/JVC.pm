@@ -12,7 +12,7 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool::Exif;
 
-$VERSION = '1.01';
+$VERSION = '1.02';
 
 sub ProcessJVCText($$$);
 
@@ -23,7 +23,11 @@ sub ProcessJVCText($$$);
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     NOTES => 'JVC EXIF maker note tags.',
     #0x0001 - almost always '2', but '3' for GR-DV700 samples
-    0x0002 => 'CPUVersions', #PH
+    0x0002 => { #PH
+        Name => 'CPUVersions',
+        # remove trailing nulls/spaces and split at remaining nulls/spaces
+        ValueConv => '$_=$val; s/(\s*\0)+$//; s/(\s*\0)+/, /g; $_',
+    },
     0x0003 => { #PH
         Name => 'Quality',
         PrintConv => {
@@ -71,7 +75,6 @@ sub ProcessJVCText($$$)
         $exifTool->Warn('Bad JVC text maker notes');
         return 0;
     }
-    my $pos = 0;
     while ($data =~ m/([A-Z]+):(.{3,4})/sg) {
         my ($tag, $val) = ($1, $2);
         my $tagInfo = $exifTool->GetTagInfo($tagTablePtr, $tag);
@@ -113,7 +116,7 @@ notes.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

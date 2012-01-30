@@ -15,15 +15,15 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.03';
+$VERSION = '1.06';
 
 # MIFF chunks
 %Image::ExifTool::MIFF::Main = (
     GROUPS => { 2 => 'Image' },
     NOTES => q{
-The MIFF format allows aribrary tag names to be used.  Only the standard tag
-names are listed below, however ExifTool will decode any tags found in the
-image.
+        The MIFF (Magick Image File Format) format allows aribrary tag names to be
+        used.  Only the standard tag names are listed below, however ExifTool will
+        decode any tags found in the image.
     },
    'background-color' => 'BackgroundColor',
    'blue-primary' => 'BluePrimary',
@@ -31,7 +31,7 @@ image.
    'matt-color' => 'MattColor',
     class => 'Class',
     colors => 'Colors',
-    colorspace => 'Colorspace',
+    colorspace => 'ColorSpace',
     columns => 'ImageWidth',
     compression => 'Compression',
     delay => 'Delay',
@@ -119,8 +119,7 @@ sub ProcessMIFF($$)
     # Old MIFF files end with Colon+Linefeed, so this will likely
     # slurp those entire files, which will be slower, but will work
     # OK except that the profile information won't be decoded
-    my $oldsep = $/;
-    $/ = ":\x1a";
+    local $/ = ":\x1a";
 
     my $mode = '';
     my @profiles;
@@ -174,7 +173,6 @@ sub ProcessMIFF($$)
             }
         }
     }
-    $/ = $oldsep;   # restore separator to original value
 
     # process profile information
     foreach (@profiles) {
@@ -231,10 +229,8 @@ sub ProcessMIFF($$)
             $exifTool->Warn("Unknown MIFF $type profile data");
             if ($verbose) {
                 $exifTool->VerboseDir($type, 0, $len);
-                Image::ExifTool::HexDump(\$buff, undef,
-                    Out => $exifTool->Options('TextOut')
-                ) if $verbose > 2;
-             }
+                $exifTool->VerboseDump(\$buff);
+            }
          }
     }
     return 1;
@@ -259,7 +255,7 @@ This module contains routines required by Image::ExifTool to read MIFF
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

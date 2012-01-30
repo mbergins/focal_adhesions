@@ -14,24 +14,23 @@ sub ShiftTime($$$;$);
 
 #------------------------------------------------------------------------------
 # apply shift to value in new value hash
-# Inputs: 0) shift type, 1) shift string, 2) value to shift, 3) new value hash ref
+# Inputs: 0) ExifTool ref, 1) shift type, 2) shift string, 3) raw date/time value,
+#         4) new value hash ref
 # Returns: error string or undef on success and updates value in new value hash
-sub ApplyShift($$$;$)
+sub ApplyShift($$$$;$)
 {
-    my ($func, $shift, $val, $newValueHash) = @_;
+    my ($self, $func, $shift, $val, $nvHash) = @_;
 
     # get shift direction from first character in shift string
-    $shift =~ s/^(\+|-)// or return 'Bad shift string (no sign)';
-    my $pre = $1;
+    my $pre = ($shift =~ s/^(\+|-)//) ? $1 : '+';
     my $dir = ($pre eq '+') ? 1 : -1;
-    my $tagInfo = $$newValueHash{TagInfo};
+    my $tagInfo = $$nvHash{TagInfo};
     my $tag = $$tagInfo{Name};
-    my $self = $$newValueHash{Self};    # (used in eval)
     my $shiftOffset;
-    if ($$newValueHash{ShiftOffset}) {
-        $shiftOffset = $$newValueHash{ShiftOffset};
+    if ($$nvHash{ShiftOffset}) {
+        $shiftOffset = $$nvHash{ShiftOffset};
     } else {
-        $shiftOffset = $$newValueHash{ShiftOffset} = { };
+        $shiftOffset = $$nvHash{ShiftOffset} = { };
     }
 
     # initialize handler for eval warnings
@@ -62,7 +61,7 @@ sub ApplyShift($$$;$)
         GetWarning() and return CleanWarning();
     }
     # update value in new value hash
-    $newValueHash->{Value} = [ $val ];
+    $nvHash->{Value} = [ $val ];
     return undef;   # success
 }
 
@@ -104,7 +103,7 @@ sub DaysInMonth($$)
 }
 
 #------------------------------------------------------------------------------
-# split times into corresponding components: YYYY MM DD hh mm ss tzh tzm
+# split times into corresponding components: YYYY mm dd HH MM SS tzh tzm
 # Inputs: 0) date/time or shift string 1) reference to list for returned components
 #         2) optional reference to list of time components (if shift string)
 # Returns: true on success
@@ -151,7 +150,7 @@ sub SplitTime($$;$)
         } else {
             # this is a time (can't come after timezone)
             (defined $v[3] or defined $v[6] or @vals > 3) and $err = 1, last;
-            not $time and @vals != 3 and $err = 1, last;
+            not $time and @vals != 3 and @vals != 2 and $err = 1, last;
             $v[3] = shift(@vals);   # take hour first if only one specified
             $v[4] = shift(@vals) || 0;
             $v[5] = shift(@vals) || 0;
@@ -174,10 +173,11 @@ sub SplitTime($$;$)
 # Inputs: 0) split date/time list ref, 1) split shift list ref,
 #         2) shift direction, 3) reference to output list of shifted components
 #         4) number of decimal points in seconds
+#         5) reference to return time difference due to rounding
 # Returns: error string or undef on success
-sub ShiftComponents($$$$$)
+sub ShiftComponents($$$$$;$)
 {
-    my ($time, $shift, $dir, $toTime, $dec) = @_;
+    my ($time, $shift, $dir, $toTime, $dec, $rndPt) = @_;
     # min/max for Y, M, D, h, m, s
     my @min = (    0, 1, 1, 0, 0, 0);
     my @max = (10000,12,28,24,60,60);
@@ -202,7 +202,9 @@ sub ShiftComponents($$$$$)
     my $sec = $$toTime[5];
     if (defined $sec and $sec != int($sec)) {
         my $mult = 10 ** $dec;
-        $$toTime[5] = int($sec * $mult + 0.5 * ($sec <=> 0)) / $mult;
+        my $rndSec = int($sec * $mult + 0.5 * ($sec <=> 0)) / $mult;
+        $rndPt and $$rndPt = $sec - $rndSec;
+        $$toTime[5] = $rndSec;
     }
 #
 # handle overflows, starting with least significant number first (seconds)
@@ -262,6 +264,18 @@ sub ShiftComponents($$$$$)
 }
 
 #------------------------------------------------------------------------------
+# Shift an integer or floating-point number
+# Inputs: 0) date/time string, 1) shift string, 2) shift direction (+1 or -1)
+#         3) (unused)
+# Returns: undef and updates input value
+sub ShiftNumber($$$;$)
+{
+    my ($val, $shift, $dir) = @_;
+    $_[0] = $val + $shift * $dir;   # return shifted value
+    return undef;                   # success!
+}
+
+#------------------------------------------------------------------------------
 # Shift date/time string
 # Inputs: 0) date/time string, 1) shift string, 2) shift direction (+1 or -1)
 #         3) reference to ShiftOffset hash (with Date, DateTime, Time, Timezone keys)
@@ -302,7 +316,8 @@ sub ShiftTime($$$;$)
         if (@shift > 6 and @time <= 6) {
             $time[6] = $time[7] = 0 if $val =~ s/Z$/\+00:00/;
         }
-        my $err = ShiftComponents(\@time, \@shift, $dir, \@toTime, $dec);
+        my $rndDiff;
+        my $err = ShiftComponents(\@time, \@shift, $dir, \@toTime, $dec, \$rndDiff);
         $err and return $err;
 #
 # calculate and save the shift offsets for next time
@@ -323,6 +338,7 @@ sub ShiftTime($$$;$)
                     @tm2[0..2] = reverse @toTime[3..5];
                     # handle fractional seconds separately
                     $diff = $tm2[0] - int($tm2[0]) - ($tm1[0] - int($tm1[0]));
+                    $diff += $rndDiff if defined $rndDiff;  # un-do rounding
                     $tm1[0] = int($tm1[0]);
                     $tm2[0] = int($tm2[0]);
                 }
@@ -375,14 +391,12 @@ sub ShiftTime($$$;$)
             $@ and return CleanWarning($@);
             $tm += $$shiftOffset{$mode};    # apply the shift
             $tm < 0 and return 'Shift results in negative time';
-            # strip off fractional seconds after rounding to desired precision
-            # (only round if the result isn't integral)
+            # save fractional seconds in shifted time
             $frac = $tm - int($tm);
             if ($frac) {
-                # round off to required number of decimal points
-                my $tmf = $tm + 0.5 * 10 ** (-$dec);
-                $tm = int($tmf);
-                $frac = $tm - $tmf;
+                $tm = int($tm);
+                # must account for any rounding that could occur
+                $frac + 0.5 * 10 ** (-$dec) >= 1 and ++$tm, $frac = 0;
             }
             @tm = gmtime($tm);
             @toTime = reverse @tm[0..5];
@@ -486,7 +500,7 @@ If only one is provided, it is assumed to be a time shift when applied to a
 time-only or a date/time value, or a date shift when applied to a date-only
 value.  For example:
 
-    '7'         - shift by 1 hour if applied to a time or date/time
+    '1'         - shift by 1 hour if applied to a time or date/time
                   value, or by one day if applied to a date value
     '2:0'       - shift 2 hours (time, date/time), or 2 months (date)
     '5:0:0'     - shift 5 hours (time, date/time), or 5 years (date)
@@ -520,6 +534,7 @@ Below are some specific examples applied to real date and/or time values
     ---------------------  -------  ---  ---------------------
     '20:30:00'             '5'       +   '01:30:00'
     '2005:01:27'           '5'       +   '2005:02:01'
+    '2005:01:27 20:30:00'  '5'       +   '2005:01:28 01:30:00'
     '11:54:00'             '2.5 0'   -   '23:54:00'
     '2005:11:02'           '2.5 0'   -   '2005:10:31'
     '2005:11:02 11:54:00'  '2.5 0'   -   '2005:10:30 23:54:00'
@@ -560,9 +575,14 @@ intuitive and mathematically correct, and the user shouldn't have to worry
 about details such as this (in keeping with Perl's "do the right thing"
 philosophy).
 
+=head1 BUGS
+
+Due to the use of the standard time library functions, dates are typically
+limited to the range 1970 to 2038.
+
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

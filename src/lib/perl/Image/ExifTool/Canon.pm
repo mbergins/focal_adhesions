@@ -3,12 +3,15 @@
 #
 # Description:  Canon EXIF maker notes tags
 #
-# Revisions:    11/25/03 - P. Harvey Created
-#               12/03/03 - P. Harvey Decode lots more tags and add CanonAFInfo
-#               02/17/04 - Michael Rommel Added IxusAFPoint
-#               01/27/05 - P. Harvey Disable validation of CanonAFInfo
-#               01/30/05 - P. Harvey Added a few more tags (ref 4)
-#               02/10/06 - P. Harvey Decode a lot of new tags (ref 12)
+# Revisions:    11/25/2003 - P. Harvey Created
+#               12/03/2003 - P. Harvey Decode lots more tags and add CanonAFInfo
+#               02/17/2004 - Michael Rommel Added IxusAFPoint
+#               01/27/2005 - P. Harvey Disable validation of CanonAFInfo
+#               01/30/2005 - P. Harvey Added a few more tags (ref 4)
+#               02/10/2006 - P. Harvey Decode a lot of new tags (ref 12)
+#               [ongoing]  - P. Harvey Constantly decoding new information
+#
+# Notes:        Must check FocalPlaneX/YResolution values for each new model!
 #
 # References:   1) http://park2.wakwak.com/~tsuruzoh/Computer/Digicams/exif-e.html
 #               2) Michael Rommel private communication (Digital Ixus)
@@ -16,10 +19,10 @@
 #               4) http://www.wonderland.org/crw/
 #               5) Juha Eskelinen private communication (20D)
 #               6) Richard S. Smith private communication (20D)
-#               7) Denny Priebe private communication (1D MkII)
+#               7) Denny Priebe private communication (1DmkII)
 #               8) Irwin Poche private communication
-#               9) Michael Tiemann private communication (1D MkII)
-#              10) Volker Gering private communication (1D MkII)
+#               9) Michael Tiemann private communication (1DmkII)
+#              10) Volker Gering private communication (1DmkII)
 #              11) "cip" private communication
 #              12) Rainer Honle private communication (5D)
 #              13) http://www.cybercom.net/~dcoffin/dcraw/
@@ -35,147 +38,268 @@
 #              22) Dave Nicholson private communication (PowerShot S30)
 #              23) Magne Nilsen private communication (400D)
 #              24) Wolfgang Hoffmann private communication (40D)
-#              25) Laurent Clevy private communication (40D)
 #              26) Steve Balcombe private communication
 #              27) Chris Huebsch private communication (40D)
 #              28) Hal Williamson private communication (XTi)
 #              29) Ger Vermeulen private communication
 #              30) David Pitcher private communication (1DmkIII)
+#              31) Darryl Zurn private communication (A590IS)
+#              32) Rich Taylor private communication (5D)
+#              33) D.J. Cristi private communication
+#              34) Andreas Huggel and Pascal de Bruijn private communication
+#              35) Jan Boelsma private communication
+#              36) Karl-Heinz Klotz private communication (http://www.dslr-forum.de/showthread.php?t=430900)
+#              37) Vesa Kivisto private communication (30D)
+#              38) Kurt Garloff private communication (5DmkII)
+#              39) Irwin Poche private communication (5DmkII)
+#              40) Jose Oliver-Didier private communication
+#              41) http://www.cpanforum.com/threads/10730
+#              42) Norbert Wasser private communication
+#              43) Karsten Sote private communication
+#              44) Hugh Griffiths private communication (5DmkII)
+#              45) Mark Berger private communication (5DmkII)
+#              46) Dieter Steiner private communication (7D)
+#              47) http://www.exiv2.org/
+#              48) Tomasz A. Kawecki private communication (550D, firmware 1.0.6, 1.0.8)
+#              49) http://www.listware.net/201101/digikam-users/49795-digikam-users-re-lens-recognition.html
+#              JD) Jens Duttke private communication
 #------------------------------------------------------------------------------
 
 package Image::ExifTool::Canon;
 
 use strict;
-use vars qw($VERSION %canonModelID);
+use vars qw($VERSION %canonModelID %canonLensTypes);
 use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Exif;
 
 sub WriteCanon($$$);
 sub ProcessSerialData($$$);
+sub ProcessFilters($$$);
+sub SwapWords($);
 
-$VERSION = '1.96';
+$VERSION = '2.80';
 
-# Note: Remove 'USM' from 'L' lenses since it is redundant - PH
-my %canonLensTypes = ( #4
-    1 => 'Canon EF 50mm f/1.8',
-    2 => 'Canon EF 28mm f/2.8',
-    # (3 removed in current Kamisaka list)
-    # 3 => 'Canon EF 135mm f/2.8 Soft', #15
-    4 => 'Canon EF 35-105mm f/3.5-4.5 or Sigma UC Zoom 35-135mm f/4-5.6', #28 (Canon)
-    # 6 can be Sigma 18-50mm f/3.5-5.6 DC (ref 23)
-    #       or Sigma 18-125mm f/3.5-5.6 DC IF ASP
-    6 => 'Tokina AF193-2 19-35mm f/3.5-4.5 or Sigma Lens',
-    7 => 'Canon EF 100-300mm f/5.6L', #15
-    8 => 'Sigma 70-300mm F4-5.6 DG MACRO or Tokina AT-X242AF 24-200mm F3.5-5.6', #15
-    # 10 can be 3 different Sigma lenses:
-    # Sigma 50mm f/2.8 EX or Sigma 28mm f/1.8
-    # or Sigma 105mm f/2.8 Macro EX (ref 15)
-    10 => 'Canon EF 50mm f/2.5 Macro or Sigma Lens', #10/4/15
+# Note: Removed 'USM' from 'L' lenses since it is redundant - PH
+# (or is it?  Ref 32 shows 5 non-USM L-type lenses)
+%canonLensTypes = ( #4
+     Notes => q{
+        Decimal values differentiate lenses which would otherwise have the same
+        LensType, and are used by the Composite LensID tag when attempting to
+        identify the specific lens model.
+     },
+     1 => 'Canon EF 50mm f/1.8',
+     2 => 'Canon EF 28mm f/2.8',
+     # (3 removed in current Kamisaka list)
+     3 => 'Canon EF 135mm f/2.8 Soft', #15/32
+     4 => 'Canon EF 35-105mm f/3.5-4.5 or Sigma Lens', #28
+     4.1 => 'Sigma UC Zoom 35-135mm f/4-5.6',
+     5 => 'Canon EF 35-70mm f/3.5-4.5', #32
+     6 => 'Canon EF 28-70mm f/3.5-4.5 or Sigma or Tokina Lens', #32
+     6.1 => 'Sigma 18-50mm f/3.5-5.6 DC', #23
+     6.2 => 'Sigma 18-125mm f/3.5-5.6 DC IF ASP',
+     6.3 => 'Tokina AF193-2 19-35mm f/3.5-4.5',
+     6.4 => 'Sigma 28-80mm f/3.5-5.6 II Macro', #47
+     7 => 'Canon EF 100-300mm f/5.6L', #15
+     8 => 'Canon EF 100-300mm f/5.6 or Sigma or Tokina Lens', #32
+     8.1 => 'Sigma 70-300mm f/4-5.6 [APO] DG Macro', #15 (both APO and non-APO, ref http://u88.n24.queensu.ca/exiftool/forum/index.php/topic,2947.0.html)
+     8.2 => 'Tokina AT-X242AF 24-200mm f/3.5-5.6', #15
+     9 => 'Canon EF 70-210mm f/4', #32
+     9.1 => 'Sigma 55-200mm f/4-5.6 DC', #34
+    10 => 'Canon EF 50mm f/2.5 Macro or Sigma Lens', #10 (+ LSC Life Size Converter --> 70mm - PH)
+    10.1 => 'Sigma 50mm f/2.8 EX', #4
+    10.2 => 'Sigma 28mm f/1.8',
+    10.3 => 'Sigma 105mm f/2.8 Macro EX', #15
+    10.4 => 'Sigma 70mm f/2.8 EX DG Macro EF', #Jean-Michel Dubois
     11 => 'Canon EF 35mm f/2', #9
-    13 => 'Canon EF 15mm f/2.8', #9
+    13 => 'Canon EF 15mm f/2.8 Fisheye', #9
+    14 => 'Canon EF 50-200mm f/3.5-4.5L', #32
+    15 => 'Canon EF 50-200mm f/3.5-4.5', #32
+    16 => 'Canon EF 35-135mm f/3.5-4.5', #32
+    17 => 'Canon EF 35-70mm f/3.5-4.5A', #32
+    18 => 'Canon EF 28-70mm f/3.5-4.5', #32
+    20 => 'Canon EF 100-200mm f/4.5A', #32
     21 => 'Canon EF 80-200mm f/2.8L',
-    22 => 'Tokina AT-X280AF PRO 28-80mm f/2.8 ASPHERICAL', #15
-    # 26 can also be 2 Tamron lenses: (ref 15)
-    # Tamron SP AF 90mm f/2.8 Di Macro or Tamron SP AF 180mm f/3.5 Di Macro
-    26 => 'Canon EF 100mm f/2.8 Macro or Cosina 100mm f/3.5 Macro AF or Tamron',
-    # 28 can be: (ref 15,4,11,14)
-    # - Tamron SP AF 28-105mm f/2.8 LD Aspherical IF
-    # - Tamron SP AF 28-75mm f/2.8 XR Di LD Aspherical [ IF ] Macro
-    # - Tamron AF 70-300mm f/4.5-5.6 Di LD 1:2 Macro Zoom
-    # - Tamron AF Aspherical 28-200mm f/3.8-5.6
-    28 => 'Tamron Lens (various models)',
-    29 => 'Canon EF 50mm f/1.8 MkII',
-    31 => 'Tamron SP AF 300mm f/2.8 LD IF', #15
-    32 => 'Canon EF 24mm f/2.8 or Sigma 15mm f/2.8 EX Fisheye', #10/11
+    22 => 'Canon EF 20-35mm f/2.8L or Tokina Lens', #32
+    22.1 => 'Tokina AT-X280AF PRO 28-80mm f/2.8 Aspherical', #15
+    23 => 'Canon EF 35-105mm f/3.5-4.5', #32
+    24 => 'Canon EF 35-80mm f/4-5.6 Power Zoom', #32
+    25 => 'Canon EF 35-80mm f/4-5.6 Power Zoom', #32
+    26 => 'Canon EF 100mm f/2.8 Macro or Other Lens',
+    26.1 => 'Cosina 100mm f/3.5 Macro AF',
+    26.2 => 'Tamron SP AF 90mm f/2.8 Di Macro', #15
+    26.3 => 'Tamron SP AF 180mm f/3.5 Di Macro', #15
+    26.4 => 'Carl Zeiss Planar T* 50mm f/1.4', #PH
+    27 => 'Canon EF 35-80mm f/4-5.6', #32
+    28 => 'Canon EF 80-200mm f/4.5-5.6 or Tamron Lens', #32
+    28.1 => 'Tamron SP AF 28-105mm f/2.8 LD Aspherical IF', #15
+    28.2 => 'Tamron SP AF 28-75mm f/2.8 XR Di LD Aspherical [IF] Macro', #4
+    28.3 => 'Tamron AF 70-300mm f/4.5-5.6 Di LD 1:2 Macro Zoom', #11
+    28.4 => 'Tamron AF Aspherical 28-200mm f/3.8-5.6', #14
+    29 => 'Canon EF 50mm f/1.8 II',
+    30 => 'Canon EF 35-105mm f/4.5-5.6', #32
+    31 => 'Canon EF 75-300mm f/4-5.6 or Tamron Lens', #32
+    31.1 => 'Tamron SP AF 300mm f/2.8 LD IF', #15
+    32 => 'Canon EF 24mm f/2.8 or Sigma Lens', #10
+    32.1 => 'Sigma 15mm f/2.8 EX Fisheye', #11
+    33 => 'Voigtlander or Zeiss Lens',
+    33.1 => 'Voigtlander Ultron 40mm f/2 SLII Aspherical', #45
+    33.2 => 'Zeiss Distagon 35mm T* f/2 ZE', #PH
+    35 => 'Canon EF 35-80mm f/4-5.6', #32
+    36 => 'Canon EF 38-76mm f/4.5-5.6', #32
+    37 => 'Canon EF 35-80mm f/4-5.6 or Tamron Lens', #32
+    37.1 => 'Tamron 70-200mm f/2.8 Di LD IF Macro', #PH
+    37.2 => 'Tamron AF 28-300mm f/3.5-6.3 XR Di VC LD Aspherical [IF] Macro Model A20', #38
+    37.3 => 'Tamron SP AF 17-50mm f/2.8 XR Di II VC LD Aspherical [IF]', #34
+    37.4 => 'Tamron AF 18-270mm f/3.5-6.3 Di II VC LD Aspherical [IF] Macro', #http://u88.n24.queensu.ca/exiftool/forum/index.php/topic,2937.0.html
+    38 => 'Canon EF 80-200mm f/4.5-5.6', #32
     39 => 'Canon EF 75-300mm f/4-5.6',
     40 => 'Canon EF 28-80mm f/3.5-5.6',
-    42 => 'Tamron AF 28-300mm F3.5-6.3 XR Di VC LD Aspherical [IF] Macro Model A20', #15
+    41 => 'Canon EF 28-90mm f/4-5.6', #32
+    42 => 'Canon EF 28-200mm f/3.5-5.6 or Tamron Lens', #32
+    42.1 => 'Tamron AF 28-300mm f/3.5-6.3 XR Di VC LD Aspherical [IF] Macro Model A20', #15
     43 => 'Canon EF 28-105mm f/4-5.6', #10
-    45 => 'Canon EF-S 18-55mm f/3.5-5.6', #PH (same ID for mkII version, ref 20)
+    44 => 'Canon EF 90-300mm f/4.5-5.6', #32
+    45 => 'Canon EF-S 18-55mm f/3.5-5.6 [II]', #PH (same ID for version II, ref 20)
+    46 => 'Canon EF 28-90mm f/4-5.6', #32
     48 => 'Canon EF-S 18-55mm f/3.5-5.6 IS', #20
     49 => 'Canon EF-S 55-250mm f/4-5.6 IS', #23
+    50 => 'Canon EF-S 18-200mm f/3.5-5.6 IS',
+    51 => 'Canon EF-S 18-135mm f/3.5-5.6 IS', #PH
+    52 => 'Canon EF-S 18-55mm f/3.5-5.6 IS II', #PH
+    53 => 'Canon EF-S 18-55mm f/3.5-5.6 III', #Jon Charnas
+    94 => 'Canon TS-E 17mm f/4L', #42
+    95 => 'Canon TS-E 24.0mm f/3.5 L II', #43
     124 => 'Canon MP-E 65mm f/2.8 1-5x Macro Photo', #9
     125 => 'Canon TS-E 24mm f/3.5L',
     126 => 'Canon TS-E 45mm f/2.8', #15
     127 => 'Canon TS-E 90mm f/2.8', #15
+    129 => 'Canon EF 300mm f/2.8L', #32
     130 => 'Canon EF 50mm f/1.0L', #10/15
-    # 131 can be: (ref 15)
-    # Sigma 17-35mm F2.8-4 EX DG Aspherical HSM
-    # Sigma 8mm F3.5 EX DG Circular Fisheye
-    # Sigma APO 120-300mm F2.8 EX DG HSM
-    # Sigma APO 120-300mm F2.8 EX DG HSM x1.4
-    # Sigma APO 120-300mm F2.8 EX DG HSM x2
-    # Sigma APO 50-150mm F2.8 EX DC HSM
-    131 => 'Sigma Lens (various models)',
+    131 => 'Canon EF 28-80mm f/2.8-4L or Sigma Lens', #32
+    131.1 => 'Sigma 8mm f/3.5 EX DG Circular Fisheye', #15
+    131.2 => 'Sigma 17-35mm f/2.8-4 EX DG Aspherical HSM', #15
+    131.3 => 'Sigma 17-70mm f/2.8-4.5 DC Macro', #PH (NC)
+    131.4 => 'Sigma APO 50-150mm f/2.8 [II] EX DC HSM', #15 ([II] ref PH)
+    131.5 => 'Sigma APO 120-300mm f/2.8 EX DG HSM', #15
+           # 'Sigma APO 120-300mm f/2.8 EX DG HSM + 1.4x', #15
+           # 'Sigma APO 120-300mm f/2.8 EX DG HSM + 2x', #15
+    131.6 => 'Sigma 4.5mm F2.8 EX DC HSM Circular Fisheye', #PH
+    132 => 'Canon EF 1200mm f/5.6L', #32
     134 => 'Canon EF 600mm f/4L IS', #15
     135 => 'Canon EF 200mm f/1.8L',
     136 => 'Canon EF 300mm f/2.8L',
-    137 => 'Canon EF 85mm f/1.2L', #10
+    137 => 'Canon EF 85mm f/1.2L or Sigma or Tamron Lens', #10
+    137.1 => 'Sigma 18-50mm f/2.8-4.5 DC OS HSM', #PH
+    137.2 => 'Sigma 50-200mm f/4-5.6 DC OS HSM', #PH
+    137.3 => 'Sigma 18-250mm f/3.5-6.3 DC OS HSM', #PH
+    137.4 => 'Sigma 24-70mm f/2.8 IF EX DG HSM', #PH
+    137.5 => 'Sigma 18-125mm f/3.8-5.6 DC OS HSM', #PH
+    137.6 => 'Sigma 17-70mm f/2.8-4 DC Macro OS HSM', #http://u88.n24.queensu.ca/exiftool/forum/index.php/topic,2819.0.html
+    137.7 => 'Sigma 17-50mm f/2.8 OS HSM', #PH (from Exiv2)
+    137.8 => 'Sigma 18-200mm f/3.5-6.3 II DC OS HSM', #PH
+    137.9 => 'Tamron AF 18-270mm f/3.5-6.3 Di II VC PZD', #(model B008)http://u88.n24.queensu.ca/exiftool/forum/index.php/topic,3090.0.html
+    138 => 'Canon EF 28-80mm f/2.8-4L', #32
     139 => 'Canon EF 400mm f/2.8L',
+    140 => 'Canon EF 500mm f/4.5L', #32
     141 => 'Canon EF 500mm f/4.5L',
     142 => 'Canon EF 300mm f/2.8L IS', #15
     143 => 'Canon EF 500mm f/4L IS', #15
     144 => 'Canon EF 35-135mm f/4-5.6 USM', #26
-    149 => 'Canon EF 100mm f/2', #9
-    # 150 can be: (ref 15)
-    # Sigma 20mm EX f/1.8, Sigma 30mm f/1.4 DC HSM or Sigma 24mm f/1.8 DG Macro EX
-    150 => 'Canon EF 14mm f/2.8L or Sigma 20mm EX f/1.8', #10/4
+    145 => 'Canon EF 100-300mm f/4.5-5.6 USM', #32
+    146 => 'Canon EF 70-210mm f/3.5-4.5 USM', #32
+    147 => 'Canon EF 35-135mm f/4-5.6 USM', #32
+    148 => 'Canon EF 28-80mm f/3.5-5.6 USM', #32
+    149 => 'Canon EF 100mm f/2 USM', #9
+    150 => 'Canon EF 14mm f/2.8L or Sigma Lens', #10
+    150.1 => 'Sigma 20mm EX f/1.8', #4
+    150.2 => 'Sigma 30mm f/1.4 DC HSM', #15
+    150.3 => 'Sigma 24mm f/1.8 DG Macro EX', #15
     151 => 'Canon EF 200mm f/2.8L',
-    # 152 can be: (ref 15)
-    # Sigma 12-24mm f/4.5-5.6 EX DG ASPHERICAL HSM
-    # Sigma 14mm f/2.8 EX Aspherical HSM
-    # Sigma 10-20mm f/4-5.6 (ref 14)
-    # Sigma 100-300 f/4 (ref Bozi)
-    152 => 'Canon EF 300mm F4L IS or Sigma Lens', #15
-    # 153 is Tamron AF 28-300mm, 18-200mm f/3.5-6.3 Di II or
-    #        Tamron 18-250mm f/3.5-6.3 Di II_LD Aspherical (IF) Macro (ref PH)
-    153 => 'Canon EF 35-350mm f/3.5-5.6L or Tamron or Sigma Bigma', #PH/15
+    152 => 'Canon EF 300mm f/4L IS or Sigma Lens', #15
+    152.1 => 'Sigma 12-24mm f/4.5-5.6 EX DG ASPHERICAL HSM', #15
+    152.2 => 'Sigma 14mm f/2.8 EX Aspherical HSM', #15
+    152.3 => 'Sigma 10-20mm f/4-5.6', #14
+    152.4 => 'Sigma 100-300mm f/4', # (ref Bozi)
+    153 => 'Canon EF 35-350mm f/3.5-5.6L or Sigma or Tamron Lens', #PH
+    153.1 => 'Sigma 50-500mm f/4-6.3 APO HSM EX', #15
+    153.2 => 'Tamron AF 28-300mm f/3.5-6.3 XR LD Aspherical [IF] Macro',
+    153.3 => 'Tamron AF 18-200mm f/3.5-6.3 XR Di II LD Aspherical [IF] Macro Model A14', #15
+    153.4 => 'Tamron 18-250mm f/3.5-6.3 Di II LD Aspherical [IF] Macro', #PH
     154 => 'Canon EF 20mm f/2.8 USM', #15
     155 => 'Canon EF 85mm f/1.8 USM',
-    156 => 'Canon EF 28-105mm f/3.5-4.5 USM',
-    160 => 'Canon EF 20-35mm f/3.5-4.5 USM',
-    161 => 'Canon EF 28-70mm f/2.8L or Sigma 24-70mm EX f/2.8 or Tamron 90mm f/2.8',
+    156 => 'Canon EF 28-105mm f/3.5-4.5 USM or Tamron Lens',
+    156.1 => 'Tamron SP 70-300mm f/4.0-5.6 Di VC USD', #PH (model A005)
+    160 => 'Canon EF 20-35mm f/3.5-4.5 USM or Tamron or Tokina Lens',
+    160.1 => 'Tamron AF 19-35mm f/3.5-4.5', #44
+    160.2 => 'Tokina AT-X 124 AF 12-24mm f/4 DX', #49 (not sure about specific model - PH)
+    160.3 => 'Tokina AT-X 107 AF DX 10-17mm f/3.5-4.5 Fisheye', #PH (http://osdir.com/ml/digikam-devel/2011-04/msg00275.html)
+    161 => 'Canon EF 28-70mm f/2.8L or Sigma or Tamron Lens',
+    161.1 => 'Sigma 24-70mm f/2.8 EX',
+    161.2 => 'Sigma 28-70mm f/2.8 EX', #PH (http://www.breezesys.com/forum/showthread.php?t=3718)
+    161.3 => 'Tamron AF 17-50mm f/2.8 Di-II LD Aspherical', #40
+    161.4 => 'Tamron 90mm f/2.8',
+    162 => 'Canon EF 200mm f/2.8L', #32
+    163 => 'Canon EF 300mm f/4L', #32
+    164 => 'Canon EF 400mm f/5.6L', #32
     165 => 'Canon EF 70-200mm f/2.8 L',
-    166 => 'Canon EF 70-200mm f/2.8 L + x1.4',
-    167 => 'Canon EF 70-200mm f/2.8 L + x2',
+    166 => 'Canon EF 70-200mm f/2.8 L + 1.4x',
+    167 => 'Canon EF 70-200mm f/2.8 L + 2x',
     168 => 'Canon EF 28mm f/1.8 USM', #15
-    # 169 can be Sigma 18-200mm f/3.5-6.3 DC OS (ref 23)
-    #         or Sigma 15-30mm f/3.5-4.5 EX DG Aspherical (ref 4)
-    #         or Sigma 18-50/2.8 Macro (ref 26)
-    169 => 'Canon EF17-35mm f/2.8L or Sigma Lens', #15
+    169 => 'Canon EF 17-35mm f/2.8L or Sigma Lens', #15
+    169.1 => 'Sigma 18-200mm f/3.5-6.3 DC OS', #23
+    169.2 => 'Sigma 15-30mm f/3.5-4.5 EX DG Aspherical', #4
+    169.3 => 'Sigma 18-50mm f/2.8 Macro', #26
+    169.4 => 'Sigma 50mm f/1.4 EX DG HSM', #PH
+    169.5 => 'Sigma 85mm f/1.4 EX DG HSM', #Rolando Ruzic
+    169.6 => 'Sigma 30mm f/1.4 EX DC HSM', #Rodolfo Borges
     170 => 'Canon EF 200mm f/2.8L II', #9
-    171 => 'Canon EF 300mm F4L', #15
-    # the following value is used by 2 different Sigma lenses (ref 14):
-    # Sigma 180mm EX HSM Macro f/3.5 or Sigma APO Macro 150mm f/3.5 EX DG IF HSM
-    # 173 => 'Canon EF 180mm Macro f/3.5L or Sigma 180mm EX HSM Macro f/3.5', #9
-    173 => 'Canon EF 180mm Macro f/3.5L or Sigma 180mm f/3.5 or 150mm f/2.8 Macro',
-    174 => 'Canon EF 135mm f/2L', #9
+    171 => 'Canon EF 300mm f/4L', #15
+    172 => 'Canon EF 400mm f/5.6L', #32
+    173 => 'Canon EF 180mm Macro f/3.5L or Sigma Lens', #9
+    173.1 => 'Sigma 180mm EX HSM Macro f/3.5', #14
+    173.2 => 'Sigma APO Macro 150mm f/2.8 EX DG HSM', #14
+    174 => 'Canon EF 135mm f/2L or Sigma Lens', #9
+    174.1 => 'Sigma 70-200mm f/2.8 EX DG APO OS HSM', #PH (probably version II of this lens)
+    175 => 'Canon EF 400mm f/2.8L', #32
     176 => 'Canon EF 24-85mm f/3.5-4.5 USM',
     177 => 'Canon EF 300mm f/4L IS', #9
     178 => 'Canon EF 28-135mm f/3.5-5.6 IS',
     179 => 'Canon EF 24mm f/1.4L', #20
     180 => 'Canon EF 35mm f/1.4L', #9
-    181 => 'Canon EF 100-400mm f/4.5-5.6L IS + x1.4', #15
-    182 => 'Canon EF 100-400mm f/4.5-5.6L IS + x2',
+    181 => 'Canon EF 100-400mm f/4.5-5.6L IS + 1.4x', #15
+    182 => 'Canon EF 100-400mm f/4.5-5.6L IS + 2x',
     183 => 'Canon EF 100-400mm f/4.5-5.6L IS',
-    184 => 'Canon EF 400mm f/2.8L + x2', #15
+    184 => 'Canon EF 400mm f/2.8L + 2x', #15
+    185 => 'Canon EF 600mm f/4L IS', #32
     186 => 'Canon EF 70-200mm f/4L', #9
-    187 => 'Canon EF 70-200mm f/4L + x1.4', #26
-    188 => 'Canon EF 70-200mm f/4L + x2', #PH (NC)
+    187 => 'Canon EF 70-200mm f/4L + 1.4x', #26
+    188 => 'Canon EF 70-200mm f/4L + 2x', #PH
+    189 => 'Canon EF 70-200mm f/4L + 2.8x', #32
     190 => 'Canon EF 100mm f/2.8 Macro',
     191 => 'Canon EF 400mm f/4 DO IS', #9
-    # 196 Canon 75-300mm f/4? #15
-    197 => 'Canon EF 75-300mm f/4-5.6 IS',
+    193 => 'Canon EF 35-80mm f/4-5.6 USM', #32
+    194 => 'Canon EF 80-200mm f/4.5-5.6 USM', #32
+    195 => 'Canon EF 35-105mm f/4.5-5.6 USM', #32
+    196 => 'Canon EF 75-300mm f/4-5.6 USM', #15/32
+    197 => 'Canon EF 75-300mm f/4-5.6 IS USM',
     198 => 'Canon EF 50mm f/1.4 USM', #9
-    202 => 'Canon EF 28-80 f/3.5-5.6 USM IV',
-    211 => 'Canon EF 28-200mm f/3.5-5.6', #15
+    199 => 'Canon EF 28-80mm f/3.5-5.6 USM', #32
+    200 => 'Canon EF 75-300mm f/4-5.6 USM', #32
+    201 => 'Canon EF 28-80mm f/3.5-5.6 USM', #32
+    202 => 'Canon EF 28-80mm f/3.5-5.6 USM IV',
+    208 => 'Canon EF 22-55mm f/4-5.6 USM', #32
+    209 => 'Canon EF 55-200mm f/4.5-5.6', #32
+    210 => 'Canon EF 28-90mm f/4-5.6 USM', #32
+    211 => 'Canon EF 28-200mm f/3.5-5.6 USM', #15
     212 => 'Canon EF 28-105mm f/4-5.6 USM', #15
-    213 => 'Canon EF 90-300mm f/4.5-5.6',
-    214 => 'Canon EF-S 18-55mm f/3.5-4.5 USM', #PH
-    215 => 'Canon EF 55-200 4.5-5.6 II USM', #25
+    213 => 'Canon EF 90-300mm f/4.5-5.6 USM',
+    214 => 'Canon EF-S 18-55mm f/3.5-5.6 USM', #PH/34
+    215 => 'Canon EF 55-200mm f/4.5-5.6 II USM',
     224 => 'Canon EF 70-200mm f/2.8L IS', #11
-    225 => 'Canon EF 70-200mm f/2.8L IS + x1.4', #11
-    226 => 'Canon EF 70-200mm f/2.8L IS + x2', #14
+    225 => 'Canon EF 70-200mm f/2.8L IS + 1.4x', #11
+    226 => 'Canon EF 70-200mm f/2.8L IS + 2x', #14
+    227 => 'Canon EF 70-200mm f/2.8L IS + 2.8x', #32
+    228 => 'Canon EF 28-105mm f/3.5-4.5 USM', #32
     229 => 'Canon EF 16-35mm f/2.8L', #PH
     230 => 'Canon EF 24-70mm f/2.8L', #9
     231 => 'Canon EF 17-40mm f/4L',
@@ -190,9 +314,21 @@ my %canonLensTypes = ( #4
     240 => 'Canon EF-S 17-55mm f/2.8 IS USM', #15
     241 => 'Canon EF 50mm f/1.2L', #15
     242 => 'Canon EF 70-200mm f/4L IS', #PH
-    243 => 'Canon EF 70-200mm f/4L IS + x1.4', #15
-    244 => 'Canon EF 70-200mm f/4L IS + x2', #PH (NC)
+    243 => 'Canon EF 70-200mm f/4L IS + 1.4x', #15
+    244 => 'Canon EF 70-200mm f/4L IS + 2x', #PH
+    245 => 'Canon EF 70-200mm f/4L IS + 2.8x', #32
     246 => 'Canon EF 16-35mm f/2.8L II', #PH
+    247 => 'Canon EF 14mm f/2.8L II USM', #32
+    248 => 'Canon EF 200mm f/2L IS', #42
+    249 => 'Canon EF 800mm f/5.6L IS', #35
+    250 => 'Canon EF 24 f/1.4L II', #41
+    251 => 'Canon EF 70-200mm f/2.8L IS II USM',
+    254 => 'Canon EF 100mm f/2.8L Macro IS USM', #42
+    # Note: LensType 488 (0x1e8) is reported as 232 (0xe8) in 7D CameraSettings
+    488 => 'Canon EF-S 15-85mm f/3.5-5.6 IS USM', #PH
+    489 => 'Canon EF 70-300mm f/4-5.6L IS USM', #Gerald Kapounek
+    490 => 'Canon EF 8-15mm f/4L USM', #Klaus Reinfeld
+    491 => 'Canon EF 300mm f/2.8L IS II USM', #42
 );
 
 # Canon model ID numbers (PH)
@@ -242,10 +378,10 @@ my %canonLensTypes = ( #4
     0x1570000 => 'PowerShot A510',
     0x1590000 => 'PowerShot SD20 / Digital IXUS i5 / IXY Digital L2',
     0x1640000 => 'PowerShot S2 IS',
-    0x1650000 => 'PowerShot SD430 / IXUS Wireless / IXY Wireless',
+    0x1650000 => 'PowerShot SD430 / Digital IXUS Wireless / IXY Digital Wireless',
     0x1660000 => 'PowerShot SD500 / Digital IXUS 700 / IXY Digital 600',
     0x1668000 => 'EOS D60',
-    0x1700000 => 'PowerShot SD30 / Digital IXUS i zoom / IXY Digital L3',
+    0x1700000 => 'PowerShot SD30 / Digital IXUS i Zoom / IXY Digital L3',
     0x1740000 => 'PowerShot A430',
     0x1750000 => 'PowerShot A410',
     0x1760000 => 'PowerShot S80',
@@ -285,22 +421,101 @@ my %canonLensTypes = ( #4
     0x2290000 => 'PowerShot SX100 IS',
     0x2300000 => 'PowerShot SD950 IS / Digital IXUS 960 IS / IXY Digital 2000 IS',
     0x2310000 => 'PowerShot SD870 IS / Digital IXUS 860 IS / IXY Digital 910 IS',
-    0x2320000 => 'PowerShot SD890 IS / Digital IXUS 970 IS / IXY DIGITAL 820 IS',
-    0x2360000 => 'PowerShot SD790 IS / Digital IXUS 90 IS / IXY DIGITAL 95 IS',
-    0x2370000 => 'PowerShot SD770 IS / Digital IXUS 85 IS / IXY DIGITAL 25 IS',
+    0x2320000 => 'PowerShot SD890 IS / Digital IXUS 970 IS / IXY Digital 820 IS',
+    0x2360000 => 'PowerShot SD790 IS / Digital IXUS 90 IS / IXY Digital 95 IS',
+    0x2370000 => 'PowerShot SD770 IS / Digital IXUS 85 IS / IXY Digital 25 IS',
     0x2380000 => 'PowerShot A590 IS',
     0x2390000 => 'PowerShot A580',
     0x2420000 => 'PowerShot A470',
     0x2430000 => 'PowerShot SD1100 IS / Digital IXUS 80 IS / IXY Digital 20 IS',
+    0x2460000 => 'PowerShot SX1 IS',
+    0x2470000 => 'PowerShot SX10 IS',
+    0x2480000 => 'PowerShot A1000 IS',
+    0x2490000 => 'PowerShot G10',
+    0x2510000 => 'PowerShot A2000 IS',
+    0x2520000 => 'PowerShot SX110 IS',
+    0x2530000 => 'PowerShot SD990 IS / Digital IXUS 980 IS / IXY Digital 3000 IS',
+    0x2540000 => 'PowerShot SD880 IS / Digital IXUS 870 IS / IXY Digital 920 IS',
+    0x2550000 => 'PowerShot E1',
+    0x2560000 => 'PowerShot D10',
+    0x2570000 => 'PowerShot SD960 IS / Digital IXUS 110 IS / IXY Digital 510 IS',
+    0x2580000 => 'PowerShot A2100 IS',
+    0x2590000 => 'PowerShot A480',
+    0x2600000 => 'PowerShot SX200 IS',
+    0x2610000 => 'PowerShot SD970 IS / Digital IXUS 990 IS / IXY Digital 830 IS',
+    0x2620000 => 'PowerShot SD780 IS / Digital IXUS 100 IS / IXY Digital 210 IS',
+    0x2630000 => 'PowerShot A1100 IS',
+    0x2640000 => 'PowerShot SD1200 IS / Digital IXUS 95 IS / IXY Digital 110 IS',
+    0x2700000 => 'PowerShot G11',
+    0x2710000 => 'PowerShot SX120 IS',
+    0x2720000 => 'PowerShot S90',
+    0x2750000 => 'PowerShot SX20 IS',
+    0x2760000 => 'PowerShot SD980 IS / Digital IXUS 200 IS / IXY Digital 930 IS',
+    0x2770000 => 'PowerShot SD940 IS / Digital IXUS 120 IS / IXY Digital 220 IS',
+    0x2800000 => 'PowerShot A495',
+    0x2810000 => 'PowerShot A490',
+    0x2820000 => 'PowerShot A3100 IS / A3150 IS', # (different cameras, same ID)
+    0x2830000 => 'PowerShot A3000 IS',
+    0x2840000 => 'PowerShot SD1400 IS / IXUS 130 / IXY 400F',
+    0x2850000 => 'PowerShot SD1300 IS / IXUS 105 / IXY 200F',
+    0x2860000 => 'PowerShot SD3500 IS / IXUS 210 / IXY 10S',
+    0x2870000 => 'PowerShot SX210 IS',
+    0x2880000 => 'PowerShot SD4000 IS / IXUS 300 HS / IXY 30S',
+    0x2890000 => 'PowerShot SD4500 IS / IXUS 1000 HS / IXY 50S',
+    0x2920000 => 'PowerShot G12',
+    0x2930000 => 'PowerShot SX30 IS',
+    0x2940000 => 'PowerShot SX130 IS',
+    0x2950000 => 'PowerShot S95',
+    0x2980000 => 'PowerShot A3300 IS',
+    0x2990000 => 'PowerShot A3200 IS',
+    0x3000000 => 'PowerShot ELPH 500 HS / IXUS 310 HS / IXY 31S',
     0x3010000 => 'PowerShot Pro90 IS',
+    0x3010001 => 'PowerShot A800',
+    0x3020000 => 'PowerShot ELPH 100 HS / IXUS 115 HS / IXY 210F',
+    0x3030000 => 'PowerShot SX230 HS',
+    0x3040000 => 'PowerShot ELPH 300 HS / IXUS 220 HS / IXY 410F',
+    0x3050000 => 'PowerShot A2200',
+    0x3060000 => 'PowerShot A1200',
+    0x3070000 => 'PowerShot SX220 HS',
+    0x3090000 => 'PowerShot SX150 IS',
+    0x3100000 => 'PowerShot ELPH 510 HS / IXUS 1100 HS / IXY 51S',
+    0x3110000 => 'PowerShot S100 (new)', # IXUS/IXY??
+    0x3130000 => 'PowerShot SX40 HS', # IXUS/IXY??
+    0x3120000 => 'PowerShot ELPH 310 HS / IXUS 230 HS / IXY 600F',
+    0x3140000 => 'PowerShot ELPH 500 HS / IXUS 320 HS / IXY 32S', # (duplicate PowerShot model???)
     0x4040000 => 'PowerShot G1',
     0x6040000 => 'PowerShot S100 / Digital IXUS / IXY Digital',
+    0x4007d673 => 'DC19/DC21/DC22',
+    0x4007d674 => 'XH A1',
     0x4007d675 => 'HV10',
-    0x4007d777 => 'iVIS DC50',
-    0x4007d778 => 'iVIS HV20',
+    0x4007d676 => 'MD130/MD140/MD150/MD160/ZR850',
+    0x4007d777 => 'DC50', # (iVIS)
+    0x4007d778 => 'HV20', # (iVIS)
     0x4007d779 => 'DC211', #29
-    0x4007d77b => 'iVIS HR10', #29
-    0x4007d880 => 'iVIS HF10', #29
+    0x4007d77a => 'HG10',
+    0x4007d77b => 'HR10', #29 (iVIS)
+    0x4007d77d => 'MD255/ZR950',
+    0x4007d81c => 'HF11',
+    0x4007d878 => 'HV30',
+    0x4007d87c => 'XH A1S',
+    0x4007d87e => 'DC301/DC310/DC311/DC320/DC330',
+    0x4007d87f => 'FS100',
+    0x4007d880 => 'HF10', #29 (iVIS/VIXIA)
+    0x4007d882 => 'HG20/HG21', # (VIXIA)
+    0x4007d925 => 'HF21', # (LEGRIA)
+    0x4007d926 => 'HF S11', # (LEGRIA)
+    0x4007d978 => 'HV40', # (LEGRIA)
+    0x4007d987 => 'DC410/DC411/DC420',
+    0x4007d988 => 'FS19/FS20/FS21/FS22/FS200', # (LEGRIA)
+    0x4007d989 => 'HF20/HF200', # (LEGRIA)
+    0x4007d98a => 'HF S10/S100', # (LEGRIA/VIXIA)
+    0x4007da8e => 'HF R10/R16/R17/R18/R100/R106', # (LEGRIA/VIXIA)
+    0x4007da8f => 'HF M30/M31/M36/M300/M306', # (LEGRIA/VIXIA)
+    0x4007da90 => 'HF S20/S21/S200', # (LEGRIA/VIXIA)
+    0x4007da92 => 'FS31/FS36/FS37/FS300/FS305/FS306/FS307',
+    # NOTE: some pre-production models may have a model name of
+    # "Canon EOS Kxxx", where "xxx" is the last 3 digits of the model ID below.
+    # This has been observed for the 1DSmkIII/K215 and 400D/K236.
     0x80000001 => 'EOS-1D',
     0x80000167 => 'EOS-1DS',
     0x80000168 => 'EOS 10D',
@@ -314,9 +529,27 @@ my %canonLensTypes = ( #4
     0x80000190 => 'EOS 40D',
     0x80000213 => 'EOS 5D',
     0x80000215 => 'EOS-1Ds Mark III',
+    0x80000218 => 'EOS 5D Mark II',
+    0x80000219 => 'WFT-E1',
     0x80000232 => 'EOS-1D Mark II N',
     0x80000234 => 'EOS 30D',
     0x80000236 => 'EOS Digital Rebel XTi / 400D / Kiss Digital X',
+    0x80000241 => 'WFT-E2',
+    0x80000246 => 'WFT-E3',
+    0x80000250 => 'EOS 7D',
+    0x80000252 => 'EOS Rebel T1i / 500D / Kiss X3',
+    0x80000254 => 'EOS Rebel XS / 1000D / Kiss F',
+    0x80000261 => 'EOS 50D',
+    0x80000269 => 'EOS-1D X',
+    0x80000270 => 'EOS Rebel T2i / 550D / Kiss X4',
+    0x80000271 => 'WFT-E4',
+    0x80000273 => 'WFT-E5',
+    0x80000281 => 'EOS-1D Mark IV',
+    0x80000286 => 'EOS Rebel T3i / 600D / Kiss X5',
+    0x80000287 => 'EOS 60D',
+    0x80000288 => 'EOS Rebel T3 / 1100D / Kiss X50',
+    0x80000297 => 'WFT-E2 II',
+    0x80000298 => 'WFT-E4 II',
 );
 
 my %canonQuality = (
@@ -335,11 +568,19 @@ my %canonImageSize = (
     6 => 'Medium 2', #PH
     7 => 'Medium 3', #PH
     8 => 'Postcard', #PH (SD200 1600x1200 with DateStamp option)
-    9 => 'Widescreen', #PH (SD900 3648x2048)
+    9 => 'Widescreen', #PH (SD900 3648x2048), 22 (HFS200 3264x1840)
+    10 => 'Medium Widescreen', #22 (HFS200 1920x1080)
+    14 => 'Small 1', #PH
+    15 => 'Small 2', #PH
+    16 => 'Small 3', #PH
+    128 => '640x480 Movie', #PH (7D 60fps)
     129 => 'Medium Movie', #22
     130 => 'Small Movie', #22
+    137 => '1280x720 Movie', #PH (S95 24fps; D60 50fps)
+    142 => '1920x1080 Movie', #PH (D60 25fps)
 );
 my %canonWhiteBalance = (
+    # -1='Click", -2='Pasted' ?? - PH
     0 => 'Auto',
     1 => 'Daylight',
     2 => 'Cloudy',
@@ -357,6 +598,18 @@ my %canonWhiteBalance = (
     15 => 'Custom 1', #PH
     16 => 'Custom 2', #PH
     17 => 'Underwater', #3
+    18 => 'Custom 3', #PH
+    19 => 'Custom 4', #PH
+    20 => 'PC Set4', #PH
+    21 => 'PC Set5', #PH
+    # 22 - Custom 2?
+    # 23 - Custom 3?
+    # 30 - Click White Balance?
+    # 31 - Shot Settings?
+    # 137 - Tungsten?
+    # 138 - White Fluorescent?
+    # 139 - Fluorescent H?
+    # 140 - Manual?
 );
 
 # picture styles used by the 5D
@@ -378,26 +631,44 @@ my %pictureStyles = ( #12
     # "External" styles currently available from Canon are Nostalgia, Clear,
     # Twilight and Emerald.  The "User Def" styles change to these "External"
     # codes when these styles are installed in the camera
-    0x41 => 'External 1',
-    0x42 => 'External 2',
-    0x43 => 'External 3',
+    0x41 => 'PC 1', #PH
+    0x42 => 'PC 2', #PH
+    0x43 => 'PC 3', #PH
     0x81 => 'Standard',
     0x82 => 'Portrait',
     0x83 => 'Landscape',
     0x84 => 'Neutral',
     0x85 => 'Faithful',
     0x86 => 'Monochrome',
+    0x87 => 'Auto', #PH
 );
-my %userDefStyles = ( #12
-    0x41 => 'Nostalgia',
-    0x42 => 'Clear',
-    0x43 => 'Twilight',
+my %userDefStyles = ( #12/48
+    Notes => q{
+        Base style for user-defined picture styles.  PC values represent external
+        picture styles which may be downloaded from Canon and installed in the
+        camera.
+    },
+    0x41 => 'PC 1',
+    0x42 => 'PC 2',
+    0x43 => 'PC 3',
     0x81 => 'Standard',
     0x82 => 'Portrait',
     0x83 => 'Landscape',
     0x84 => 'Neutral',
     0x85 => 'Faithful',
     0x86 => 'Monochrome',
+    0x87 => 'Auto', #PH
+);
+
+# picture style tag information for CameraInfo550D
+my %psConv = (
+    -559038737 => 'n/a', # = 0xdeadbeef ! LOL
+    OTHER => sub { return shift },
+);
+my %psInfo = (
+    Format => 'int32s',
+    PrintHex => 1,
+    PrintConv => \%psConv,
 );
 
 # ValueConv that makes long values binary type
@@ -406,10 +677,38 @@ my %longBin = (
     ValueConvInv => '$val',
 );
 
-# PrintConv for parameter tags
-my %printParameter = (
-    PrintConv => 'Image::ExifTool::Exif::PrintParameter($val)',
-    PrintConvInv => '$val=~/normal/i ? 0 : $val',
+# conversions, etc for CameraColorCalibration tags
+my %cameraColorCalibration = (
+    Format => 'int16s[4]',
+    Unknown => 1,
+    PrintConv => 'sprintf("%4d %4d %4d (%dK)", split(" ",$val))',
+    PrintConvInv => '$val=~s/\s+/ /g; $val=~tr/()K//d; $val',
+);
+
+# conversions, etc for PowerShot CameraColorCalibration tags
+my %cameraColorCalibration2 = (
+    Format => 'int16s[5]',
+    Unknown => 1,
+    PrintConv => 'sprintf("%4d %4d %4d %4d (%dK)", split(" ",$val))',
+    PrintConvInv => '$val=~s/\s+/ /g; $val=~tr/()K//d; $val',
+);
+# conversions, etc for byte-swapped FocusDistance tags
+my %focusDistanceByteSwap = (
+    # this is very odd (little-endian number on odd boundary),
+    # but it does seem to work better with my sample images - PH
+    Format => 'int16uRev',
+    ValueConv => '$val / 100',
+    ValueConvInv => '$val * 100',
+    PrintConv => '$val > 655.345 ? "inf" : "$val m"',
+    PrintConvInv => '$val =~ s/ ?m$//; IsFloat($val) ? $val : 655.35',
+);
+
+# common attributes for writable BinaryData directories
+my %binaryDataAttrs = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
+    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
+    WRITABLE => 1,
 );
 
 #------------------------------------------------------------------------------
@@ -451,6 +750,7 @@ my %printParameter = (
     0x6 => {
         Name => 'CanonImageType',
         Writable => 'string',
+        Groups => { 2 => 'Image' },
     },
     0x7 => {
         Name => 'CanonFirmwareVersion',
@@ -459,12 +759,16 @@ my %printParameter = (
     0x8 => {
         Name => 'FileNumber',
         Writable => 'int32u',
+        Groups => { 2 => 'Image' },
         PrintConv => '$_=$val,s/(\d+)(\d{4})/$1-$2/,$_',
         PrintConvInv => '$val=~s/-//g;$val',
     },
     0x9 => {
         Name => 'OwnerName',
         Writable => 'string',
+        # pad to 32 bytes (including null terminator which will be added)
+        # to avoid bug which crashes DPP if length is 4 bytes
+        ValueConvInv => '$val .= "\0" x (31 - length $val) if length $val < 31; $val',
     },
     0xa => {
         Name => 'UnknownD30',
@@ -477,17 +781,15 @@ my %printParameter = (
         {
             # D30
             Name => 'SerialNumber',
-            Description => 'Camera Body No.',
             Condition => '$$self{Model} =~ /EOS D30\b/',
             Writable => 'int32u',
-            PrintConv => 'sprintf("%x-%.5d",$val>>16,$val&0xffff)',
-            PrintConvInv => '$val=~/(.*)-(\d+)/ ? (hex($1)<<16)+$2 : undef',
+            PrintConv => 'sprintf("%.4x%.5d",$val>>16,$val&0xffff)',
+            PrintConvInv => '$val=~/(.*)-?(\d{5})$/ ? (hex($1)<<16)+$2 : undef',
         },
         {
             # serial number of 1D/1Ds/1D Mark II/1Ds Mark II is usually
             # displayed w/o leeding zeros (ref 7) (1D uses 6 digits - PH)
             Name => 'SerialNumber',
-            Description => 'Camera Body No.',
             Condition => '$$self{Model} =~ /EOS-1D/',
             Writable => 'int32u',
             PrintConv => 'sprintf("%.6u",$val)',
@@ -496,7 +798,6 @@ my %printParameter = (
         {
             # all other models (D60,300D,350D,REBEL,10D,20D,etc)
             Name => 'SerialNumber',
-            Description => 'Camera Body No.',
             Writable => 'int32u',
             PrintConv => 'sprintf("%.10u",$val)',
             PrintConvInv => '$val',
@@ -505,7 +806,8 @@ my %printParameter = (
     0xd => [
         {
             Name => 'CanonCameraInfo1D',
-            Condition => '$$self{Model} =~ /\b1DS?$/',
+            # (save size of this record as "CameraInfoCount" for later tests)
+            Condition => '($$self{CameraInfoCount} = $count) and $$self{Model} =~ /\b1DS?$/',
             SubDirectory => {
                 TagTable => 'Image::ExifTool::Canon::CameraInfo1D',
             },
@@ -532,6 +834,13 @@ my %printParameter = (
             },
         },
         {
+            Name => 'CanonCameraInfo1DmkIV',
+            Condition => '$$self{Model} =~ /\b1D Mark IV$/',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfo1DmkIV',
+            },
+        },
+        {
             Name => 'CanonCameraInfo5D',
             Condition => '$$self{Model} =~ /EOS 5D$/',
             SubDirectory => {
@@ -539,10 +848,80 @@ my %printParameter = (
             },
         },
         {
+            Name => 'CanonCameraInfo5DmkII',
+            Condition => '$$self{Model} =~ /EOS 5D Mark II$/',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfo5DmkII',
+            },
+        },
+        {
+            Name => 'CanonCameraInfo7D',
+            Condition => '$$self{Model} =~ /EOS 7D$/',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfo7D',
+            },
+        },
+        {
             Name => 'CanonCameraInfo40D',
             Condition => '$$self{Model} =~ /EOS 40D$/',
             SubDirectory => {
                 TagTable => 'Image::ExifTool::Canon::CameraInfo40D',
+            },
+        },
+        {
+            Name => 'CanonCameraInfo50D',
+            Condition => '$$self{Model} =~ /EOS 50D$/',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfo50D',
+            },
+        },
+        {
+            Name => 'CanonCameraInfo60D',
+            Condition => '$$self{Model} =~ /EOS 60D$/',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfo60D',
+            },
+        },
+        {
+            Name => 'CanonCameraInfo450D',
+            Condition => '$$self{Model} =~ /\b(450D|REBEL XSi|Kiss X2)\b/',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfo450D',
+            },
+        },
+        {
+            Name => 'CanonCameraInfo500D',
+            Condition => '$$self{Model} =~ /\b(500D|REBEL T1i|Kiss X3)\b/',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfo500D',
+            },
+        },
+        {
+            Name => 'CanonCameraInfo550D',
+            Condition => '$$self{Model} =~ /\b(550D|REBEL T2i|Kiss X4)\b/',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfo550D',
+            },
+        },
+        {
+            Name => 'CanonCameraInfo600D',
+            Condition => '$$self{Model} =~ /\b(600D|REBEL T3i|Kiss X5)\b/',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfo600D',
+            },
+        },
+        {
+            Name => 'CanonCameraInfo1000D',
+            Condition => '$$self{Model} =~ /\b(1000D|REBEL XS|Kiss F)\b/',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfo1000D',
+            },
+        },
+        {
+            Name => 'CanonCameraInfo1100D',
+            Condition => '$$self{Model} =~ /\b(1100D|REBEL T3|Kiss X50)\b/',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfo600D',
             },
         },
         {
@@ -554,8 +933,20 @@ my %printParameter = (
             },
         },
         {
+            Name => 'CanonCameraInfoPowerShot2',
+            # valid if format is int32u[162], int32u[167], int32u[171] or int32u[264]
+            Condition => q{
+                $format eq "int32u" and ($count == 156 or $count == 162 or
+                $count == 167 or $count == 171 or $count == 264)
+            },
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::CameraInfoPowerShot2',
+            },
+        },
+        {
             Name => 'CanonCameraInfoUnknown32',
             Condition => '$format =~ /^int32/',
+            # (counts of 72, 85, 86, 93, 94, 96, 104) - PH
             SubDirectory => {
                 TagTable => 'Image::ExifTool::Canon::CameraInfoUnknown32',
             },
@@ -669,6 +1060,13 @@ my %printParameter = (
         SeparateTable => 1,
         PrintConv => \%canonModelID,
     },
+    0x11 => { #PH
+        Name => 'MovieInfo',
+        SubDirectory => {
+            Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart,$size)',
+            TagTable => 'Image::ExifTool::Canon::MovieInfo',
+        },
+    },
     0x12 => {
         Name => 'CanonAFInfo',
         # not really a condition -- just need to store the count for later
@@ -699,7 +1097,7 @@ my %printParameter = (
     },
     0x1a => { #15
         Name => 'SuperMacro',
-        Format => 'int16u',
+        Writable => 'int16u',
         PrintConv => {
             0 => 'Off',
             1 => 'On (1)',
@@ -709,7 +1107,7 @@ my %printParameter = (
     0x1c => { #PH (A570IS)
         Name => 'DateStampMode',
         Writable => 'int16u',
-        Notes => 'only used in postcard mode',
+        Notes => 'used only in postcard mode',
         PrintConv => {
             0 => 'Off',
             1 => 'Date',
@@ -745,6 +1143,26 @@ my %printParameter = (
     },
     # 0x1f - used for red-eye-corrected images - PH (A570IS)
     # 0x22 - values 1 and 2 are 2 and 1 for flash pics, 0 otherwise - PH (A570IS)
+    0x23 => { #31
+        Name => 'Categories',
+        Writable => 'int32u',
+        Format => 'int32u', # (necessary to perform conversion for Condition)
+        Notes => '2 values: 1. always 8, 2. Categories',
+        Count => '2',
+        Condition => '$$valPt =~ /^\x08\0\0\0/',
+        ValueConv => '$val =~ s/^8 //; $val',
+        ValueConvInv => '"8 $val"',
+        PrintConvColumns => 2,
+        PrintConv => { BITMASK => {
+            0 => 'People',
+            1 => 'Scenery',
+            2 => 'Events',
+            3 => 'User 1',
+            4 => 'User 2',
+            5 => 'User 3',
+            6 => 'To Do',
+        } },
+    },
     0x24 => { #PH
         Name => 'FaceDetect1',
         SubDirectory => {
@@ -760,13 +1178,27 @@ my %printParameter = (
     },
     0x26 => { #PH (A570IS,1DmkIII)
         Name => 'CanonAFInfo2',
+        Condition => '$$valPt !~ /^\0\0\0\0/', # (data may be all zeros in thumbnail of 60D MOV video)
         SubDirectory => {
             Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart,$size)',
             TagTable => 'Image::ExifTool::Canon::AFInfo2',
         },
     },
     # 0x27 - value 1 is 1 for high ISO pictures, 0 otherwise
-    # 0x28 - 16-bytes: 0-1=sequence number (encrypted), 2-5=date/time (encrypted) (ref JD)
+    #        value 4 is 9 for Flexizone and FaceDetect AF, 1 for Centre AF, 0 otherwise (SX10IS)
+    0x28 => { #JD
+        # bytes 0-1=sequence number (encrypted), 2-5=date/time (encrypted) (ref JD)
+        Name => 'ImageUniqueID',
+        Format => 'undef',
+        Writable => 'int8u',
+        Groups => { 2 => 'Image' },
+        RawConv => '$val eq "\0" x 16 ? undef : $val',
+        ValueConv => 'unpack("H*", $val)',
+        ValueConvInv => 'pack("H*", $val)',
+    },
+    # 0x2d - changes with categories (ref 31)
+    # 0x44 - ShootInfo
+    # 0x62 - UserSetting
     0x81 => { #13
         Name => 'RawDataOffset',
         # (can't yet write 1D raw files)
@@ -805,7 +1237,7 @@ my %printParameter = (
         },
     },
     0x93 => {
-        Name => 'CanonFileInfo',
+        Name => 'CanonFileInfo', # (ShootInfoEx)
         SubDirectory => {
             Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart,$size)',
             TagTable => 'Image::ExifTool::Canon::FileInfo',
@@ -818,7 +1250,7 @@ my %printParameter = (
         PrintConv => 'Image::ExifTool::Canon::PrintAFPoints1D($val)',
     },
     0x95 => { #PH (observed in 5D sample image)
-        Name => 'LensType',
+        Name => 'LensModel',
         Writable => 'string',
     },
     0x96 => [ #PH
@@ -830,12 +1262,22 @@ my %printParameter = (
         {
             Name => 'InternalSerialNumber',
             Writable => 'string',
+            # remove trailing 0xff's if they exist (Kiss X3)
+            ValueConv => '$val=~s/\xff+$//; $val',
+            ValueConvInv => '$val',
         },
     ],
     0x97 => { #PH
         Name => 'DustRemovalData',
         # some interesting stuff is stored in here, like LensType and InternalSerialNumber...
-        Binary => 1,
+        Writable => 'undef',
+        Flags => [ 'Binary', 'Protected' ],
+    },
+    0x98 => { #PH
+        Name => 'CropInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::CropInfo',
+        },
     },
     0x99 => { #PH (EOS 1D Mark III, 40D, etc)
         Name => 'CustomFunctions2',
@@ -844,9 +1286,14 @@ my %printParameter = (
             TagTable => 'Image::ExifTool::CanonCustom::Functions2',
         },
     },
-    # 0x9a - 5 numbers, the 2nd and 3rd are imagewidth/height (EOS 1DmkIII and 40D)
+    0x9a => { #PH
+        Name => 'AspectInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::AspectInfo',
+        },
+    },
     0xa0 => {
-        Name => 'ProccessingInfo',
+        Name => 'ProcessingInfo',
         SubDirectory => {
             Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart,$size)',
             TagTable => 'Image::ExifTool::Canon::Processing',
@@ -866,7 +1313,13 @@ my %printParameter = (
             TagTable => 'Image::ExifTool::Canon::ColorBalance',
         },
     },
-    # 0xaa - looks like maybe measured color balance (inverse of RGGBLevels)? - PH
+    0xaa => {
+        Name => 'MeasuredColor',
+        SubDirectory => {
+            Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart,$size)',
+            TagTable => 'Image::ExifTool::Canon::MeasuredColor',
+        },
+    },
     0xae => {
         Name => 'ColorTemperature',
         Writable => 'int16u',
@@ -922,41 +1375,64 @@ my %printParameter = (
     0x4001 => [ #13
         {   # (int16u[582]) - 20D and 350D
             Condition => '$count == 582',
-            Name => 'ColorBalance1',
+            Name => 'ColorData1', # (Canon: WBPacket)
             SubDirectory => {
-                TagTable => 'Image::ExifTool::Canon::ColorBalance1',
+                TagTable => 'Image::ExifTool::Canon::ColorData1',
             },
         },
         {   # (int16u[653]) - 1DmkII and 1DSmkII
             Condition => '$count == 653',
-            Name => 'ColorBalance2',
+            Name => 'ColorData2',
             SubDirectory => {
-                TagTable => 'Image::ExifTool::Canon::ColorBalance2',
+                TagTable => 'Image::ExifTool::Canon::ColorData2',
             },
         },
         {   # (int16u[796]) - 1DmkIIN, 5D, 30D, 400D
             Condition => '$count == 796',
-            Name => 'ColorBalance3',
+            Name => 'ColorData3',
             SubDirectory => {
-                TagTable => 'Image::ExifTool::Canon::ColorBalance3',
+                TagTable => 'Image::ExifTool::Canon::ColorData3',
             },
         },
-        {   # (int16u[692|674|702]) - 40D (692), 1DmkIII (674), 1DSmkIII (702)
-            Condition => '$count == 692 or $count == 674 or $count == 702',
-            Name => 'ColorBalance4',
+        {   # (int16u[692|674|702|1227|1250|1251|1337])
+            # 40D (692), 1DmkIII (674), 1DSmkIII (702), 450D/1000D (1227)
+            # 50D/5DmkII (1250), 500D/7D_pre-prod/1DmkIV_pre-prod (1251),
+            # 1DmkIV/7D/550D_pre-prod (1337), 550D (1338), 1100D (1346)
+            Condition => q{
+                $count == 692  or $count == 674  or $count == 702 or
+                $count == 1227 or $count == 1250 or $count == 1251 or
+                $count == 1337 or $count == 1338 or $count == 1346
+            },
+            Name => 'ColorData4',
             SubDirectory => {
-                TagTable => 'Image::ExifTool::Canon::ColorBalance4',
+                TagTable => 'Image::ExifTool::Canon::ColorData4',
+            },
+        },
+        {   # (int16u[5120]) - G10
+            Condition => '$count == 5120',
+            Name => 'ColorData5',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::ColorData5',
+            },
+        },
+        {   # (int16u[1273]) - 600D
+            Condition => '$count == 1273',
+            Name => 'ColorData6',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::ColorData6',
             },
         },
         {
-            Name => 'ColorBalanceUnknown',
-            %longBin,
+            Name => 'ColorDataUnknown',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Canon::ColorDataUnknown',
+            },
         },
     ],
     0x4002 => { #PH
         # unknown data block in some JPEG and CR2 images
         # (5kB for most models, but 22kb for 5D and 30D)
-        Name => 'UnknownBlock1',
+        Name => 'CRWParam',
         Format => 'undef',
         Flags => [ 'Unknown', 'Binary' ],
     },
@@ -967,14 +1443,71 @@ my %printParameter = (
         },
     },
     0x4005 => { #PH
-        Name => 'UnknownBlock2',
+        Name => 'Flavor',
         Notes => 'unknown 49kB block, not copied to JPEG images',
         # 'Drop' because not found in JPEG images (too large for APP1 anyway)
         Flags => [ 'Unknown', 'Binary', 'Drop' ],
     },
     0x4008 => { #PH guess (1DmkIII)
-        Name => 'BlackLevel',
+        Name => 'BlackLevel', # (Canon: BasePictStyleOfUser)
         Unknown => 1,
+    },
+    0x4010 => { #http://u88.n24.queensu.ca/exiftool/forum/index.php/topic,2933.0.html
+        Name => 'CustomPictureStyleFileName', # (Canon: PictStyleCaption)
+        Writable => 'string',
+    },
+    0x4013 => { #PH
+        Name => 'AFMicroAdj',
+        SubDirectory => {
+            Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart,$size)',
+            TagTable => 'Image::ExifTool::Canon::AFMicroAdj',
+        },
+    },
+    # 0x4014 (similar to 0x83?)
+    0x4015 => {
+        Name => 'VignettingCorr', # (Canon: LensPacket)
+        Condition => '$$valPt !~ /^\0\0\0\0/', # (data may be all zeros for 60D)
+        SubDirectory => {
+            # (the size word is at byte 2 in this structure)
+            Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart+2,$size)',
+            TagTable => 'Image::ExifTool::Canon::VignettingCorr',
+        },
+    },
+    0x4016 => {
+        Name => 'VignettingCorr2', # (Canon: ImageCorrectActual)
+        SubDirectory => {
+            # (the size word is actually 4 bytes, but it doesn't matter if little-endian)
+            Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart,$size)',
+            TagTable => 'Image::ExifTool::Canon::VignettingCorr2',
+        },
+    },
+    0x4018 => { #PH
+        Name => 'LightingOpt', # (Canon: ImageCorrect)
+        SubDirectory => {
+            Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart,$size)',
+            TagTable => 'Image::ExifTool::Canon::LightingOpt',
+        }
+    },
+    0x4019 => { #20
+        Name => 'LensInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::LensInfo',
+        }
+    },
+    0x4020 => { #PH
+        Name => 'AmbienceInfo',
+        Condition => '$$valPt !~ /^\0\0\0\0/', # (data may be all zeros for 60D)
+        SubDirectory => {
+            Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart,$size)',
+            TagTable => 'Image::ExifTool::Canon::Ambience',
+        }
+    },
+    0x4024 => { #PH
+        Name => 'FilterInfo',
+        SubDirectory => {
+            Validate => 'Image::ExifTool::Canon::Validate($dirData,$subdirStart,$size)',
+            TagTable => 'Image::ExifTool::Canon::FilterInfo',
+        }
     },
 );
 
@@ -982,13 +1515,10 @@ my %printParameter = (
 # Canon camera settings (MakerNotes tag 0x01)
 # BinaryData (keys are indices into the int16s array)
 %Image::ExifTool::Canon::CameraSettings = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int16s',
     FIRST_ENTRY => 1,
-    DATAMEMBER => [ 25 ],   # FocalUnits necessary for writing
+    DATAMEMBER => [ 22, 25 ],   # necessary for writing
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     1 => {
         Name => 'MacroMode',
@@ -1036,6 +1566,8 @@ my %printParameter = (
             3 => 'Continuous, Speed Priority', #PH
             4 => 'Continuous, Low', #PH
             5 => 'Continuous, High', #PH
+            6 => 'Silent Single', #PH
+            # 32-34 - Self-timer?
         },
     },
     7 => {
@@ -1049,6 +1581,7 @@ my %printParameter = (
             5 => 'Continuous',
             6 => 'Manual Focus (6)',
            16 => 'Pan Focus', #PH
+           # 137 - Single?
         },
     },
     9 => { #PH
@@ -1062,14 +1595,17 @@ my %printParameter = (
             5 => 'TIF+JPEG', # (1D) (unconfirmed)
             6 => 'CR2', # +THM? (1D,30D,350D)
             7 => 'CR2+JPEG', # (S30)
+            9 => 'Video', # (S95 MOV)
         },
     },
     10 => {
         Name => 'CanonImageSize',
+        PrintConvColumns => 2,
         PrintConv => \%canonImageSize,
     },
     11 => {
         Name => 'EasyMode',
+        PrintConvColumns => 3,
         PrintConv => {
             0 => 'Full auto',
             1 => 'Manual',
@@ -1099,12 +1635,40 @@ my %printParameter = (
             25 => 'Night Snapshot', #PH
             26 => 'Digital Macro', #PH
             27 => 'My Colors', #PH
-            28 => 'Still Image', #15 (animation frame?)
+            28 => 'Movie Snap', #PH
+            29 => 'Super Macro 2', #PH
             30 => 'Color Accent', #18
             31 => 'Color Swap', #18
             32 => 'Aquarium', #18
             33 => 'ISO 3200', #18
-            # 35 => 'Star Fantasy?', #15
+            34 => 'ISO 6400', #PH
+            35 => 'Creative Light Effect', #PH
+            36 => 'Easy', #PH
+            37 => 'Quick Shot', #PH
+            38 => 'Creative Auto', #39
+            39 => 'Zoom Blur', #PH
+            40 => 'Low Light', #PH
+            41 => 'Nostalgic', #PH
+            42 => 'Super Vivid', #PH (SD4500)
+            43 => 'Poster Effect', #PH (SD4500)
+            44 => 'Face Self-timer', #PH
+            45 => 'Smile', #PH
+            46 => 'Wink Self-timer', #PH
+            47 => 'Fisheye Effect', #PH (SX30IS)
+            48 => 'Miniature Effect', #PH (SD4500)
+            49 => 'High-speed Burst', #PH
+            50 => 'Best Image Selection', #PH
+            51 => 'High Dynamic Range', #PH (S95)
+            52 => 'Handheld Night Scene', #PH
+            59 => 'Scene Intelligent Auto', #PH (T3i)
+            257 => 'Spotlight', #PH
+            258 => 'Night 2', #PH
+            259 => 'Night+',
+            260 => 'Super Night', #PH
+            261 => 'Sunset', #PH (SX10IS)
+            263 => 'Night Scene', #PH
+            264 => 'Surface', #PH
+            265 => 'Low Light 2', #PH
         },
     },
     12 => {
@@ -1113,18 +1677,18 @@ my %printParameter = (
             0 => 'None',
             1 => '2x',
             2 => '4x',
-            3 => 'Other',  # value obtained from 2*#37/#36
+            3 => 'Other',  # value obtained from 2*$val[37]/$val[36]
         },
     },
     13 => {
         Name => 'Contrast',
         RawConv => '$val == 0x7fff ? undef : $val',
-        %printParameter,
+        %Image::ExifTool::Exif::printParameter,
     },
     14 => {
         Name => 'Saturation',
         RawConv => '$val == 0x7fff ? undef : $val',
-        %printParameter,
+        %Image::ExifTool::Exif::printParameter,
     },
     15 => {
         Name => 'Sharpness',
@@ -1133,10 +1697,12 @@ my %printParameter = (
             some models use a range of -2 to +2 where 0 is normal sharpening, and
             others use a range of 0 to 7 where 0 is no sharpening
         },
+        PrintConv => '$val > 0 ? "+$val" : $val',
+        PrintConvInv => '$val',
     },
     16 => {
         Name => 'CameraISO',
-        RawConv => '$val != 0x7fff ? $val : undef',
+        RawConv => '$val == 0x7fff ? undef : $val',
         ValueConv => 'Image::ExifTool::Canon::CameraISO($val)',
         ValueConvInv => 'Image::ExifTool::Canon::CameraISO($val,1)',
     },
@@ -1198,8 +1764,10 @@ my %printParameter = (
     },
     22 => { #4
         Name => 'LensType',
-        RawConv => '$val ? $val : undef', # don't use if value is zero
+        RawConv => '$val ? $$self{LensType}=$val : undef', # don't use if value is zero
+        Notes => 'this value is incorrect for EOS 7D images with lenses of type 256 or greater',
         SeparateTable => 1,
+        DataMember => 'LensType',
         PrintConv => \%canonLensTypes,
     },
     23 => {
@@ -1223,8 +1791,11 @@ my %printParameter = (
     },
     25 => {
         Name => 'FocalUnits',
+        # conversion from raw focal length values to mm
         DataMember => 'FocalUnits',
         RawConv => '$$self{FocalUnits} = $val',
+        PrintConv => '"$val/mm"',
+        PrintConvInv => '$val=~s/\s*\/?\s*mm//;$val',
     },
     26 => { #9
         Name => 'MaxAperture',
@@ -1248,6 +1819,7 @@ my %printParameter = (
     },
     29 => {
         Name => 'FlashBits',
+        PrintConvColumns => 2,
         PrintConv => { BITMASK => {
             0 => 'Manual', #PH
             1 => 'TTL', #PH
@@ -1257,7 +1829,7 @@ my %printParameter = (
             7 => '2nd-curtain sync used',
             11 => 'FP sync used',
             13 => 'Built-in',
-            14 => 'External',
+            14 => 'External', #(may not be set in manual mode - ref 37)
         } },
     },
     32 => {
@@ -1286,8 +1858,9 @@ my %printParameter = (
         PrintConv => {
             0 => 'Off',
             1 => 'On',
-            2 => 'On, Shot Only', #15
+            2 => 'On, Shot Only', #15 (panning for SX10IS)
             3 => 'On, Panning', #PH (A570IS)
+            4 => 'On, Video', #PH (SX30IS)
         },
     },
     35 => { #PH
@@ -1309,6 +1882,7 @@ my %printParameter = (
     40 => { #PH
         Name => 'PhotoEffect',
         RawConv => '$val==-1 ? undef : $val',
+        PrintConvColumns => 2,
         PrintConv => {
             0 => 'Off',
             1 => 'Vivid',
@@ -1335,16 +1909,22 @@ my %printParameter = (
     42 => {
         Name => 'ColorTone',
         RawConv => '$val == 0x7fff ? undef : $val',
-        %printParameter,
+        %Image::ExifTool::Exif::printParameter,
+    },
+    46 => { #PH
+        Name => 'SRAWQuality',
+        RawConv => '$val==-1 ? undef : $val',
+        PrintConv => {
+            0 => 'n/a',
+            1 => 'sRAW1 (mRAW)',
+            2 => 'sRAW2 (sRAW)',
+        },
     },
 );
 
 # focal length information (MakerNotes tag 0x02)
 %Image::ExifTool::Canon::FocalLength = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int16u',
     FIRST_ENTRY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
@@ -1378,9 +1958,17 @@ my %printParameter = (
     2 => [ #4
         {
             Name => 'FocalPlaneXSize',
-            Notes => 'reported focal plane sizes are affected by digital zoom if applied',
-            # this conversion is not valid for the 1DmkIII, 1DSmkIII, 40D or 450D
-            Condition => '$$self{Model} !~ /\b(III|40D|450D|Rebel XSi|Kiss X2)\b/',
+            Notes => q{
+                these focal plane sizes are only valid for some models, and are affected by
+                digital zoom if applied
+            },
+            # this conversion is valid only for PowerShot models and these EOS models:
+            # D30, D60, 1D, 1DS, 5D, 10D, 20D, 30D, 300D, 350D, and 400D
+            Condition => q{
+                $$self{Model} !~ /EOS/ or
+                $$self{Model} =~ /\b(1DS?|5D|D30|D60|10D|20D|30D|K236)$/ or
+                $$self{Model} =~ /\b((300D|350D|400D) DIGITAL|REBEL( XTi?)?|Kiss Digital( [NX])?)$/
+            },
             # focal plane image dimensions in 1/1000 inch -- convert to mm
             RawConv => '$val < 40 ? undef : $val',  # must be reasonable
             ValueConv => '$val * 25.4 / 1000',
@@ -1395,7 +1983,11 @@ my %printParameter = (
     3 => [ #4
         {
             Name => 'FocalPlaneYSize',
-            Condition => '$$self{Model} !~ /\b(III|40D|450D|Rebel XSi|Kiss X2)\b/',
+            Condition => q{
+                $$self{Model} !~ /EOS/ or
+                $$self{Model} =~ /\b(1DS?|5D|D30|D60|10D|20D|30D|K236)$/ or
+                $$self{Model} =~ /\b((300D|350D|400D) DIGITAL|REBEL( XTi?)?|Kiss Digital( [NX])?)$/
+            },
             RawConv => '$val < 40 ? undef : $val',  # must be reasonable
             ValueConv => '$val * 25.4 / 1000',
             ValueConvInv => 'int($val * 1000 / 25.4 + 0.5)',
@@ -1411,12 +2003,10 @@ my %printParameter = (
 # Canon shot information (MakerNotes tag 0x04)
 # BinaryData (keys are indices into the int16s array)
 %Image::ExifTool::Canon::ShotInfo = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int16s',
     FIRST_ENTRY => 1,
+    DATAMEMBER => [ 19 ],
     GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
     1 => { #PH
         Name => 'AutoISO',
@@ -1438,11 +2028,14 @@ my %printParameter = (
     3 => { #9/PH
         Name => 'MeasuredEV',
         Notes => q{
-            this the Canon name for what could better be called MeasuredLV, and is
-            offset by about -5 EV from the calculated LV for most models
+            this is the Canon name for what could better be called MeasuredLV, and
+            should be close to the calculated LightValue for a proper exposure with most
+            models
         },
-        ValueConv => '$val / 32',
-        ValueConvInv => '$val * 32',
+        # empirical offset of +5 seems to be good for EOS models, but maybe
+        # the offset should be less by up to 1 EV for some PowerShot models
+        ValueConv => '$val / 32 + 5',
+        ValueConvInv => '($val - 5) * 32',
         PrintConv => 'sprintf("%.2f",$val)',
         PrintConvInv => '$val',
     },
@@ -1456,18 +2049,20 @@ my %printParameter = (
     },
     5 => { #2
         Name => 'TargetExposureTime',
-        RawConv => '$val > 0 ? $val : undef',
+        # ignore obviously bad values (also, -32768 may be used for n/a)
+        # (note that a few models always write 0: DC211, and video models)
+        RawConv => '($val > -1000 and ($val or $$self{Model}=~/(EOS|PowerShot|IXUS|IXY)/))? $val : undef',
         ValueConv => 'exp(-Image::ExifTool::Canon::CanonEv($val)*log(2))',
         ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv(-log($val)/log(2))',
         PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
-        PrintConvInv => 'eval $val',
+        PrintConvInv => 'Image::ExifTool::Exif::ConvertFraction($val)',
     },
     6 => {
         Name => 'ExposureCompensation',
         ValueConv => 'Image::ExifTool::Canon::CanonEv($val)',
         ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv($val)',
-        PrintConv => 'Image::ExifTool::Exif::ConvertFraction($val)',
-        PrintConvInv => 'eval $val',
+        PrintConv => 'Image::ExifTool::Exif::PrintFraction($val)',
+        PrintConvInv => 'Image::ExifTool::Exif::ConvertFraction($val)',
     },
     7 => {
         Name => 'WhiteBalance',
@@ -1477,6 +2072,7 @@ my %printParameter = (
     8 => { #PH
         Name => 'SlowShutter',
         PrintConv => {
+            -1 => 'n/a',
             0 => 'Off',
             1 => 'Night Scene',
             2 => 'On',
@@ -1498,9 +2094,21 @@ my %printParameter = (
         PrintConvInv => '$val =~ /[a-z]/i ? 8 : $val',
     },
     # 11 - (8 for all EOS samples, [0,8] for other models - PH)
+    12 => { #37
+        Name => 'CameraTemperature',
+        Condition => '$$self{Model} =~ /EOS/ and $$self{Model} !~ /EOS-1DS?$/',
+        Groups => { 2 => 'Camera' },
+        Notes => 'newer EOS models only',
+        # usually zero if not valid for an EOS model (exceptions: 1D, 1DS)
+        RawConv => '$val ? $val : undef',
+        ValueConv => '$val - 128',
+        ValueConvInv => '$val + 128',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
     13 => { #PH
         Name => 'FlashGuideNumber',
-        RawConv => '$val == -1 ? undef : $val',
+        RawConv => '$val==-1 ? undef : $val',
         ValueConv => '$val / 32',
         ValueConvInv => '$val * 32',
     },
@@ -1511,6 +2119,7 @@ my %printParameter = (
         Groups => { 2 => 'Camera' },
         Flags => 'PrintHex',
         RawConv => '$val==0 ? undef : $val',
+        PrintConvColumns => 2,
         PrintConv => {
             0x3000 => 'None (MF)',
             0x3001 => 'Right',
@@ -1527,8 +2136,8 @@ my %printParameter = (
         Description => 'Flash Exposure Compensation',
         ValueConv => 'Image::ExifTool::Canon::CanonEv($val)',
         ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv($val)',
-        PrintConv => 'Image::ExifTool::Exif::ConvertFraction($val)',
-        PrintConvInv => 'eval $val',
+        PrintConv => 'Image::ExifTool::Exif::PrintFraction($val)',
+        PrintConvInv => 'Image::ExifTool::Exif::ConvertFraction($val)',
     },
     16 => {
         Name => 'AutoExposureBracketing',
@@ -1544,8 +2153,8 @@ my %printParameter = (
         Name => 'AEBBracketValue',
         ValueConv => 'Image::ExifTool::Canon::CanonEv($val)',
         ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv($val)',
-        PrintConv => 'Image::ExifTool::Exif::ConvertFraction($val)',
-        PrintConvInv => 'eval $val',
+        PrintConv => 'Image::ExifTool::Exif::PrintFraction($val)',
+        PrintConvInv => 'Image::ExifTool::Exif::ConvertFraction($val)',
     },
     18 => { #22
         Name => 'ControlMode',
@@ -1557,13 +2166,23 @@ my %printParameter = (
     },
     19 => {
         Name => 'FocusDistanceUpper',
-        ValueConv => '$val * 0.01',
-        ValueConvInv => '$val / 0.01',
+        DataMember => 'FocusDistanceUpper',
+        Format => 'int16u',
+        Notes => 'FocusDistance tags are only extracted if FocusDistanceUpper is non-zero',
+        RawConv => '($$self{FocusDistanceUpper} = $val) || undef',
+        ValueConv => '$val / 100',
+        ValueConvInv => '$val * 100',
+        PrintConv => '$val > 655.345 ? "inf" : "$val m"',
+        PrintConvInv => '$val =~ s/ ?m$//; IsFloat($val) ? $val : 655.35',
     },
     20 => {
-        Name => 'FocusDistanceLower',
-        ValueConv => '$val * 0.01',
-        ValueConvInv => '$val / 0.01',
+        Name => 'FocusDistanceLower', # (seems to be the upper distance for the 400D)
+        Condition => '$$self{FocusDistanceUpper}',
+        Format => 'int16u',
+        ValueConv => '$val / 100',
+        ValueConvInv => '$val * 100',
+        PrintConv => '$val > 655.345 ? "inf" : "$val m"',
+        PrintConvInv => '$val =~ s/ ?m$//; IsFloat($val) ? $val : 655.35',
     },
     21 => {
         Name => 'FNumber',
@@ -1582,26 +2201,37 @@ my %printParameter = (
             # (but note that encoding is the same for TargetExposureTime - PH)
             Condition => '$$self{Model} =~ /\b(20D|350D|REBEL XT|Kiss Digital N)\b/',
             Priority => 0,
-            # apparently a value of 0 is valid in a CRW image (=1s, D60 sample)
+            # many models write 0 here in JPEG images (even though 0 is the
+            # value for an exposure time of 1 sec), but apparently a value of 0
+            # is valid in a CRW image (=1s, D60 sample)
             RawConv => '($val or $$self{FILE_TYPE} eq "CRW") ? $val : undef',
             # approximate big translation table by simple calculation - PH
             ValueConv => 'exp(-Image::ExifTool::Canon::CanonEv($val)*log(2))*1000/32',
             ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv(-log($val*32/1000)/log(2))',
             PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
-            PrintConvInv => 'eval $val',
+            PrintConvInv => 'Image::ExifTool::Exif::ConvertFraction($val)',
         },
         {
             Name => 'ExposureTime',
             Priority => 0,
-            # apparently a value of 0 is valid in a CRW image (=1s, D60 sample)
+            # many models write 0 here in JPEG images (even though 0 is the
+            # value for an exposure time of 1 sec), but apparently a value of 0
+            # is valid in a CRW image (=1s, D60 sample)
             RawConv => '($val or $$self{FILE_TYPE} eq "CRW") ? $val : undef',
             # approximate big translation table by simple calculation - PH
             ValueConv => 'exp(-Image::ExifTool::Canon::CanonEv($val)*log(2))',
             ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv(-log($val)/log(2))',
             PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
-            PrintConvInv => 'eval $val',
+            PrintConvInv => 'Image::ExifTool::Exif::ConvertFraction($val)',
         },
     ],
+    23 => { #37
+        Name => 'MeasuredEV2',
+        Description => 'Measured EV 2',
+        RawConv => '$val ? $val : undef',
+        ValueConv => '$val / 8 - 6',
+        ValueConvInv => 'int(($val + 6) * 8 + 0.5)',
+    },
     24 => {
         Name => 'BulbDuration',
         ValueConv => '$val / 10',
@@ -1613,6 +2243,7 @@ my %printParameter = (
         Name => 'CameraType',
         Groups => { 2 => 'Camera' },
         PrintConv => {
+            0 => 'n/a',
             248 => 'EOS High-end',
             250 => 'Compact',
             252 => 'EOS Mid-range',
@@ -1621,8 +2252,9 @@ my %printParameter = (
     },
     27 => {
         Name => 'AutoRotate',
+        RawConv => '$val >= 0 ? $val : undef',
         PrintConv => {
-           -1 => 'Rotated by Software',
+           -1 => 'n/a', # (set to -1 when rotated by Canon software)
             0 => 'None',
             1 => 'Rotate 90 CW',
             2 => 'Rotate 180',
@@ -1631,7 +2263,7 @@ my %printParameter = (
     },
     28 => { #15
         Name => 'NDFilter',
-        PrintConv => { 0 => 'Off', 1 => 'On' },
+        PrintConv => { -1 => 'n/a', 0 => 'Off', 1 => 'On' },
     },
     29 => {
         Name => 'SelfTimer2',
@@ -1641,19 +2273,123 @@ my %printParameter = (
     },
     33 => { #PH (A570IS)
         Name => 'FlashOutput',
-        Notes => 'this has a maximum value of 500 for models like the A570IS',
+        RawConv => '($$self{Model}=~/(PowerShot|IXUS|IXY)/ or $val) ? $val : undef',
+        Notes => q{
+            used only for PowerShot models, this has a maximum value of 500 for models
+            like the A570IS
+        },
     },
 );
 
+# Canon panorama information (MakerNotes tag 0x05)
+%Image::ExifTool::Canon::Panorama = (
+    %binaryDataAttrs,
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
+    # 0 - values: always 1
+    # 1 - values: 0,256,512(3 sequential L->R images); 0,-256(2 R->L images)
+    2 => 'PanoramaFrameNumber', #(some models this is always 0)
+    # 3 - values: 160(SX10IS,A570IS); 871(S30)
+    # 4 - values: always 0
+    5 => {
+        Name => 'PanoramaDirection',
+        PrintConv => {
+            0 => 'Left to Right',
+            1 => 'Right to Left',
+            2 => 'Bottom to Top',
+            3 => 'Top to Bottom',
+            4 => '2x2 Matrix (Clockwise)',
+        },
+     },
+);
+
+# D30 color information (MakerNotes tag 0x0a)
+%Image::ExifTool::Canon::UnknownD30 = (
+    %binaryDataAttrs,
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 1,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+);
+
+#..............................................................................
+# common CameraInfo tag definitions
+my %ciFNumber = (
+    Name => 'FNumber',
+    Format => 'int8u',
+    Groups => { 2 => 'Image' },
+    RawConv => '$val ? $val : undef',
+    ValueConv => 'exp(($val-8)/16*log(2))',
+    ValueConvInv => 'log($val)*16/log(2)+8',
+    PrintConv => 'sprintf("%.2g",$val)',
+    PrintConvInv => '$val',
+);
+my %ciExposureTime = (
+    Name => 'ExposureTime',
+    Format => 'int8u',
+    Groups => { 2 => 'Image' },
+    RawConv => '$val ? $val : undef',
+    ValueConv => 'exp(4*log(2)*(1-Image::ExifTool::Canon::CanonEv($val-24)))',
+    ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv(1-log($val)/(4*log(2)))+24',
+    PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
+    PrintConvInv => 'Image::ExifTool::Exif::ConvertFraction($val)',
+);
+my %ciISO = (
+    Name => 'ISO',
+    Format => 'int8u',
+    Groups => { 2 => 'Image' },
+    ValueConv => '100*exp(($val/8-9)*log(2))',
+    ValueConvInv => '(log($val/100)/log(2)+9)*8',
+    PrintConv => 'sprintf("%.0f",$val)',
+    PrintConvInv => '$val',
+);
+my %ciCameraTemperature = (
+    Name => 'CameraTemperature',
+    Format => 'int8u',
+    ValueConv => '$val - 128',
+    ValueConvInv => '$val + 128',
+    PrintConv => '"$val C"',
+    PrintConvInv => '$val=~s/ ?C//; $val',
+);
+my %ciMacroMagnification = (
+    Name => 'MacroMagnification',
+    Notes => 'currently decoded only for the MP-E 65mm f/2.8 1-5x Macro Photo',
+    Condition => '$$self{LensType} and $$self{LensType} == 124',
+    # 75=1x, 44=5x, log relationship
+    ValueConv => 'exp((75-$val) * log(2) * 3 / 40)',
+    ValueConvInv => '$val > 0 ? 75 - log($val) / log(2) * 40 / 3 : undef',
+    PrintConv => 'sprintf("%.1fx",$val)',
+    PrintConvInv => '$val=~s/\s*x//; $val',
+);
+my %ciFocalLength = (
+    Name => 'FocalLength',
+    Format => 'int16uRev', # (just to make things confusing, the focal lengths are big-endian)
+    # ignore if zero
+    RawConv => '$val ? $val : undef',
+    PrintConv => '"$val mm"',
+    PrintConvInv => '$val=~s/\s*mm//;$val',
+);
+my %ciShortFocal = (
+    Name => 'ShortFocal',
+    Format => 'int16uRev', # byte order is big-endian
+    PrintConv => '"$val mm"',
+    PrintConvInv => '$val=~s/\s*mm//;$val',
+);
+my %ciLongFocal = (
+    Name => 'LongFocal',
+    Format => 'int16uRev', # byte order is big-endian
+    PrintConv => '"$val mm"',
+    PrintConvInv => '$val=~s/\s*mm//;$val',
+);
+
+#..............................................................................
 # Camera information for 1D and 1DS (MakerNotes tag 0x0d)
 # (ref 15 unless otherwise noted)
 %Image::ExifTool::Canon::CameraInfo1D = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int8u',
     FIRST_ENTRY => 0,
+    PRIORITY => 0,  # these tags are not reliable since they change with firmware version
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     NOTES => q{
         Information in the "CameraInfo" records is tricky to decode because the
@@ -1662,21 +2398,10 @@ my %printParameter = (
         considerable variation in format from model to model. The first table below
         lists CameraInfo tags for the 1D and 1DS.
     },
-    0x04 => { #9
-        Name => 'ExposureTime',
-        Groups => { 2 => 'Image' },
-        Priority => 0,
-        RawConv => '$val ? $val : undef',
-        ValueConv => 'exp(4*log(2)*(1-Image::ExifTool::Canon::CanonEv($val-24)))',
-        ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv(1-log($val)/(4*log(2)))+24',
-        PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
-        PrintConvInv => 'eval $val',
-    },
+    0x04 => { %ciExposureTime }, #9
     0x0a => {
         Name => 'FocalLength',
         Format => 'int16u',
-        # the EXIF FocalLength is more reliable, so set this priority to zero
-        Priority => 0,
         # ignore if zero
         RawConv => '$val ? $val : undef',
         PrintConv => '"$val mm"',
@@ -1684,6 +2409,7 @@ my %printParameter = (
     },
     0x0d => { #9
         Name => 'LensType',
+        Format => 'int16uRev', # value is little-endian
         SeparateTable => 1,
         RawConv => '$val ? $val : undef', # don't use if value is zero
         PrintConv => \%canonLensTypes,
@@ -1691,23 +2417,20 @@ my %printParameter = (
     0x0e => {
         Name => 'ShortFocal',
         Format => 'int16u',
-        # the EXIF ShortFocal is more reliable, so set this priority to zero
-        Priority => 0,
         PrintConv => '"$val mm"',
         PrintConvInv => '$val=~s/\s*mm//;$val',
     },
     0x10 => {
         Name => 'LongFocal',
         Format => 'int16u',
-        # the EXIF ShortFocal is more reliable, so set this priority to zero
-        Priority => 0,
         PrintConv => '"$val mm"',
         PrintConvInv => '$val=~s/\s*mm//;$val',
     },
     0x41 => {
-        Name => 'SharpnessFrequency',
+        Name => 'SharpnessFrequency', # PatternSharpness?
         Condition => '$$self{Model} =~ /\b1D$/',
         Notes => '1D only',
+        PrintConvColumns => 2,
         PrintConv => {
             0 => 'n/a',
             1 => 'Lowest',
@@ -1731,9 +2454,10 @@ my %printParameter = (
         PrintConv => \%canonWhiteBalance,
     },
     0x47 => {
-        Name => 'SharpnessFrequency',
+        Name => 'SharpnessFrequency', # PatternSharpness?
         Condition => '$$self{Model} =~ /\b1DS$/',
         Notes => '1DS only',
+        PrintConvColumns => 2,
         PrintConv => {
             0 => 'n/a',
             1 => 'Lowest',
@@ -1789,64 +2513,25 @@ my %printParameter = (
 # Camera information for 1DmkII and 1DSmkII (MakerNotes tag 0x0d)
 # (ref 15 unless otherwise noted)
 %Image::ExifTool::Canon::CameraInfo1DmkII = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int8u',
     FIRST_ENTRY => 0,
+    PRIORITY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     NOTES => 'CameraInfo tags for the 1DmkII and 1DSmkII.',
-    0x04 => { #9
-        Name => 'ExposureTime',
-        Groups => { 2 => 'Image' },
-        Priority => 0,
-        RawConv => '$val ? $val : undef',
-        ValueConv => 'exp(4*log(2)*(1-Image::ExifTool::Canon::CanonEv($val-24)))',
-        ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv(1-log($val)/(4*log(2)))+24',
-        PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
-        PrintConvInv => 'eval $val',
-    },
-    0x09 => { #9
-        Name => 'FocalLength',
-        Format => 'int16u',
-        # the EXIF FocalLength is more reliable, so set this priority to zero
-        Priority => 0,
-        # ignore if zero
-        RawConv => '$val ? $val : undef',
-        # (just to make things confusing, the focal lengths are big-endian)
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
-    0x0d => { #9
+    0x04 => { %ciExposureTime }, #9
+    0x09 => { %ciFocalLength }, #9
+    0x0c => { #9
         Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
         SeparateTable => 1,
         RawConv => '$val ? $val : undef', # don't use if value is zero
         PrintConv => \%canonLensTypes,
     },
-    0x11 => { #9
-        Name => 'ShortFocal',
-        Format => 'int16u',
-        Priority => 0,
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
-    0x13 => { #9
-        Name => 'LongFocal',
-        Format => 'int16u',
-        Priority => 0,
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
+    0x11 => { %ciShortFocal }, #9
+    0x13 => { %ciLongFocal }, #9
     0x2d => { #9
         Name => 'FocalType',
-        Priority => 0,
         PrintConv => {
            0 => 'Fixed',
            2 => 'Zoom',
@@ -1859,13 +2544,12 @@ my %printParameter = (
     },
     0x37 => {
         Name => 'ColorTemperature',
-        Format => 'int16u',
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
+        Format => 'int16uRev',
     },
     0x39 => {
         Name => 'CanonImageSize',
         Format => 'int16u',
+        PrintConvColumns => 2,
         PrintConv => \%canonImageSize,
     },
     0x66 => {
@@ -1880,12 +2564,12 @@ my %printParameter = (
     0x6e => {
         Name => 'Saturation',
         Format => 'int8s',
-        %printParameter,
+        %Image::ExifTool::Exif::printParameter,
     },
     0x6f => {
         Name => 'ColorTone',
         Format => 'int8s',
-        %printParameter,
+        %Image::ExifTool::Exif::printParameter,
     },
     0x72 => {
         Name => 'Sharpness',
@@ -1894,7 +2578,7 @@ my %printParameter = (
     0x73 => {
         Name => 'Contrast',
         Format => 'int8s',
-        %printParameter,
+        %Image::ExifTool::Exif::printParameter,
     },
     0x75 => {
         Name => 'ISO',
@@ -1905,62 +2589,23 @@ my %printParameter = (
 # Camera information for the 1DmkIIN (MakerNotes tag 0x0d)
 # (ref 9 unless otherwise noted)
 %Image::ExifTool::Canon::CameraInfo1DmkIIN = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int8u',
     FIRST_ENTRY => 0,
+    PRIORITY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     NOTES => 'CameraInfo tags for the 1DmkIIN.',
-    0x04 => {
-        Name => 'ExposureTime',
-        Groups => { 2 => 'Image' },
-        Priority => 0,
-        RawConv => '$val ? $val : undef',
-        ValueConv => 'exp(4*log(2)*(1-Image::ExifTool::Canon::CanonEv($val-24)))',
-        ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv(1-log($val)/(4*log(2)))+24',
-        PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
-        PrintConvInv => 'eval $val',
-    },
-    0x09 => {
-        Name => 'FocalLength',
-        Format => 'int16u',
-        Priority => 0,
-        # ignore if zero
-        RawConv => '$val ? $val : undef',
-        # (just to make things confusing, the focal lengths are big-endian)
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
-    0x0d => {
+    0x04 => { %ciExposureTime },
+    0x09 => { %ciFocalLength },
+    0x0c => {
         Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
         SeparateTable => 1,
         RawConv => '$val ? $val : undef', # don't use if value is zero
         PrintConv => \%canonLensTypes,
     },
-    0x11 => {
-        Name => 'ShortFocal',
-        Format => 'int16u',
-        # the EXIF ShortFocal is more reliable, so set this priority to zero
-        Priority => 0,
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
-    0x13 => {
-        Name => 'LongFocal',
-        Format => 'int16u',
-        # the EXIF LongFocal is more reliable, so set this priority to zero
-        Priority => 0,
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
+    0x11 => { %ciShortFocal },
+    0x13 => { %ciLongFocal },
     0x36 => { #15
         Name => 'WhiteBalance',
         SeparateTable => 1,
@@ -1968,9 +2613,7 @@ my %printParameter = (
     },
     0x37 => { #15
         Name => 'ColorTemperature',
-        Format => 'int16u',
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
+        Format => 'int16uRev',
     },
     0x73 => { #15
         Name => 'PictureStyle',
@@ -1984,17 +2627,17 @@ my %printParameter = (
     0x75 => { #15
         Name => 'Contrast',
         Format => 'int8s',
-        %printParameter,
+        %Image::ExifTool::Exif::printParameter,
     },
     0x76 => { #15
         Name => 'Saturation',
         Format => 'int8s',
-        %printParameter,
+        %Image::ExifTool::Exif::printParameter,
     },
     0x77 => { #15
         Name => 'ColorTone',
         Format => 'int8s',
-        %printParameter,
+        %Image::ExifTool::Exif::printParameter,
     },
     0x79 => { #15
         Name => 'ISO',
@@ -2005,68 +2648,35 @@ my %printParameter = (
 # Canon camera information for 1DmkIII and 1DSmkIII (MakerNotes tag 0x0d)
 # (ref PH unless otherwise noted)
 %Image::ExifTool::Canon::CameraInfo1DmkIII = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int8u',
     FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    IS_SUBDIR => [ 0x2aa ],
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     NOTES => 'CameraInfo tags for the 1DmkIII and 1DSmkIII.',
-    0x03 => {
-        Name => 'FNumber',
-        Groups => { 2 => 'Image' },
-        Priority => 0,
-        RawConv => '$val ? $val : undef',
-        ValueConv => 'exp(($val-8)/16*log(2))',
-        ValueConvInv => 'log($val)*16/log(2)+8',
-        PrintConv => 'sprintf("%.2g",$val)',
-        PrintConvInv => '$val',
-    },
-    0x04 => { #9
-        Name => 'ExposureTime',
-        Groups => { 2 => 'Image' },
-        Priority => 0,
-        RawConv => '$val ? $val : undef',
-        ValueConv => 'exp(4*log(2)*(1-Image::ExifTool::Canon::CanonEv($val-24)))',
-        ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv(1-log($val)/(4*log(2)))+24',
-        PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
-        PrintConvInv => 'eval $val',
-    },
-    0x06 => {
-        Name => 'ISO',
-        Groups => { 2 => 'Image' },
-        Priority => 0,
-        ValueConv => '100*exp(($val/8-9)*log(2))',
-        ValueConvInv => '(log($val/100)/log(2)+9)*8',
-        PrintConv => 'sprintf("%.0f",$val)',
-        PrintConvInv => '$val',
-    },
-    0x1d => {
-        Name => 'FocalLength',
-        Format => 'int16u',
-        # the EXIF FocalLength is more reliable, so set this priority to zero
-        Priority => 0,
-        # ignore if zero
-        RawConv => '$val ? $val : undef',
-        # (just to make things confusing, the focal lengths are big-endian)
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
+    0x03 => { %ciFNumber },
+    0x04 => { %ciExposureTime }, #9
+    0x06 => { %ciISO },
+    0x18 => { %ciCameraTemperature }, #36
+    0x1b => { %ciMacroMagnification }, #(NC)
+    0x1d => { %ciFocalLength },
+    0x30 => {
+        Name => 'CameraOrientation', # <-- (always 9th byte after 0xbbbb for all models - Dave Coffin)
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
     },
     0x43 => { #21/24
         Name => 'FocusDistanceUpper',
-        Format => 'int16u',
         # (it looks like the focus distances are also odd-byte big-endian)
-        ValueConv => 'unpack("n",pack("v",$val)) * 0.01',
-        ValueConvInv => 'unpack("v",pack("n",$val / 0.01))',
+        %focusDistanceByteSwap,
     },
     0x45 => { #21/24
         Name => 'FocusDistanceLower',
-        Format => 'int16u',
-        ValueConv => 'unpack("n",pack("v",$val)) * 0.01',
-        ValueConvInv => 'unpack("v",pack("n",$val / 0.01))',
+        %focusDistanceByteSwap,
     },
     0x5e => { #15
         Name => 'WhiteBalance',
@@ -2083,33 +2693,14 @@ my %printParameter = (
         Flags => ['PrintHex','SeparateTable'],
         PrintConv => \%pictureStyles,
     },
-    0x112 => { #15
+    0x111 => { #15
         Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
         SeparateTable => 1,
         PrintConv => \%canonLensTypes,
     },
-    0x113 => {
-        Name => 'ShortFocal',
-        Format => 'int16u',
-        # the EXIF ShortFocal is more reliable, so set this priority to zero
-        Priority => 0,
-        # byte order is big-endian
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
-    0x115 => {
-        Name => 'LongFocal',
-        Format => 'int16u',
-        # the EXIF LongFocal is more reliable, so set this priority to zero
-        Priority => 0,
-        # byte order is big-endian
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
+    0x113 => { %ciShortFocal },
+    0x115 => { %ciLongFocal },
     0x136 => { #15
         Name => 'FirmwareVersion',
         Format => 'string[6]',
@@ -2134,6 +2725,12 @@ my %printParameter = (
         Format => 'int32u',
         ValueConv => '$val - 1',
         ValueConvInv => '$val + 1',
+    },
+    0x2aa => { #48
+        Name => 'PictureStyleInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
     },
     0x45a => { #29
         Name => 'TimeStamp1',
@@ -2165,72 +2762,227 @@ my %printParameter = (
     },
 );
 
-# Camera information for 5D  (MakerNotes tag 0x0d)
+# Canon camera information for 1DmkIV (MakerNotes tag 0x0d) (ref PH)
+%Image::ExifTool::Canon::CameraInfo1DmkIV = (
+    %binaryDataAttrs,
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    DATAMEMBER => [ 0x57 ],
+    IS_SUBDIR => [ 0x363, 0x368 ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the 1DmkIV.',
+    0x03 => { %ciFNumber },
+    0x04 => { %ciExposureTime },
+    0x06 => { %ciISO },
+    0x07 => {
+        Name => 'HighlightTonePriority',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+    0x08 => {
+        Name => 'MeasuredEV2',
+        Description => 'Measured EV 2',
+        RawConv => '$val ? $val : undef',
+        ValueConv => '$val / 8 - 6',
+        ValueConvInv => 'int(($val + 6) * 8 + 0.5)',
+    },
+    0x09 => {
+        Name => 'MeasuredEV3',
+        Description => 'Measured EV 3',
+        RawConv => '$val ? $val : undef',
+        ValueConv => '$val / 8 - 6',
+        ValueConvInv => 'int(($val + 6) * 8 + 0.5)',
+    },
+    0x15 => {
+        Name => 'FlashMeteringMode',
+        PrintConv => {
+            0 => 'E-TTL',
+            3 => 'TTL',
+            4 => 'External Auto',
+            5 => 'External Manual',
+            6 => 'Off',
+        },
+    },
+    0x19 => { %ciCameraTemperature },
+    0x1e => { %ciFocalLength },
+    0x35 => {
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
+    },
+    0x54 => {
+        Name => 'FocusDistanceUpper',
+        %focusDistanceByteSwap,
+    },
+    0x56 => {
+        Name => 'FocusDistanceLower',
+        %focusDistanceByteSwap,
+    },
+    0x57 => {
+        Name => 'FirmwareVersionLookAhead',
+        Hidden => 1,
+        # must look ahead to check location of FirmwareVersion string
+        Format => 'undef[0x1a6]',
+        RawConv => q{
+            my $t = substr($val, 0x1e8 - 0x57, 6);
+            $t =~ /^\d+\.\d+\.\d+/ and $$self{CanonFirmA} = 1;
+            $t = substr($val, 0x1ed - 0x57, 6);
+            $t =~ /^\d+\.\d+\.\d+/ and $$self{CanonFirmB} = 1;
+            return undef;   # not a real tag
+        },
+    },
+    0x77 => {
+        Name => 'WhiteBalance',
+        Condition => '$$self{CanonFirmA}',
+        Notes => 'firmware 4.2.1',
+        Format => 'int16u',
+        SeparateTable => 1,
+        PrintConv => \%canonWhiteBalance,
+    },
+    0x78 => {
+        Name => 'WhiteBalance',
+        Condition => '$$self{CanonFirmB}',
+        Notes => 'firmware 1.0.4',
+        Format => 'int16u',
+        SeparateTable => 1,
+        PrintConv => \%canonWhiteBalance,
+    },
+    0x7b => {
+        Name => 'ColorTemperature',
+        Condition => '$$self{CanonFirmA}',
+        Format => 'int16u',
+    },
+    0x7c => {
+        Name => 'ColorTemperature',
+        Condition => '$$self{CanonFirmB}',
+        Format => 'int16u',
+    },
+    0x14e => {
+        Name => 'LensType',
+        Condition => '$$self{CanonFirmA}',
+        Format => 'int16uRev', # value is big-endian
+        SeparateTable => 1,
+        PrintConv => \%canonLensTypes,
+    },
+    0x14f => {
+        Name => 'LensType',
+        Condition => '$$self{CanonFirmB}',
+        Format => 'int16uRev', # value is big-endian
+        SeparateTable => 1,
+        PrintConv => \%canonLensTypes,
+    },
+    0x150 => {
+        %ciShortFocal,
+        Condition => '$$self{CanonFirmA}',
+    },
+    0x151 => {
+        %ciShortFocal,
+        Condition => '$$self{CanonFirmB}',
+    },
+    0x152 => {
+        %ciLongFocal,
+        Condition => '$$self{CanonFirmA}',
+    },
+    0x153 => {
+        %ciLongFocal,
+        Condition => '$$self{CanonFirmB}',
+    },
+    0x1e8 => { # firmware 4.2.1 (pre-production)
+        Name => 'FirmwareVersion',
+        Condition => '$$self{CanonFirmA}',
+        Format => 'string[6]',
+        Writable => 0,
+    },
+    0x1ed => { # firmware 1.0.4
+        Name => 'FirmwareVersion',
+        Condition => '$$self{CanonFirmB}',
+        Format => 'string[6]',
+        Writable => 0,
+    },
+    0x227 => { #(NC)
+        Name => 'FileIndex',
+        Condition => '$$self{CanonFirmA}',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x22c => { #(NC)
+        Name => 'FileIndex',
+        Condition => '$$self{CanonFirmB}',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x233 => { #(NC)
+        Name => 'DirectoryIndex',
+        Condition => '$$self{CanonFirmA}',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val - 1',
+        ValueConvInv => '$val + 1',
+    },
+    0x238 => { #(NC)
+        Name => 'DirectoryIndex',
+        Condition => '$$self{CanonFirmB}',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val - 1',
+        ValueConvInv => '$val + 1',
+    },
+    0x363 => {
+        Name => 'PictureStyleInfo',
+        Condition => '$$self{CanonFirmA}',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
+    },
+    0x368 => {
+        Name => 'PictureStyleInfo',
+        Condition => '$$self{CanonFirmB}',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
+    },
+);
+
+# Camera information for 5D (MakerNotes tag 0x0d)
 # (ref 12 unless otherwise noted)
 %Image::ExifTool::Canon::CameraInfo5D = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int8s',
     FIRST_ENTRY => 0,
+    PRIORITY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     NOTES => 'CameraInfo tags for the EOS 5D.',
-    0x03 => { #PH
-        Name => 'FNumber',
-        Format => 'int8u',
-        Groups => { 2 => 'Image' },
-        Priority => 0,
-        RawConv => '$val ? $val : undef',
-        ValueConv => 'exp(($val-8)/16*log(2))',
-        ValueConvInv => 'log($val)*16/log(2)+8',
-        PrintConv => 'sprintf("%.2g",$val)',
-        PrintConvInv => '$val',
-    },
-    0x04 => { #9
-        Name => 'ExposureTime',
-        Format => 'int8u',
-        Groups => { 2 => 'Image' },
-        Priority => 0,
-        RawConv => '$val ? $val : undef',
-        ValueConv => 'exp(4*log(2)*(1-Image::ExifTool::Canon::CanonEv($val-24)))',
-        ValueConvInv => 'Image::ExifTool::Canon::CanonEvInv(1-log($val)/(4*log(2)))+24',
-        PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
-        PrintConvInv => 'eval $val',
-    },
-    0x06 => { #PH
-        Name => 'ISO',
-        Format => 'int8u',
-        Groups => { 2 => 'Image' },
-        Priority => 0,
-        ValueConv => '100*exp(($val/8-9)*log(2))',
-        ValueConvInv => '(log($val/100)/log(2)+9)*8',
-        PrintConv => 'sprintf("%.0f",$val)',
-        PrintConvInv => '$val',
-    },
-    0x0d => { #9
+    0x03 => { %ciFNumber }, #PH
+    0x04 => { %ciExposureTime }, #9
+    0x06 => { %ciISO }, #PH
+    0x0c => { #9
         Name => 'LensType',
-        Format => 'int8u',
+        Format => 'int16uRev', # value is big-endian
         SeparateTable => 1,
         RawConv => '$val ? $val : undef', # don't use if value is zero
         PrintConv => \%canonLensTypes,
     },
-    0x28 => { #15
-        Name => 'FocalLength',
-        Format => 'int16u',
-        Priority => 0,
-        # ignore if zero
-        RawConv => '$val ? $val : undef',
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
+    0x17 => { %ciCameraTemperature }, #PH
+    0x1b => { %ciMacroMagnification }, #PH
+    0x27 => { #PH
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
     },
+    0x28 => { %ciFocalLength }, #15
     0x38 => {
         Name => 'AFPointsInFocus5D',
-        Format => 'int16u',
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
+        Format => 'int16uRev',
+        PrintConvColumns => 2,
         PrintConv => { BITMASK => {
             0 => 'Center',
             1 => 'Top',
@@ -2265,27 +3017,11 @@ my %printParameter = (
         Flags => ['PrintHex','SeparateTable'],
         PrintConv => \%pictureStyles,
     },
-    0x93 => { #15
-        Name => 'ShortFocal',
-        Format => 'int16u',
-        Priority => 0,
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
-    0x95 => { #15
-        Name => 'LongFocal',
-        Format => 'int16u',
-        Priority => 0,
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
-    0x98 => { #15
+    0x93 => { %ciShortFocal }, #15
+    0x95 => { %ciLongFocal }, #15
+    0x97 => { #15
         Name => 'LensType',
-        Format => 'int8u',
+        Format => 'int16uRev', # value is big-endian
         SeparateTable => 1,
         PrintConv => \%canonLensTypes,
     },
@@ -2336,6 +3072,7 @@ my %printParameter = (
             2 => 'Orange',
             3 => 'Red',
             4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
         },
     },
     0x100 => 'SaturationUserDef1',
@@ -2354,6 +3091,7 @@ my %printParameter = (
             2 => 'Blue',
             3 => 'Purple',
             4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
         },
     },
     0x109 => 'ColorToneUserDef1',
@@ -2362,19 +3100,20 @@ my %printParameter = (
     0x10c => {
         Name => 'UserDef1PictureStyle',
         Format => 'int16u',
-        PrintHex => 1,
+        PrintHex => 1, # (only needed for one tag)
+        SeparateTable => 'UserDefStyle',
         PrintConv => \%userDefStyles,
     },
     0x10e => {
         Name => 'UserDef2PictureStyle',
         Format => 'int16u',
-        PrintHex => 1,
+        SeparateTable => 'UserDefStyle',
         PrintConv => \%userDefStyles,
     },
     0x110 => {
         Name => 'UserDef3PictureStyle',
         Format => 'int16u',
-        PrintHex => 1,
+        SeparateTable => 'UserDefStyle',
         PrintConv => \%userDefStyles,
     },
     0x11c => {
@@ -2390,42 +3129,347 @@ my %printParameter = (
     },
 );
 
-# Canon camera information for 40D (MakerNotes tag 0x0d)
-%Image::ExifTool::Canon::CameraInfo40D = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+# Camera information for 5D Mark II (MakerNotes tag 0x0d)
+# (ref PH unless otherwise noted)
+%Image::ExifTool::Canon::CameraInfo5DmkII = (
+    %binaryDataAttrs,
     FORMAT => 'int8u',
     FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    IS_SUBDIR => [ 0x15a, 0x17e ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the EOS 5D Mark II.',
+    0x03 => { %ciFNumber },
+    0x04 => { %ciExposureTime },
+    0x06 => { %ciISO },
+    0x07 => {
+        Name => 'HighlightTonePriority',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+    0x1b => { %ciMacroMagnification }, #PH
+    0x15 => { #PH (580 EX II)
+        Name => 'FlashMeteringMode',
+        PrintConv => {
+            0 => 'E-TTL',
+            3 => 'TTL',
+            4 => 'External Auto',
+            5 => 'External Manual',
+            6 => 'Off',
+        },
+    },
+    0x19 => { %ciCameraTemperature }, #36
+    # 0x1b, 0x1c, 0x1d - same as FileInfo 0x10 - PH
+    0x1e => { %ciFocalLength },
+    0x31 => {
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
+    },
+    0x50 => {
+        Name => 'FocusDistanceUpper',
+        %focusDistanceByteSwap,
+    },
+    0x52 => {
+        Name => 'FocusDistanceLower',
+        %focusDistanceByteSwap,
+    },
+    0x6f => {
+        Name => 'WhiteBalance',
+        Format => 'int16u',
+        SeparateTable => 1,
+        PrintConv => \%canonWhiteBalance,
+    },
+    0x73 => {
+        Name => 'ColorTemperature',
+        Format => 'int16u',
+    },
+    0xa7 => {
+        Name => 'PictureStyle',
+        Format => 'int8u',
+        Flags => ['PrintHex','SeparateTable'],
+        PrintConv => \%pictureStyles,
+    },
+    0xbd => {
+        Name => 'HighISONoiseReduction',
+        PrintConv => {
+            0 => 'Standard',
+            1 => 'Low',
+            2 => 'Strong',
+            3 => 'Off',
+        },
+    },
+    0xbf => {
+        Name => 'AutoLightingOptimizer',
+        PrintConv => {
+            0 => 'Standard',
+            1 => 'Low',
+            2 => 'Strong',
+            3 => 'Off',
+        },
+    },
+    0xe6 => {
+        Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
+        SeparateTable => 1,
+        PrintConv => \%canonLensTypes,
+    },
+    0xe8 => { %ciShortFocal },
+    0xea => { %ciLongFocal },
+    0x15a => {
+        Name => 'CameraInfo5DmkII_2a',
+        Condition => '$$valPt =~ /^\d+\.\d+\.\d+[\s\0]/',
+        Notes => 'at this location for firmware 3.4.6 and 3.6.1',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::CameraInfo5DmkII_2',
+        },
+    },
+    0x17e => {
+        Name => 'CameraInfo5DmkII_2b',
+        Condition => '$$valPt =~ /^\d+\.\d+\.\d+[\s\0]/',
+        Notes => 'at this location for firmware 1.0.6 and 4.1.1',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::CameraInfo5DmkII_2',
+        },
+    },
+);
+
+# variable-position Camera information for 5DmkII (ref PH)
+%Image::ExifTool::Canon::CameraInfo5DmkII_2 = (
+    %binaryDataAttrs,
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    IS_SUBDIR => [ 0x179 ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'More CameraInfo tags for the EOS 5D Mark II.',
+    0 => {
+        Name => 'FirmwareVersion',
+        Format => 'string[6]',
+        Writable => 0, # not writable for logic reasons
+        # some firmwares have a null instead of a space after the version number
+        RawConv => '$val=~/^\d+\.\d+\.\d+\s*$/ ? $val : undef',
+    },
+    0x3d => {
+        Name => 'FileIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x49 => { #(NC)
+        Name => 'DirectoryIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val - 1',
+        ValueConvInv => '$val + 1',
+    },
+    0x179 => { #48
+        Name => 'PictureStyleInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
+    },
+);
+
+# Camera information for 7D (MakerNotes tag 0x0d) (ref PH)
+%Image::ExifTool::Canon::CameraInfo7D = (
+    %binaryDataAttrs,
+    FORMAT => 'int8u',
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    IS_SUBDIR => [ 0x20, 0x24 ],
+    DATAMEMBER => [ 0x1f ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the EOS 7D.',
+    0x03 => { %ciFNumber },
+    0x04 => { %ciExposureTime },
+    0x06 => { %ciISO },
+    0x07 => {
+        Name => 'HighlightTonePriority',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+    0x08 => { #37
+        Name => 'MeasuredEV2',
+        Description => 'Measured EV 2',
+        RawConv => '$val ? $val : undef',
+        ValueConv => '$val / 8 - 6',
+        ValueConvInv => 'int(($val + 6) * 8 + 0.5)',
+    },
+    0x09 => { #37
+        Name => 'MeasuredEV',
+        Description => 'Measured EV',
+        RawConv => '$val ? $val : undef',
+        ValueConv => '$val / 8 - 6',
+        ValueConvInv => 'int(($val + 6) * 8 + 0.5)',
+    },
+    0x15 => { #PH (580 EX II)
+        Name => 'FlashMeteringMode',
+        PrintConv => {
+            0 => 'E-TTL',
+            3 => 'TTL',
+            4 => 'External Auto',
+            5 => 'External Manual',
+            6 => 'Off',
+        },
+    },
+    0x19 => { %ciCameraTemperature },
+    0x1e => { %ciFocalLength },
+    0x1f => {
+        Name => 'FirmwareVersionLookAhead',
+        Hidden => 1,
+        # must look ahead to check location of FirmwareVersion string
+        Format => 'undef[0x1a0]',
+        RawConv => q{
+            my $t = substr($val, 0x1a8 - 0x1f, 6);
+            $t =~ /^\d+\.\d+\.\d+/ and $$self{CanonFirmA} = 1;
+            $t = substr($val, 0x1ac - 0x1f, 6);
+            $t =~ /^\d+\.\d+\.\d+/ and $$self{CanonFirmB} = 1;
+            return undef;   # not a real tag
+        },
+    },
+    0x20 => {
+        Name => 'CameraInfo7D_2a',
+        Condition => '$$self{CanonFirmA}',
+        Notes => 'at this location for pre-production firmware version 3.7.5',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::CameraInfo7D_2',
+        },
+    },
+    0x24 => {
+        Name => 'CameraInfo7D_2b',
+        Condition => '$$self{CanonFirmB}',
+        Notes => 'at this location for firmware 1.0.7, 1.0.8, 1.1.0, 1.2.1 and 1.2.2',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::CameraInfo7D_2',
+        },
+    },
+);
+
+# variable-position Camera information for 7D (ref PH)
+%Image::ExifTool::Canon::CameraInfo7D_2 = (
+    %binaryDataAttrs,
+    FORMAT => 'int8u',
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    IS_SUBDIR => [ 0x303 ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'More CameraInfo tags for the EOS 7D.',
+    0x11 => {
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
+    },
+    0x30 => {
+        Name => 'FocusDistanceUpper',
+        %focusDistanceByteSwap,
+    },
+    0x32 => {
+        Name => 'FocusDistanceLower',
+        %focusDistanceByteSwap,
+    },
+    0x53 => {
+        Name => 'WhiteBalance',
+        Format => 'int16u',
+        SeparateTable => 1,
+        PrintConv => \%canonWhiteBalance,
+    },
+    0x57 => {
+        Name => 'ColorTemperature',
+        Format => 'int16u',
+    },
+    0xa5 => {
+        Name => 'HighISONoiseReduction',
+        PrintConv => {
+            0 => 'Standard',
+            1 => 'Low',
+            2 => 'Strong',
+            3 => 'Off',
+        },
+    },
+    0xee => {
+        Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
+        SeparateTable => 1,
+        PrintConv => \%canonLensTypes,
+    },
+    0xf0 => { %ciShortFocal },
+    0xf2 => { %ciLongFocal },
+    0x188 => {
+        Name => 'FirmwareVersion',
+        Format => 'string[6]',
+        Writable => 0, # not writable for logic reasons
+        # some firmwares have a null instead of a space after the version number
+        RawConv => '$val=~/^\d+\.\d+\.\d+\s*$/ ? $val : undef',
+    },
+    0x1c7 => {
+        Name => 'FileIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x1d3 => { #(NC)
+        Name => 'DirectoryIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val - 1',
+        ValueConvInv => '$val + 1',
+    },
+    0x303 => { #48
+        Name => 'PictureStyleInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
+    },
+);
+
+# Canon camera information for 40D (MakerNotes tag 0x0d) (ref PH)
+%Image::ExifTool::Canon::CameraInfo40D = (
+    %binaryDataAttrs,
+    FORMAT => 'int8u',
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    IS_SUBDIR => [ 0x25b ],
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     NOTES => 'CameraInfo tags for the EOS 40D.',
-    0x1d => {
-        Name => 'FocalLength',
-        Format => 'int16u',
-        # the EXIF FocalLength is more reliable, so set this priority to zero
-        Priority => 0,
-        # ignore if zero
-        RawConv => '$val ? $val : undef',
-        # (just to make things confusing, the focal lengths are big-endian)
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
+    0x03 => { %ciFNumber }, #PH
+    0x04 => { %ciExposureTime }, #PH
+    0x06 => { %ciISO }, #PH
+    0x15 => { #PH (580 EX II)
+        Name => 'FlashMeteringMode',
+        PrintConv => {
+            0 => 'E-TTL',
+            3 => 'TTL',
+            4 => 'External Auto',
+            5 => 'External Manual',
+            6 => 'Off',
+        },
+    },
+    0x18 => { %ciCameraTemperature }, #36
+    0x1b => { %ciMacroMagnification }, #PH
+    0x1d => { %ciFocalLength }, #PH
+    0x30 => { #20
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
     },
     0x43 => { #21/24
         Name => 'FocusDistanceUpper',
-        Format => 'int16u',
         # this is very odd (little-endian number on odd boundary),
         # but it does seem to work better with my sample images - PH
-        ValueConv => 'unpack("n",pack("v",$val)) * 0.01',
-        ValueConvInv => 'unpack("v",pack("n",$val / 0.01))',
+        %focusDistanceByteSwap,
     },
     0x45 => { #21/24
         Name => 'FocusDistanceLower',
-        Format => 'int16u',
-        ValueConv => 'unpack("n",pack("v",$val)) * 0.01',
-        ValueConvInv => 'unpack("v",pack("n",$val / 0.01))',
+        %focusDistanceByteSwap,
     },
     0x6f => { #15
         Name => 'WhiteBalance',
@@ -2437,29 +3481,14 @@ my %printParameter = (
         Name => 'ColorTemperature',
         Format => 'int16u',
     },
-    0xd7 => { #15
+    0xd6 => { #15
         Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
         SeparateTable => 1,
         PrintConv => \%canonLensTypes,
     },
-    0xd8 => { #15
-        Name => 'ShortFocal',
-        Format => 'int16u',
-        Priority => 0,
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
-    0xda => { #15
-        Name => 'LongFocal',
-        Format => 'int16u',
-        Priority => 0,
-        ValueConv => 'unpack("n",pack("v",$val))',
-        ValueConvInv => 'unpack("v",pack("n",$val))',
-        PrintConv => '"$val mm"',
-        PrintConvInv => '$val=~s/\s*mm//;$val',
-    },
+    0xd8 => { %ciShortFocal }, #15
+    0xda => { %ciLongFocal }, #15
     0xff => { #15
         Name => 'FirmwareVersion',
         Format => 'string[6]',
@@ -2479,103 +3508,1355 @@ my %printParameter = (
         ValueConv => '$val - 1', # yes, minus (opposite to FileIndex)
         ValueConvInv => '$val + 1',
     },
+    0x25b => {
+        Name => 'PictureStyleInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
+    },
+    0x92b => { #33
+        Name => 'LensModel',
+        Format => 'string[64]',
+    },
+);
+
+# Canon camera information for 50D (MakerNotes tag 0x0d)
+# (ref PH unless otherwise noted)
+%Image::ExifTool::Canon::CameraInfo50D = (
+    %binaryDataAttrs,
+    FORMAT => 'int8u',
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    DATAMEMBER => [ 0x15a, 0x15e ],
+    IS_SUBDIR => [ 0x2d3, 0x2d7 ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the EOS 50D.',
+    0x03 => { %ciFNumber },
+    0x04 => { %ciExposureTime },
+    0x06 => { %ciISO },
+    0x07 => {
+        Name => 'HighlightTonePriority',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+    0x15 => { #PH (580 EX II)
+        Name => 'FlashMeteringMode',
+        PrintConv => {
+            0 => 'E-TTL',
+            3 => 'TTL',
+            4 => 'External Auto',
+            5 => 'External Manual',
+            6 => 'Off',
+        },
+    },
+    0x19 => { %ciCameraTemperature }, #36
+    0x1e => { %ciFocalLength },
+    0x31 => {
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
+    },
+    0x50 => { #33
+        Name => 'FocusDistanceUpper',
+        %focusDistanceByteSwap,
+    },
+    0x52 => { #33
+        Name => 'FocusDistanceLower',
+        %focusDistanceByteSwap,
+    },
+    0x6f => {
+        Name => 'WhiteBalance',
+        Format => 'int16u',
+        SeparateTable => 1,
+        PrintConv => \%canonWhiteBalance,
+    },
+    0x73 => { #33
+        Name => 'ColorTemperature',
+        Format => 'int16u',
+    },
+    0xa7 => {
+        Name => 'PictureStyle',
+        Format => 'int8u',
+        Flags => ['PrintHex','SeparateTable'],
+        PrintConv => \%pictureStyles,
+    },
+    0xbd => {
+        Name => 'HighISONoiseReduction',
+        PrintConv => {
+            0 => 'Standard',
+            1 => 'Low',
+            2 => 'Strong',
+            3 => 'Off',
+        },
+    },
+    0xbf => {
+        Name => 'AutoLightingOptimizer',
+        PrintConv => {
+            0 => 'Standard',
+            1 => 'Low',
+            2 => 'Strong',
+            3 => 'Off',
+        },
+    },
+    0xea => { #33
+        Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
+        SeparateTable => 1,
+        PrintConv => \%canonLensTypes,
+    },
+    0xec => { %ciShortFocal },
+    0xee => { %ciLongFocal },
+    0x15a => {
+        Name => 'FirmwareVersion',
+        Format => 'string[6]',
+        Notes => 'at this location for firmware 2.6.1',
+        Writable => 0,
+        RawConv => '$val=~/^\d+\.\d+\.\d+\s*$/ ? $$self{CanonFirmA}=$val : undef',
+    },
+    0x15e => { #33
+        Name => 'FirmwareVersion',
+        Format => 'string[6]',
+        Notes => 'at this location for firmware 1.0.2, 1.0.3, 2.9.1 and 3.1.1',
+        Writable => 0,
+        RawConv => '$val=~/^\d+\.\d+\.\d+\s*$/ ? $$self{CanonFirmB}=$val : undef',
+    },
+    0x197 => {
+        Name => 'FileIndex',
+        Condition => '$$self{CanonFirmA}',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x19b => {
+        Name => 'FileIndex',
+        Condition => '$$self{CanonFirmB}',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x1a3 => { #(NC)
+        Name => 'DirectoryIndex',
+        Condition => '$$self{CanonFirmA}',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val - 1',
+        ValueConvInv => '$val + 1',
+    },
+    0x1a7 => { #(NC)
+        Name => 'DirectoryIndex',
+        Condition => '$$self{CanonFirmB}',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val - 1',
+        ValueConvInv => '$val + 1',
+    },
+    0x2d3 => {
+        Name => 'PictureStyleInfo',
+        Condition => '$$self{CanonFirmA}',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
+    },
+    0x2d7 => {
+        Name => 'PictureStyleInfo',
+        Condition => '$$self{CanonFirmB}',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
+    },
+);
+
+# Canon camera information for 60D (MakerNotes tag 0x0d)
+# (ref PH unless otherwise noted)
+# NOTE: Can probably borrow more 50D tags here, possibly with an offset
+%Image::ExifTool::Canon::CameraInfo60D = (
+    %binaryDataAttrs,
+    FORMAT => 'int8u',
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+  #  DATAMEMBER => [ 0x199 ],
+    IS_SUBDIR => [ 0x321 ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the EOS 60D.',
+    0x03 => { %ciFNumber },
+    0x04 => { %ciExposureTime },
+    0x06 => { %ciISO },
+    0x19 => { %ciCameraTemperature },
+    0x1e => { %ciFocalLength },
+    0x36 => {
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
+    },
+    0x55 => {
+        Name => 'FocusDistanceUpper',
+        %focusDistanceByteSwap,
+    },
+    0x57 => {
+        Name => 'FocusDistanceLower',
+        %focusDistanceByteSwap,
+    },
+    0x7d => {
+        Name => 'ColorTemperature',
+        Format => 'int16u',
+    },
+    0xe8 => {
+        Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
+        SeparateTable => 1,
+        PrintConv => \%canonLensTypes,
+    },
+    0xea => { %ciShortFocal },
+    0xec => { %ciLongFocal },
+    0x199 => {
+        Name => 'FirmwareVersion',
+        Format => 'string[6]',
+  #      Notes => 'at this location for firmware 2.8.1 and 1.0.5',
+        Writable => 0,
+  #      RawConv => '$val=~/^\d+\.\d+\.\d+\s*$/ ? $$self{CanonFirmA}=$val : undef',
+    },
+    0x1d9 => {
+        Name => 'FileIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x1e5 => { #(NC)
+        Name => 'DirectoryIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val - 1',
+        ValueConvInv => '$val + 1',
+    },
+    0x321 => {
+        Name => 'PictureStyleInfo2',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo2',
+        },
+    },
+);
+
+# Canon camera information for 450D (MakerNotes tag 0x0d) (ref PH)
+%Image::ExifTool::Canon::CameraInfo450D = (
+    %binaryDataAttrs,
+    FORMAT => 'int8u',
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    IS_SUBDIR => [ 0x263 ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the EOS 450D.',
+    0x03 => { %ciFNumber }, #PH
+    0x04 => { %ciExposureTime }, #PH
+    0x06 => { %ciISO }, #PH
+    0x15 => { #PH (580 EX II)
+        Name => 'FlashMeteringMode',
+        PrintConv => {
+            0 => 'E-TTL',
+            3 => 'TTL',
+            4 => 'External Auto',
+            5 => 'External Manual',
+            6 => 'Off',
+        },
+    },
+    0x18 => { %ciCameraTemperature }, #36
+    0x1b => { %ciMacroMagnification }, #PH
+    0x1d => { %ciFocalLength }, #PH
+    0x30 => { #20
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
+    },
+    0x43 => { #20
+        Name => 'FocusDistanceUpper',
+        # this is very odd (little-endian number on odd boundary),
+        # but it does seem to work better with my sample images - PH
+        %focusDistanceByteSwap,
+    },
+    0x45 => { #20
+        Name => 'FocusDistanceLower',
+        %focusDistanceByteSwap,
+    },
+    0x6f => { #PH
+        Name => 'WhiteBalance',
+        Format => 'int16u',
+        PrintConv => \%canonWhiteBalance,
+        SeparateTable => 1,
+    },
+    0x73 => { #PH
+        Name => 'ColorTemperature',
+        Format => 'int16u',
+    },
+    0xde => { #33
+        Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
+        SeparateTable => 1,
+        PrintConv => \%canonLensTypes,
+    },
+    0x107 => { #PH
+        Name => 'FirmwareVersion',
+        Format => 'string[6]',
+    },
+    0x10f => { #20
+        Name => 'OwnerName',
+        Format => 'string[32]',
+    },
+    0x133 => { #20
+        Name => 'DirectoryIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+    },
+    0x13f => { #20
+        Name => 'FileIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x263 => { #PH
+        Name => 'PictureStyleInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
+    },
+    0x933 => { #33
+        Name => 'LensModel',
+        Format => 'string[64]',
+    },
+);
+
+# Canon camera information for 500D (MakerNotes tag 0x0d) (ref PH)
+%Image::ExifTool::Canon::CameraInfo500D = (
+    %binaryDataAttrs,
+    FORMAT => 'int8u',
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    IS_SUBDIR => [ 0x30b ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the EOS 500D.',
+    0x03 => { %ciFNumber },
+    0x04 => { %ciExposureTime },
+    0x06 => { %ciISO },
+    0x07 => {
+        Name => 'HighlightTonePriority',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+    0x15 => { #PH (580 EX II)
+        Name => 'FlashMeteringMode',
+        PrintConv => {
+            0 => 'E-TTL',
+            3 => 'TTL',
+            4 => 'External Auto',
+            5 => 'External Manual',
+            6 => 'Off',
+        },
+    },
+    0x19 => { %ciCameraTemperature },
+    0x1e => { %ciFocalLength },
+    0x31 => {
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
+    },
+    0x50 => {
+        Name => 'FocusDistanceUpper',
+        %focusDistanceByteSwap,
+    },
+    0x52 => {
+        Name => 'FocusDistanceLower',
+        %focusDistanceByteSwap,
+    },
+    0x73 => { # (50D + 4)
+        Name => 'WhiteBalance',
+        Format => 'int16u',
+        SeparateTable => 1,
+        PrintConv => \%canonWhiteBalance,
+    },
+    0x77 => { # (50D + 4)
+        Name => 'ColorTemperature',
+        Format => 'int16u',
+    },
+    0xab => { # (50D + 4)
+        Name => 'PictureStyle',
+        Format => 'int8u',
+        Flags => ['PrintHex','SeparateTable'],
+        PrintConv => \%pictureStyles,
+    },
+    0xbc => {
+        Name => 'HighISONoiseReduction',
+        PrintConv => {
+            0 => 'Standard',
+            1 => 'Low',
+            2 => 'Strong',
+            3 => 'Off',
+        },
+    },
+    0xbe => {
+        Name => 'AutoLightingOptimizer',
+        PrintConv => {
+            0 => 'Standard',
+            1 => 'Low',
+            2 => 'Strong',
+            3 => 'Off',
+        },
+    },
+    0xf6 => {
+        Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
+        SeparateTable => 1,
+        PrintConv => \%canonLensTypes,
+    },
+    0xf8 => { %ciShortFocal },
+    0xfa => { %ciLongFocal },
+    0x190 => {
+        Name => 'FirmwareVersion',
+        Format => 'string[6]',
+        Writable => 0,
+        RawConv => '$val=~/^\d+\.\d+\.\d+\s*$/ ? $val : undef',
+    },
+    0x1d3 => {
+        Name => 'FileIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x1df => { #(NC)
+        Name => 'DirectoryIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val - 1',
+        ValueConvInv => '$val + 1',
+    },
+    0x30b => {
+        Name => 'PictureStyleInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
+    },
+);
+
+# Canon camera information for 550D (MakerNotes tag 0x0d) (ref PH)
+%Image::ExifTool::Canon::CameraInfo550D = (
+    %binaryDataAttrs,
+    FORMAT => 'int8u',
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    IS_SUBDIR => [ 0x31c ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the EOS 550D.',
+    0x03 => { %ciFNumber },
+    0x04 => { %ciExposureTime },
+    0x06 => { %ciISO },
+    0x07 => { #(NC)
+        Name => 'HighlightTonePriority',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+    0x15 => { #(NC)
+        Name => 'FlashMeteringMode',
+        PrintConv => {
+            0 => 'E-TTL',
+            3 => 'TTL',
+            4 => 'External Auto',
+            5 => 'External Manual',
+            6 => 'Off',
+        },
+    },
+    0x19 => { %ciCameraTemperature }, # (500D + 0)
+    0x1e => { %ciFocalLength }, # (500D + 0)
+    0x35 => { # (500D + 4)
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
+    },
+    0x54 => { # (500D + 4)
+        Name => 'FocusDistanceUpper',
+        %focusDistanceByteSwap,
+    },
+    0x56 => { # (500D + 4)
+        Name => 'FocusDistanceLower',
+        %focusDistanceByteSwap,
+    },
+    0x78 => { # (500D + 5) (NC)
+        Name => 'WhiteBalance',
+        Format => 'int16u',
+        SeparateTable => 1,
+        PrintConv => \%canonWhiteBalance,
+    },
+    0x7c => { # (500D + 5)
+        Name => 'ColorTemperature',
+        Format => 'int16u',
+    },
+    0xb0 => { # (500D + 5)
+        Name => 'PictureStyle',
+        Format => 'int8u',
+        Flags => ['PrintHex','SeparateTable'],
+        PrintConv => \%pictureStyles,
+    },
+    0xff => { # (500D + 9)
+        Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
+        SeparateTable => 1,
+        PrintConv => \%canonLensTypes,
+    },
+    0x101 => { %ciShortFocal }, # (500D + 9)
+    0x103 => { %ciLongFocal }, # (500D + 9)
+    0x1a4 => { # (500D + 0x11)
+        Name => 'FirmwareVersion',
+        Format => 'string[6]',
+        Writable => 0,
+        RawConv => '$val=~/^\d+\.\d+\.\d+\s*$/ ? $val : undef',
+    },
+    0x1e4 => { # (500D + 0x11)
+        Name => 'FileIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x1f0 => { # (500D + 0x11) (NC)
+        Name => 'DirectoryIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val - 1',
+        ValueConvInv => '$val + 1',
+    },
+    0x31c => { #48
+        Name => 'PictureStyleInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
+    },
+);
+
+# Canon camera information for 600D and 1100D (MakerNotes tag 0x0d) (ref PH)
+%Image::ExifTool::Canon::CameraInfo600D = (
+    %binaryDataAttrs,
+    FORMAT => 'int8u',
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    IS_SUBDIR => [ 0x2fb ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the EOS 600D and 1100D.',
+    0x03 => { %ciFNumber },
+    0x04 => { %ciExposureTime },
+    0x06 => { %ciISO },
+    0x07 => { #(NC)
+        Name => 'HighlightTonePriority',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+    0x15 => { #(NC)
+        Name => 'FlashMeteringMode',
+        PrintConv => {
+            0 => 'E-TTL',
+            3 => 'TTL',
+            4 => 'External Auto',
+            5 => 'External Manual',
+            6 => 'Off',
+        },
+    },
+    0x19 => { %ciCameraTemperature }, # (60D + 0)
+    0x1e => { %ciFocalLength }, # (60D + 0)
+    0x38 => { # (60D + 2)
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
+    },
+    0x57 => { # (60D + 2, 550D + 3)
+        Name => 'FocusDistanceUpper',
+        %focusDistanceByteSwap,
+    },
+    0x59 => { # (60D + 2, 550D + 3)
+        Name => 'FocusDistanceLower',
+        %focusDistanceByteSwap,
+    },
+    0x7b => { # (550D + 3)
+        Name => 'WhiteBalance',
+        Format => 'int16u',
+        SeparateTable => 1,
+        PrintConv => \%canonWhiteBalance,
+    },
+    0x7f => { # (60D + 2, 550D + 3)
+        Name => 'ColorTemperature',
+        Format => 'int16u',
+    },
+    0xb3 => { # (550D + 3)
+        Name => 'PictureStyle',
+        Format => 'int8u',
+        Flags => ['PrintHex','SeparateTable'],
+        PrintConv => \%pictureStyles,
+    },
+    0xea => { # (60D + 2, 550D + 3)
+        Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
+        SeparateTable => 1,
+        PrintConv => \%canonLensTypes,
+    },
+    0xec => { %ciShortFocal }, # (60D + 2)
+    0xee => { %ciLongFocal }, # (60D + 2)
+    0x19b => { # (60D + 2)
+        Name => 'FirmwareVersion',
+        Format => 'string[6]',
+        Writable => 0,
+        RawConv => '$val=~/^\d+\.\d+\.\d+\s*$/ ? $val : undef',
+    },
+    0x1db => { # (60D + 2) (NC)
+        Name => 'FileIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x1e7 => { # (60D + 2) (NC)
+        Name => 'DirectoryIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val - 1',
+        ValueConvInv => '$val + 1',
+    },
+    0x2fb => {
+        Name => 'PictureStyleInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo2',
+        },
+    },
+);
+
+# Canon camera information for 1000D (MakerNotes tag 0x0d) (ref PH)
+%Image::ExifTool::Canon::CameraInfo1000D = (
+    %binaryDataAttrs,
+    FORMAT => 'int8u',
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    IS_SUBDIR => [ 0x267 ],
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'CameraInfo tags for the EOS 1000D.',
+    0x03 => { %ciFNumber }, #PH
+    0x04 => { %ciExposureTime }, #PH
+    0x06 => { %ciISO }, #PH
+    0x15 => { #PH (580 EX II)
+        Name => 'FlashMeteringMode',
+        PrintConv => {
+            0 => 'E-TTL',
+            3 => 'TTL',
+            4 => 'External Auto',
+            5 => 'External Manual',
+            6 => 'Off',
+        },
+    },
+    0x18 => { %ciCameraTemperature }, #36
+    0x1b => { %ciMacroMagnification }, #PH (NC)
+    0x1d => { %ciFocalLength }, #PH
+    0x30 => { #20
+        Name => 'CameraOrientation',
+        PrintConv => {
+            0 => 'Horizontal (normal)',
+            1 => 'Rotate 90 CW',
+            2 => 'Rotate 270 CW',
+        },
+    },
+    0x43 => { #20
+        Name => 'FocusDistanceUpper',
+        %focusDistanceByteSwap,
+    },
+    0x45 => { #20
+        Name => 'FocusDistanceLower',
+        %focusDistanceByteSwap,
+    },
+    0x6f => { #PH
+        Name => 'WhiteBalance',
+        Format => 'int16u',
+        PrintConv => \%canonWhiteBalance,
+        SeparateTable => 1,
+    },
+    0x73 => { #PH
+        Name => 'ColorTemperature',
+        Format => 'int16u',
+    },
+    0xe2 => { #PH
+        Name => 'LensType',
+        Format => 'int16uRev', # value is big-endian
+        SeparateTable => 1,
+        PrintConv => \%canonLensTypes,
+    },
+    0xe4 => { %ciShortFocal }, #PH
+    0xe6 => { %ciLongFocal }, #PH
+    0x10b => { #PH
+        Name => 'FirmwareVersion',
+        Format => 'string[6]',
+    },
+    0x137 => { #PH (NC)
+        Name => 'DirectoryIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+    },
+    0x143 => { #PH
+        Name => 'FileIndex',
+        Groups => { 2 => 'Image' },
+        Format => 'int32u',
+        ValueConv => '$val + 1',
+        ValueConvInv => '$val - 1',
+    },
+    0x267 => { #PH
+        Name => 'PictureStyleInfo',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Canon::PSInfo',
+        },
+    },
+    0x937 => { #PH
+        Name => 'LensModel',
+        Format => 'string[64]',
+    },
 );
 
 # Canon camera information for PowerShot models (MakerNotes tag 0x0d) - PH
 %Image::ExifTool::Canon::CameraInfoPowerShot = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int32s',
     FIRST_ENTRY => 0,
+    PRIORITY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
-    NOTES => 'CameraInfo tags for PowerShot models.',
+    NOTES => q{
+        CameraInfo tags for PowerShot models such as the A450, A460, A550, A560,
+        A570, A630, A640, A650, A710, A720, G7, G9, S5, SD40, SD750, SD800, SD850,
+        SD870, SD900, SD950, SD1000, SX100 and TX1.
+    },
     0x00 => {
         Name => 'ISO',
         Groups => { 2 => 'Image' },
-        Priority => 0,
-        ValueConv => '100*exp(($val/100-4)*log(2))',
-        ValueConvInv => '(log($val/100)/log(2)+4)*100',
+        ValueConv => '100*exp((($val-411)/96)*log(2))',
+        ValueConvInv => 'log($val/100)/log(2)*96+411',
         PrintConv => 'sprintf("%.0f",$val)',
         PrintConvInv => '$val',
     },
     0x05 => {
         Name => 'FNumber',
         Groups => { 2 => 'Image' },
-        Priority => 0,
-        ValueConv => 'exp(($val+16)/200*log(2))',
-        ValueConvInv => 'log($val)*200/log(2)-16',
+        ValueConv => 'exp($val/192*log(2))',
+        ValueConvInv => 'log($val)*192/log(2)',
         PrintConv => 'sprintf("%.2g",$val)',
         PrintConvInv => '$val',
     },
     0x06 => {
         Name => 'ExposureTime',
         Groups => { 2 => 'Image' },
-        Priority => 0,
-        RawConv => '$val ? $val : undef',
-        ValueConv => 'exp(-($val+24)/100*log(2))',
-        ValueConvInv => '-log($val)*100/log(2)-24',
+        ValueConv => 'exp(-$val/96*log(2))',
+        ValueConvInv => '-log($val)*96/log(2)',
         PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
-        PrintConvInv => 'eval $val',
+        PrintConvInv => 'Image::ExifTool::Exif::ConvertFraction($val)',
     },
     0x17 => 'Rotation', # usually the same as Orientation (but not always! why?)
+    # 0x25 - flash fired/not fired (ref 37)
+    # 0x26 - related to flash mode? (ref 37)
+    # 0x37 - related to flash strength (ref 37)
+    # 0x38 - pre-flash fired/no fired or flash data collection (ref 37)
+    135 => { # [-3] <-- index relative to CameraInfoCount
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 138',
+        Notes => 'A450, A460, A550, A630, A640 and A710',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    145 => { #37 [-3]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 148',
+        Notes => q{
+            A560, A570, A650, A720, G7, G9, S5, SD40, SD750, SD800, SD850, SD870, SD900,
+            SD950, SD1000, SX100 and TX1
+        },
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+);
+
+# Canon camera information for some PowerShot models (MakerNotes tag 0x0d) - PH
+%Image::ExifTool::Canon::CameraInfoPowerShot2 = (
+    %binaryDataAttrs,
+    FORMAT => 'int32s',
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => q{
+        CameraInfo tags for PowerShot models such as the A470, A480, A490, A495,
+        A580, A590, A1000, A1100, A2000, A2100, A3000, A3100, D10, E1, G10, G11,
+        S90, S95, SD770, SD780, SD790, SD880, SD890, SD940, SD960, SD970, SD980,
+        SD990, SD1100, SD1200, SD1300, SD1400, SD3500, SD4000, SD4500, SX1, SX10,
+        SX20, SX110, SX120, SX130, SX200 and SX210.
+    },
+    0x01 => {
+        Name => 'ISO',
+        Groups => { 2 => 'Image' },
+        ValueConv => '100*exp((($val-411)/96)*log(2))',
+        ValueConvInv => 'log($val/100)/log(2)*96+411',
+        PrintConv => 'sprintf("%.0f",$val)',
+        PrintConvInv => '$val',
+    },
+    0x06 => {
+        Name => 'FNumber',
+        Groups => { 2 => 'Image' },
+        ValueConv => 'exp($val/192*log(2))',
+        ValueConvInv => 'log($val)*192/log(2)',
+        PrintConv => 'sprintf("%.2g",$val)',
+        PrintConvInv => '$val',
+    },
+    0x07 => {
+        Name => 'ExposureTime',
+        Groups => { 2 => 'Image' },
+        ValueConv => 'exp(-$val/96*log(2))',
+        ValueConvInv => '-log($val)*96/log(2)',
+        PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
+        PrintConvInv => 'Image::ExifTool::Exif::ConvertFraction($val)',
+    },
+    0x18 => 'Rotation',
+    153 => { # [-3] <-- index relative to CameraInfoCount
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 156',
+        Notes => 'A470, A580, A590, SD770, SD790, SD890 and SD1100',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    159 => { # [-3]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 162',
+        Notes => 'A1000, A2000, E1, G10, SD880, SD990, SX1, SX10 and SX110',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    164 => { # [-3]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 167',
+        Notes => 'A480, A1100, A2100, D10, SD780, SD960, SD970, SD1200 and SX200',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    168 => { # [-3]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 171',
+        Notes => q{
+            A490, A495, A3000, A3100, G11, S90, SD940, SD980, SD1300, SD1400, SD3500,
+            SD4000, SX20, SX120 and SX210
+        },
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    261 => { # [-3]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 264',
+        Notes => 'S95, SD4500 and SX130',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
 );
 
 # unknown Canon camera information (MakerNotes tag 0x0d) - PH
 %Image::ExifTool::Canon::CameraInfoUnknown32 = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int32s',
     FIRST_ENTRY => 0,
+    PRIORITY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     NOTES => 'Unknown CameraInfo tags are divided into 3 tables based on format size.',
+    71 => { # [-1] <-- index relative to CameraInfoCount
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 72',
+        Notes => 'S1',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    83 => { # [-2]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 85',
+        Notes => 'S2',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    91 => { # [-2 or -3]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 93 or $$self{CameraInfoCount} == 94',
+        Notes => 'A410, A610, A620, S80, SD30, SD400, SD430, SD450, SD500 and SD550',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    92 => { # [-4]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 96',
+        Notes => 'S3',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    100 => { # [-4]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 104',
+        Notes => 'A420, A430, A530, A540, A700, SD600, SD630 and SD700',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    466 => { # [-3]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 469',
+        Notes => 'A1200, A2200, A3200, A3300, 100HS, 300HS and 500HS',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    503 => { # [-3]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 506',
+        Notes => 'A800',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
+    506 => { # [-3]
+        Name => 'CameraTemperature',
+        Condition => '$$self{CameraInfoCount} == 509',
+        Notes => 'SX230HS',
+        PrintConv => '"$val C"',
+        PrintConvInv => '$val=~s/ ?C//; $val',
+    },
 );
 
 # unknown Canon camera information (MakerNotes tag 0x0d) - PH
 %Image::ExifTool::Canon::CameraInfoUnknown16 = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int16s',
     FIRST_ENTRY => 0,
+    PRIORITY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
 );
 
 # unknown Canon camera information (MakerNotes tag 0x0d) - PH
 %Image::ExifTool::Canon::CameraInfoUnknown = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int8s',
     FIRST_ENTRY => 0,
+    PRIORITY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
 );
 
-# Canon panorama information (MakerNotes tag 0x05)
-%Image::ExifTool::Canon::Panorama = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
-    FORMAT => 'int16s',
+# Picture Style information for various cameras (ref 48)
+%Image::ExifTool::Canon::PSInfo = (
+    %binaryDataAttrs,
     FIRST_ENTRY => 0,
-    GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
-    2 => 'PanoramaFrame',
-    5 => {
-        Name => 'PanoramaDirection',
+    PRIORITY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'Custom picture style information for various models.',
+    # (values expected to be "n/a" are flagged as Unknown)
+    0x00 => { Name => 'ContrastStandard',      %psInfo },
+    0x04 => { Name => 'SharpnessStandard',     %psInfo },
+    0x08 => { Name => 'SaturationStandard',    %psInfo },
+    0x0c => { Name => 'ColorToneStandard',     %psInfo },
+    0x10 => { Name => 'FilterEffectStandard',  %psInfo, Unknown => 1 },
+    0x14 => { Name => 'ToningEffectStandard',  %psInfo, Unknown => 1 },
+    0x18 => { Name => 'ContrastPortrait',      %psInfo },
+    0x1c => { Name => 'SharpnessPortrait',     %psInfo },
+    0x20 => { Name => 'SaturationPortrait',    %psInfo },
+    0x24 => { Name => 'ColorTonePortrait',     %psInfo },
+    0x28 => { Name => 'FilterEffectPortrait',  %psInfo, Unknown => 1 },
+    0x2c => { Name => 'ToningEffectPortrait',  %psInfo, Unknown => 1 },
+    0x30 => { Name => 'ContrastLandscape',     %psInfo },
+    0x34 => { Name => 'SharpnessLandscape',    %psInfo },
+    0x38 => { Name => 'SaturationLandscape',   %psInfo },
+    0x3c => { Name => 'ColorToneLandscape',    %psInfo },
+    0x40 => { Name => 'FilterEffectLandscape', %psInfo, Unknown => 1 },
+    0x44 => { Name => 'ToningEffectLandscape', %psInfo, Unknown => 1 },
+    0x48 => { Name => 'ContrastNeutral',       %psInfo },
+    0x4c => { Name => 'SharpnessNeutral',      %psInfo },
+    0x50 => { Name => 'SaturationNeutral',     %psInfo },
+    0x54 => { Name => 'ColorToneNeutral',      %psInfo },
+    0x58 => { Name => 'FilterEffectNeutral',   %psInfo, Unknown => 1 },
+    0x5c => { Name => 'ToningEffectNeutral',   %psInfo, Unknown => 1 },
+    0x60 => { Name => 'ContrastFaithful',      %psInfo },
+    0x64 => { Name => 'SharpnessFaithful',     %psInfo },
+    0x68 => { Name => 'SaturationFaithful',    %psInfo },
+    0x6c => { Name => 'ColorToneFaithful',     %psInfo },
+    0x70 => { Name => 'FilterEffectFaithful',  %psInfo, Unknown => 1 },
+    0x74 => { Name => 'ToningEffectFaithful',  %psInfo, Unknown => 1 },
+    0x78 => { Name => 'ContrastMonochrome',    %psInfo },
+    0x7c => { Name => 'SharpnessMonochrome',   %psInfo },
+    0x80 => { Name => 'SaturationMonochrome',  %psInfo, Unknown => 1 },
+    0x84 => { Name => 'ColorToneMonochrome',   %psInfo, Unknown => 1 },
+    0x88 => { Name => 'FilterEffectMonochrome',%psInfo,
         PrintConv => {
-            0 => 'Left to Right',
-            1 => 'Right to Left',
-            2 => 'Bottom to Top',
-            3 => 'Top to Bottom',
-            4 => '2x2 Matrix (Clockwise)',
+            0 => 'None',
+            1 => 'Yellow',
+            2 => 'Orange',
+            3 => 'Red',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
         },
-     },
+    },
+    0x8c => { Name => 'ToningEffectMonochrome',%psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Sepia',
+            2 => 'Blue',
+            3 => 'Purple',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0x90 => { Name => 'ContrastUserDef1',      %psInfo },
+    0x94 => { Name => 'SharpnessUserDef1',     %psInfo },
+    0x98 => { Name => 'SaturationUserDef1',    %psInfo },
+    0x9c => { Name => 'ColorToneUserDef1',     %psInfo },
+    0xa0 => { Name => 'FilterEffectUserDef1',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Yellow',
+            2 => 'Orange',
+            3 => 'Red',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xa4 => { Name => 'ToningEffectUserDef1',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Sepia',
+            2 => 'Blue',
+            3 => 'Purple',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xa8 => { Name => 'ContrastUserDef2',      %psInfo },
+    0xac => { Name => 'SharpnessUserDef2',     %psInfo },
+    0xb0 => { Name => 'SaturationUserDef2',    %psInfo },
+    0xb4 => { Name => 'ColorToneUserDef2',     %psInfo },
+    0xb8 => { Name => 'FilterEffectUserDef2',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Yellow',
+            2 => 'Orange',
+            3 => 'Red',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xbc => { Name => 'ToningEffectUserDef2',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Sepia',
+            2 => 'Blue',
+            3 => 'Purple',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xc0 => { Name => 'ContrastUserDef3',      %psInfo },
+    0xc4 => { Name => 'SharpnessUserDef3',     %psInfo },
+    0xc8 => { Name => 'SaturationUserDef3',    %psInfo },
+    0xcc => { Name => 'ColorToneUserDef3',     %psInfo },
+    0xd0 => { Name => 'FilterEffectUserDef3',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Yellow',
+            2 => 'Orange',
+            3 => 'Red',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xd4 => { Name => 'ToningEffectUserDef3',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Sepia',
+            2 => 'Blue',
+            3 => 'Purple',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    # base picture style names:
+    0xd8 => {
+        Name => 'UserDef1PictureStyle',
+        Format => 'int16u',
+        SeparateTable => 'UserDefStyle',
+        PrintConv => \%userDefStyles,
+    },
+    0xda => {
+        Name => 'UserDef2PictureStyle',
+        Format => 'int16u',
+        SeparateTable => 'UserDefStyle',
+        PrintConv => \%userDefStyles,
+    },
+    0xdc => {
+        Name => 'UserDef3PictureStyle',
+        Format => 'int16u',
+        SeparateTable => 'UserDefStyle',
+        PrintConv => \%userDefStyles,
+    },
+);
+
+# Picture Style information for the 60D (ref 48)
+%Image::ExifTool::Canon::PSInfo2 = (
+    %binaryDataAttrs,
+    FIRST_ENTRY => 0,
+    PRIORITY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'Custom picture style information for the EOS 60D.',
+    # (values expected to be "n/a" are flagged as Unknown)
+    0x00 => { Name => 'ContrastStandard',      %psInfo },
+    0x04 => { Name => 'SharpnessStandard',     %psInfo },
+    0x08 => { Name => 'SaturationStandard',    %psInfo },
+    0x0c => { Name => 'ColorToneStandard',     %psInfo },
+    0x10 => { Name => 'FilterEffectStandard',  %psInfo, Unknown => 1 },
+    0x14 => { Name => 'ToningEffectStandard',  %psInfo, Unknown => 1 },
+    0x18 => { Name => 'ContrastPortrait',      %psInfo },
+    0x1c => { Name => 'SharpnessPortrait',     %psInfo },
+    0x20 => { Name => 'SaturationPortrait',    %psInfo },
+    0x24 => { Name => 'ColorTonePortrait',     %psInfo },
+    0x28 => { Name => 'FilterEffectPortrait',  %psInfo, Unknown => 1 },
+    0x2c => { Name => 'ToningEffectPortrait',  %psInfo, Unknown => 1 },
+    0x30 => { Name => 'ContrastLandscape',     %psInfo },
+    0x34 => { Name => 'SharpnessLandscape',    %psInfo },
+    0x38 => { Name => 'SaturationLandscape',   %psInfo },
+    0x3c => { Name => 'ColorToneLandscape',    %psInfo },
+    0x40 => { Name => 'FilterEffectLandscape', %psInfo, Unknown => 1 },
+    0x44 => { Name => 'ToningEffectLandscape', %psInfo, Unknown => 1 },
+    0x48 => { Name => 'ContrastNeutral',       %psInfo },
+    0x4c => { Name => 'SharpnessNeutral',      %psInfo },
+    0x50 => { Name => 'SaturationNeutral',     %psInfo },
+    0x54 => { Name => 'ColorToneNeutral',      %psInfo },
+    0x58 => { Name => 'FilterEffectNeutral',   %psInfo, Unknown => 1 },
+    0x5c => { Name => 'ToningEffectNeutral',   %psInfo, Unknown => 1 },
+    0x60 => { Name => 'ContrastFaithful',      %psInfo },
+    0x64 => { Name => 'SharpnessFaithful',     %psInfo },
+    0x68 => { Name => 'SaturationFaithful',    %psInfo },
+    0x6c => { Name => 'ColorToneFaithful',     %psInfo },
+    0x70 => { Name => 'FilterEffectFaithful',  %psInfo, Unknown => 1 },
+    0x74 => { Name => 'ToningEffectFaithful',  %psInfo, Unknown => 1 },
+    0x78 => { Name => 'ContrastMonochrome',    %psInfo },
+    0x7c => { Name => 'SharpnessMonochrome',   %psInfo },
+    0x80 => { Name => 'SaturationMonochrome',  %psInfo, Unknown => 1 },
+    0x84 => { Name => 'ColorToneMonochrome',   %psInfo, Unknown => 1 },
+    0x88 => { Name => 'FilterEffectMonochrome',%psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Yellow',
+            2 => 'Orange',
+            3 => 'Red',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0x8c => { Name => 'ToningEffectMonochrome',%psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Sepia',
+            2 => 'Blue',
+            3 => 'Purple',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0x90 => { Name => 'ContrastUnknown',        %psInfo, Unknown => 1 },
+    0x94 => { Name => 'SharpnessUnknown',       %psInfo, Unknown => 1 },
+    0x98 => { Name => 'SaturationUnknown',      %psInfo, Unknown => 1 },
+    0x9c => { Name => 'ColorToneUnknown',       %psInfo, Unknown => 1 },
+    0xa0 => { Name => 'FilterEffectUnknown',    %psInfo, Unknown => 1,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Yellow',
+            2 => 'Orange',
+            3 => 'Red',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xa4 => { Name => 'ToningEffectUnknown',    %psInfo, Unknown => 1,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Sepia',
+            2 => 'Blue',
+            3 => 'Purple',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xa8 => { Name => 'ContrastUserDef1',      %psInfo },
+    0xac => { Name => 'SharpnessUserDef1',     %psInfo },
+    0xb0 => { Name => 'SaturationUserDef1',    %psInfo },
+    0xb4 => { Name => 'ColorToneUserDef1',     %psInfo },
+    0xb8 => { Name => 'FilterEffectUserDef1',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Yellow',
+            2 => 'Orange',
+            3 => 'Red',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xbc => { Name => 'ToningEffectUserDef1',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Sepia',
+            2 => 'Blue',
+            3 => 'Purple',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xc0 => { Name => 'ContrastUserDef2',      %psInfo },
+    0xc4 => { Name => 'SharpnessUserDef2',     %psInfo },
+    0xc8 => { Name => 'SaturationUserDef2',    %psInfo },
+    0xcc => { Name => 'ColorToneUserDef2',     %psInfo },
+    0xd0 => { Name => 'FilterEffectUserDef2',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Yellow',
+            2 => 'Orange',
+            3 => 'Red',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xd4 => { Name => 'ToningEffectUserDef2',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Sepia',
+            2 => 'Blue',
+            3 => 'Purple',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xd8 => { Name => 'ContrastUserDef3',      %psInfo },
+    0xdc => { Name => 'SharpnessUserDef3',     %psInfo },
+    0xe0 => { Name => 'SaturationUserDef3',    %psInfo },
+    0xe4 => { Name => 'ColorToneUserDef3',     %psInfo },
+    0xe8 => { Name => 'FilterEffectUserDef3',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Yellow',
+            2 => 'Orange',
+            3 => 'Red',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    0xec => { Name => 'ToningEffectUserDef3',  %psInfo,
+        PrintConv => {
+            0 => 'None',
+            1 => 'Sepia',
+            2 => 'Blue',
+            3 => 'Purple',
+            4 => 'Green',
+            -559038737 => 'n/a', # (0xdeadbeef)
+        },
+    },
+    # base picture style names:
+    0xf0 => {
+        Name => 'UserDef1PictureStyle',
+        Format => 'int16u',
+        SeparateTable => 'UserDefStyle',
+        PrintConv => \%userDefStyles,
+    },
+    0xf2 => {
+        Name => 'UserDef2PictureStyle',
+        Format => 'int16u',
+        SeparateTable => 'UserDefStyle',
+        PrintConv => \%userDefStyles,
+    },
+    0xf4 => {
+        Name => 'UserDef3PictureStyle',
+        Format => 'int16u',
+        SeparateTable => 'UserDefStyle',
+        PrintConv => \%userDefStyles,
+    },
+);
+
+# Movie information (MakerNotes tag 0x11) (ref PH)
+%Image::ExifTool::Canon::MovieInfo = (
+    %binaryDataAttrs,
+    FORMAT => 'int16u',
+    FIRST_ENTRY => 1,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Video' },
+    NOTES => 'Tags written by some Canon cameras when recording video.',
+    1 => { # (older PowerShot AVI)
+        Name => 'FrameRate',
+        RawConv => '$val == 65535 ? undef: $val',
+        ValueConvInv => '$val > 65535 ? 65535 : $val',
+    },
+    2 => { # (older PowerShot AVI)
+        Name => 'FrameCount',
+        RawConv => '$val == 65535 ? undef: $val',
+        ValueConvInv => '$val > 65535 ? 65535 : $val',
+    },
+    # 3 - values: 0x0001 (older PowerShot AVI), 0x4004, 0x4005
+    4 => {
+        Name => 'FrameCount',
+        Format => 'int32u',
+    },
+    6 => {
+        Name => 'FrameRate',
+        Format => 'rational32u',
+        PrintConv => 'int($val * 1000 + 0.5) / 1000',
+        PrintConvInv => '$val',
+    },
+    # 9/10 - same as 6/7 (FrameRate)
+    106 => {
+        Name => 'Duration',
+        Format => 'int32u',
+        ValueConv => '$val / 1000',
+        ValueConvInv => '$val * 1000',
+        PrintConv => 'ConvertDuration($val)',
+        PrintConvInv => q{
+            my @a = ($val =~ /\d+(?:\.\d*)?/g);
+            $val  = pop(@a) || 0;         # seconds
+            $val += pop(@a) *   60 if @a; # minutes
+            $val += pop(@a) * 3600 if @a; # hours
+            return $val;
+        },
+    },
+    108 => {
+        Name => 'AudioBitrate',
+        Groups => { 2 => 'Audio' },
+        Format => 'int32u',
+        PrintConv => 'ConvertBitrate($val)',
+        PrintConvInv => q{
+            $val =~ /^(\d+(?:\.\d*)?) ?([kMG]?bps)?$/ or return undef;
+            return $1 * {bps=>1,kbps=>1000,Mbps=>1000000,Gbps=>1000000000}->{$2 || 'bps'};
+        },
+    },
+    110 => {
+        Name => 'AudioSampleRate',
+        Groups => { 2 => 'Audio' },
+        Format => 'int32u',
+    },
+    112 => { # (guess)
+        Name => 'AudioChannels',
+        Groups => { 2 => 'Audio' },
+        Format => 'int32u',
+    },
+    # 114 - values: 0 (60D), 1 (S95)
+    116 => {
+        Name => 'VideoCodec',
+        Format => 'undef[4]',
+        # swap bytes if little endian
+        RawConv => 'GetByteOrder() eq "MM" ? $val : pack("N",unpack("V",$val))',
+        RawConvInv => 'GetByteOrder() eq "MM" ? $val : pack("N",unpack("V",$val))',
+    },
+    # 125 - same as 10
 );
 
 # AF information (MakerNotes tag 0x12) - PH
@@ -2665,12 +4946,15 @@ my %printParameter = (
         Unknown => 1, # normally don't print this out
     },
     1 => {
-        Name => 'AFMode',
+        Name => 'AFAreaMode',
         PrintConv => {
             0 => 'Off (Manual Focus)',
             2 => 'Single-point AF',
-            4 => 'Multi-point AF', # AiAF on A570IS
+            4 => 'Multi-point AF or AI AF', # AiAF on A570IS
             5 => 'Face Detect AF',
+            7 => 'Zone AF', #46
+            8 => 'AF Point Expansion', #46
+            9 => 'Spot AF', #46
         },
     },
     2 => {
@@ -2732,20 +5016,18 @@ my %printParameter = (
         # usually, but not always, the lowest number AF point in focus
         Name => 'PrimaryAFPoint',
         Condition => '$$self{Model} !~ /EOS/',
-    },        
+    },
 );
 
 # my color mode information (MakerNotes tag 0x1d) - PH (A570IS)
 %Image::ExifTool::Canon::MyColors = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int16u',
     FIRST_ENTRY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
     0x02 => {
         Name => 'MyColorMode',
+        PrintConvColumns => 2,
         PrintConv => {
             0 => 'Off',
             1 => 'Positive Film', #15 (SD600)
@@ -2767,10 +5049,7 @@ my %printParameter = (
 
 # face detect information (MakerNotes tag 0x24) - PH (A570IS)
 %Image::ExifTool::Canon::FaceDetect1 = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int16u',
     FIRST_ENTRY => 0,
     DATAMEMBER => [ 0x02 ],
@@ -2780,10 +5059,12 @@ my %printParameter = (
         DataMember => 'FacesDetected',
         RawConv => '$$self{FacesDetected} = $val',
     },
-    0x03 => 'FaceDetectFrameWidth',
-    0x04 => 'FaceDetectFrameHeight',
+    0x03 => {
+        Name => 'FaceDetectFrameSize',
+        Format => 'int16u[2]',
+    },
     0x08 => {
-        Name => 'Face0Position',
+        Name => 'Face1Position',
         Format => 'int16s[2]',
         RawConv => '$$self{FacesDetected} < 1 ? undef: $val',
         Notes => q{
@@ -2793,42 +5074,42 @@ my %printParameter = (
         },
     },
     0x0a => {
-        Name => 'Face1Position',
+        Name => 'Face2Position',
         Format => 'int16s[2]',
         RawConv => '$$self{FacesDetected} < 2 ? undef : $val',
     },
     0x0c => {
-        Name => 'Face2Position',
+        Name => 'Face3Position',
         Format => 'int16s[2]',
         RawConv => '$$self{FacesDetected} < 3 ? undef : $val',
     },
     0x0e => {
-        Name => 'Face3Position',
+        Name => 'Face4Position',
         Format => 'int16s[2]',
         RawConv => '$$self{FacesDetected} < 4 ? undef : $val',
     },
     0x10 => {
-        Name => 'Face4Position',
+        Name => 'Face5Position',
         Format => 'int16s[2]',
         RawConv => '$$self{FacesDetected} < 5 ? undef : $val',
     },
     0x12 => {
-        Name => 'Face5Position',
+        Name => 'Face6Position',
         Format => 'int16s[2]',
         RawConv => '$$self{FacesDetected} < 6 ? undef : $val',
     },
     0x14 => {
-        Name => 'Face6Position',
+        Name => 'Face7Position',
         Format => 'int16s[2]',
         RawConv => '$$self{FacesDetected} < 7 ? undef : $val',
     },
     0x16 => {
-        Name => 'Face7Position',
+        Name => 'Face8Position',
         Format => 'int16s[2]',
         RawConv => '$$self{FacesDetected} < 8 ? undef : $val',
     },
     0x18 => {
-        Name => 'Face8Position',
+        Name => 'Face9Position',
         Format => 'int16s[2]',
         RawConv => '$$self{FacesDetected} < 9 ? undef : $val',
     },
@@ -2836,88 +5117,17 @@ my %printParameter = (
 
 # more face detect information (MakerNotes tag 0x25) - PH (A570IS)
 %Image::ExifTool::Canon::FaceDetect2 = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int8u',
     FIRST_ENTRY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
+    0x01 => 'FaceWidth',
     0x02 => 'FacesDetected',
-);
-
-# Preview image information (MakerNotes tag 0xb6)
-# - The 300D writes a 1536x1024 preview image that is accessed
-#   through this information - decoded by PH 12/14/03
-%Image::ExifTool::Canon::PreviewImageInfo = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
-    FORMAT => 'int32u',
-    FIRST_ENTRY => 1,
-    IS_OFFSET => [ 5 ],   # tag 5 is 'IsOffset'
-    GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
-# the size of the preview block in 2-byte increments
-#    0 => {
-#        Name => 'PreviewImageInfoWords',
-#    },
-    1 => {
-        Name => 'PreviewQuality',
-        PrintConv => \%canonQuality,
-    },
-    2 => {
-        Name => 'PreviewImageLength',
-        OffsetPair => 5,   # point to associated offset
-        DataTag => 'PreviewImage',
-        Protected => 2,
-    },
-    3 => 'PreviewImageWidth',
-    4 => 'PreviewImageHeight',
-    5 => {
-        Name => 'PreviewImageStart',
-        Flags => 'IsOffset',
-        OffsetPair => 2,  # associated byte count tagID
-        DataTag => 'PreviewImage',
-        Protected => 2,
-    },
-    # NOTE: The size of the PreviewImageInfo structure is incorrectly
-    # written as 48 bytes (Count=12, Format=int32u), but only the first
-    # 6 int32u values actually exist
-);
-
-# Sensor information (MakerNotes tag 0xe0) (ref 12)
-%Image::ExifTool::Canon::SensorInfo = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    FORMAT => 'int16s',
-    FIRST_ENTRY => 1,
-    GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
-    # Note: Don't make these writable because it confuses Canon decoding software
-    # if these are changed
-    1 => 'SensorWidth',
-    2 => 'SensorHeight',
-    5 => 'SensorLeftBorder', #2
-    6 => 'SensorTopBorder', #2
-    7 => 'SensorRightBorder', #2
-    8 => 'SensorBottomBorder', #2
-    9 => { #22
-        Name => 'BlackMaskLeftBorder',
-        Notes => q{
-            coordinates for the area to the left or right of the image used to calculate
-            the average black level
-        },
-    },
-    10 => 'BlackMaskTopBorder', #22
-    11 => 'BlackMaskRightBorder', #22
-    12 => 'BlackMaskBottomBorder', #22
 );
 
 # File number information (MakerNotes tag 0x93)
 %Image::ExifTool::Canon::FileInfo = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int16s',
     FIRST_ENTRY => 1,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
@@ -3019,15 +5229,18 @@ my %printParameter = (
         PrintConv => \%canonImageSize,
     },
     8 => { #PH
-        Name => 'NoiseReduction',
+        Name => 'LongExposureNoiseReduction2',
+        Notes => q{
+            for some modules this gives the long exposure noise reduction applied to the
+            image, but for other models this just reflects the setting independent of
+            whether or not it was applied
+        },
         RawConv => '$val<0 ? undef : $val',
         PrintConv => {
             0 => 'Off',
-            # what do these modes mean?:
-            1 => 'On (mode 1)',
-            2 => 'On (mode 2)',
-            3 => 'On (mode 3)', # (1DmkII,5D)
-            4 => 'On (mode 4)', # (30D)
+            1 => 'On (1D)',
+            3 => 'On',
+            4 => 'Auto',
         },
     },
     9 => { #PH
@@ -3062,14 +5275,40 @@ my %printParameter = (
             4 => 'Green',
         },
     },
+    16 => { #PH
+        %ciMacroMagnification,
+        # MP-E 65mm on 5DmkII: 44=5x,52~=3.9x,56~=3.3x,62~=2.6x,75=1x
+        # ME-E 65mm on 40D/450D: 72 for all samples (not valid)
+        Condition => q{
+            $$self{LensType} and $$self{LensType} == 124 and
+            $$self{Model} !~ /\b(40D|450D|REBEL XSi|Kiss X2)\b/
+        },
+        Notes => q{
+            currently decoded only for the MP-E 65mm f/2.8 1-5x Macro Photo, and not
+            valid for all camera models
+        },
+    },
+    # 17 - values: 0, 3, 4
+    # 18 - same as LiveViewShooting for all my samples (5DmkII, 50D) - PH
+    19 => { #PH
+        # Note: this value is not displayed by Canon ImageBrowser for the following
+        # models with the live view feature:  1DmkIII, 1DSmkIII, 40D, 450D, 1000D
+        # (this tag could be valid only for some firmware versions:
+        # http://www.breezesys.com/forum/showthread.php?p=16980)
+        Name => 'LiveViewShooting',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+    # 22 - values: 0, 1
+    # 23 - values: 0, 21, 22
+    25 => { #PH
+        Name => 'FlashExposureLock',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
 );
 
 # Internal serial number information (MakerNotes tag 0x96) (ref PH)
 %Image::ExifTool::Canon::SerialInfo = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FIRST_ENTRY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     9 => {
@@ -3078,12 +5317,41 @@ my %printParameter = (
     },
 );
 
-# color information (MakerNotes tag 0xa0)
+# Cropping information (MakerNotes tag 0x98) (ref PH)
+%Image::ExifTool::Canon::CropInfo = (
+    %binaryDataAttrs,
+    FORMAT => 'int16u',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    0 => 'CropLeftMargin',  # (NC, may be right)
+    1 => 'CropRightMargin',
+    2 => 'CropTopMargin',   # (NC, may be bottom)
+    3 => 'CropBottomMargin',
+);
+
+# Aspect ratio information (MakerNotes tag 0x9a) (ref PH)
+%Image::ExifTool::Canon::AspectInfo = (
+    %binaryDataAttrs,
+    FORMAT => 'int32u',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    0 => {
+        Name => 'AspectRatio',
+        PrintConv => {
+            0 => '3:2',
+            1 => '1:1',
+            2 => '4:3',
+            7 => '16:9',
+            8 => '4:5',
+        },
+    },
+    1 => 'CroppedImageWidth', # (could use a better name for these)
+    2 => 'CroppedImageHeight',
+);
+
+# Color information (MakerNotes tag 0xa0)
 %Image::ExifTool::Canon::Processing = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int16s',
     FIRST_ENTRY => 1,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
@@ -3097,11 +5365,13 @@ my %printParameter = (
     },
     2 => { #12
         Name => 'Sharpness',
-        Notes => '1D and 5D only',
-        Condition => '$$self{Model} =~ /\b(1D|5D)/',
+        Notes => 'all models except the 20D and 350D',
+        Condition => '$$self{Model} !~ /\b(20D|350D|REBEL XT|Kiss Digital N)\b/',
+        Priority => 0,  # (maybe not as reliable as other sharpness values)
     },
     3 => { #PH
-        Name => 'SharpnessFrequency',
+        Name => 'SharpnessFrequency', # PatternSharpness?
+        PrintConvColumns => 2,
         PrintConv => {
             0 => 'n/a',
             1 => 'Lowest',
@@ -3142,272 +5412,42 @@ my %printParameter = (
     },
 );
 
-# D30 color information (MakerNotes tag 0x0a)
-%Image::ExifTool::Canon::UnknownD30 = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
-    FORMAT => 'int16s',
-    FIRST_ENTRY => 1,
-    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
-);
-
 # Color balance information (MakerNotes tag 0xa9) (ref PH)
 %Image::ExifTool::Canon::ColorBalance = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
+    %binaryDataAttrs,
     NOTES => 'These tags are used by the 10D and 300D.',
-    FORMAT => 'int16u',
+    FORMAT => 'int16s',
     FIRST_ENTRY => 0,
-    WRITABLE => 1,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     # red,green1,green2,blue (ref 2)
-    0  => { Name => 'WB_RGGBLevelsAuto',       Format => 'int16u[4]' },
-    4  => { Name => 'WB_RGGBLevelsDaylight',   Format => 'int16u[4]' },
-    8  => { Name => 'WB_RGGBLevelsShade',      Format => 'int16u[4]' },
-    12 => { Name => 'WB_RGGBLevelsCloudy',     Format => 'int16u[4]' },
-    16 => { Name => 'WB_RGGBLevelsTungsten',   Format => 'int16u[4]' },
-    20 => { Name => 'WB_RGGBLevelsFluorescent',Format => 'int16u[4]' },
-    24 => { Name => 'WB_RGGBLevelsFlash',      Format => 'int16u[4]' },
-    28 => { Name => 'WB_RGGBLevelsCustom',     Format => 'int16u[4]' },
-    32 => { Name => 'WB_RGGBLevelsKelvin',     Format => 'int16u[4]' },
+    0  => { Name => 'WB_RGGBLevelsAuto',       Format => 'int16s[4]' },
+    4  => { Name => 'WB_RGGBLevelsDaylight',   Format => 'int16s[4]' },
+    8  => { Name => 'WB_RGGBLevelsShade',      Format => 'int16s[4]' },
+    12 => { Name => 'WB_RGGBLevelsCloudy',     Format => 'int16s[4]' },
+    16 => { Name => 'WB_RGGBLevelsTungsten',   Format => 'int16s[4]' },
+    20 => { Name => 'WB_RGGBLevelsFluorescent',Format => 'int16s[4]' },
+    24 => { Name => 'WB_RGGBLevelsFlash',      Format => 'int16s[4]' },
+    28 => { Name => 'WB_RGGBLevelsCustom',     Format => 'int16s[4]' },
+    32 => { Name => 'WB_RGGBLevelsKelvin',     Format => 'int16s[4]' },
 );
 
-# Color balance (MakerNotes tag 0x4001, count=582) (ref 12)
-%Image::ExifTool::Canon::ColorBalance1 = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    NOTES => 'These tags are used by the 20D and 350D.',
+# Measured color levels (MakerNotes tag 0xaa) (ref 37)
+%Image::ExifTool::Canon::MeasuredColor = (
+    %binaryDataAttrs,
     FORMAT => 'int16u',
-    FIRST_ENTRY => 0,
-    WRITABLE => 1,
-    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
-    # (dcraw 8.81 uses index 25 for WB)
-    25 => { Name => 'WB_RGGBLevelsAsShot',      Format => 'int16u[4]' },
-    29 => 'ColorTempAsShot',
-    30 => { Name => 'WB_RGGBLevelsAuto',        Format => 'int16u[4]' },
-    34 => 'ColorTempAuto',
-    35 => { Name => 'WB_RGGBLevelsDaylight',    Format => 'int16u[4]' },
-    39 => 'ColorTempDaylight',
-    40 => { Name => 'WB_RGGBLevelsShade',       Format => 'int16u[4]' },
-    44 => 'ColorTempShade',
-    45 => { Name => 'WB_RGGBLevelsCloudy',      Format => 'int16u[4]' },
-    49 => 'ColorTempCloudy',
-    50 => { Name => 'WB_RGGBLevelsTungsten',    Format => 'int16u[4]' },
-    54 => 'ColorTempTungsten',
-    55 => { Name => 'WB_RGGBLevelsFluorescent', Format => 'int16u[4]' },
-    59 => 'ColorTempFluorescent',
-    60 => { Name => 'WB_RGGBLevelsFlash',       Format => 'int16u[4]' },
-    64 => 'ColorTempFlash',
-    65 => { Name => 'WB_RGGBLevelsCustom1',     Format => 'int16u[4]' },
-    69 => 'ColorTempCustom1',
-    70 => { Name => 'WB_RGGBLevelsCustom2',     Format => 'int16u[4]' },
-    74 => 'ColorTempCustom2',
-);
-
-# Color balance (MakerNotes tag 0x4001, count=653) (ref 12)
-%Image::ExifTool::Canon::ColorBalance2 = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    NOTES => 'These tags are used by the 1DmkII and 1DSmkII.',
-    FORMAT => 'int16u',
-    FIRST_ENTRY => 0,
-    WRITABLE => 1,
-    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
-    24 => { Name => 'WB_RGGBLevelsAsShot',      Format => 'int16u[4]' },
-    28 => 'ColorTempAsShot',
-    29 => { Name => 'WB_RGGBLevelsUnknown',     Format => 'int16u[4]', Unknown => 1 },
-    33 => { Name => 'ColorTempUnknown', Unknown => 1 },
-    # (dcraw 8.81 uses index 34 for WB -- could this really be AsShot?)
-    34 => { Name => 'WB_RGGBLevelsAuto',        Format => 'int16u[4]' },
-    38 => 'ColorTempAuto',
-    39 => { Name => 'WB_RGGBLevelsDaylight',    Format => 'int16u[4]' },
-    43 => 'ColorTempDaylight',
-    44 => { Name => 'WB_RGGBLevelsShade',       Format => 'int16u[4]' },
-    48 => 'ColorTempShade',
-    49 => { Name => 'WB_RGGBLevelsCloudy',      Format => 'int16u[4]' },
-    53 => 'ColorTempCloudy',
-    54 => { Name => 'WB_RGGBLevelsTungsten',    Format => 'int16u[4]' },
-    58 => 'ColorTempTungsten',
-    59 => { Name => 'WB_RGGBLevelsFluorescent', Format => 'int16u[4]' },
-    63 => 'ColorTempFluorescent',
-    64 => { Name => 'WB_RGGBLevelsKelvin',      Format => 'int16u[4]' },
-    68 => 'ColorTempKelvin',
-    69 => { Name => 'WB_RGGBLevelsFlash',       Format => 'int16u[4]' },
-    73 => 'ColorTempFlash',
-    74 => { Name => 'WB_RGGBLevelsUnknown2',    Format => 'int16u[4]', Unknown => 1 },
-    78 => { Name => 'ColorTempUnknown2', Unknown => 1 },
-    79 => { Name => 'WB_RGGBLevelsUnknown3',    Format => 'int16u[4]', Unknown => 1 },
-    83 => { Name => 'ColorTempUnknown3', Unknown => 1 },
-    84 => { Name => 'WB_RGGBLevelsUnknown4',    Format => 'int16u[4]', Unknown => 1 },
-    88 => { Name => 'ColorTempUnknown4', Unknown => 1 },
-    89 => { Name => 'WB_RGGBLevelsUnknown5',    Format => 'int16u[4]', Unknown => 1 },
-    93 => { Name => 'ColorTempUnknown5', Unknown => 1 },
-    94 => { Name => 'WB_RGGBLevelsUnknown6',    Format => 'int16u[4]', Unknown => 1 },
-    98 => { Name => 'ColorTempUnknown6', Unknown => 1 },
-    99 => { Name => 'WB_RGGBLevelsUnknown7',    Format => 'int16u[4]', Unknown => 1 },
-    103 => { Name => 'ColorTempUnknown7', Unknown => 1 },
-    104 => { Name => 'WB_RGGBLevelsUnknown8',   Format => 'int16u[4]', Unknown => 1 },
-    108 => { Name => 'ColorTempUnknown8', Unknown => 1 },
-    109 => { Name => 'WB_RGGBLevelsUnknown9',   Format => 'int16u[4]', Unknown => 1 },
-    113 => { Name => 'ColorTempUnknown9', Unknown => 1 },
-    114 => { Name => 'WB_RGGBLevelsUnknown10',  Format => 'int16u[4]', Unknown => 1 },
-    118 => { Name => 'ColorTempUnknown10', Unknown => 1 },
-    119 => { Name => 'WB_RGGBLevelsUnknown11',  Format => 'int16u[4]', Unknown => 1 },
-    123 => { Name => 'ColorTempUnknown11', Unknown => 1 },
-    124 => { Name => 'WB_RGGBLevelsUnknown12',  Format => 'int16u[4]', Unknown => 1 },
-    128 => { Name => 'ColorTempUnknown12', Unknown => 1 },
-    129 => { Name => 'WB_RGGBLevelsUnknown13',  Format => 'int16u[4]', Unknown => 1 },
-    133 => { Name => 'ColorTempUnknown13', Unknown => 1 },
-    134 => { Name => 'WB_RGGBLevelsUnknown14',  Format => 'int16u[4]', Unknown => 1 },
-    138 => { Name => 'ColorTempUnknown14', Unknown => 1 },
-    139 => { Name => 'WB_RGGBLevelsUnknown15',  Format => 'int16u[4]', Unknown => 1 },
-    143 => { Name => 'ColorTempUnknown15', Unknown => 1 },
-    144 => { Name => 'WB_RGGBLevelsPC1',        Format => 'int16u[4]' },
-    148 => 'ColorTempPC1',
-    149 => { Name => 'WB_RGGBLevelsPC2',        Format => 'int16u[4]' },
-    153 => 'ColorTempPC2',
-    154 => { Name => 'WB_RGGBLevelsPC3',        Format => 'int16u[4]' },
-    158 => 'ColorTempPC3',
-    159 => { Name => 'WB_RGGBLevelsUnknown16',  Format => 'int16u[4]', Unknown => 1 },
-    163 => { Name => 'ColorTempUnknown16', Unknown => 1 },
-);
-
-# Color balance (MakerNotes tag 0x4001, count=796) (ref 12)
-%Image::ExifTool::Canon::ColorBalance3 = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    NOTES => 'These tags are used by the 1DmkIIN, 5D, 30D and 400D.',
-    FORMAT => 'int16u',
-    FIRST_ENTRY => 0,
-    WRITABLE => 1,
-    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
-    # (dcraw 8.81 uses index 63 for WB)
-    63 => { Name => 'WB_RGGBLevelsAsShot',      Format => 'int16u[4]' },
-    67 => 'ColorTempAsShot',
-    68 => { Name => 'WB_RGGBLevelsAuto',        Format => 'int16u[4]' },
-    72 => 'ColorTempAuto',
-    # not sure exactly what 'Measured' values mean...
-    73 => { Name => 'WB_RGGBLevelsMeasured',    Format => 'int16u[4]' },
-    77 => 'ColorTempMeasured',
-    78 => { Name => 'WB_RGGBLevelsDaylight',    Format => 'int16u[4]' },
-    82 => 'ColorTempDaylight',
-    83 => { Name => 'WB_RGGBLevelsShade',       Format => 'int16u[4]' },
-    87 => 'ColorTempShade',
-    88 => { Name => 'WB_RGGBLevelsCloudy',      Format => 'int16u[4]' },
-    92 => 'ColorTempCloudy',
-    93 => { Name => 'WB_RGGBLevelsTungsten',    Format => 'int16u[4]' },
-    97 => 'ColorTempTungsten',
-    98 => { Name => 'WB_RGGBLevelsFluorescent', Format => 'int16u[4]' },
-    102 => 'ColorTempFluorescent',
-    103 => { Name => 'WB_RGGBLevelsKelvin',     Format => 'int16u[4]' },
-    107 => 'ColorTempKelvin',
-    108 => { Name => 'WB_RGGBLevelsFlash',      Format => 'int16u[4]' },
-    112 => 'ColorTempFlash',
-    113 => { Name => 'WB_RGGBLevelsPC1',        Format => 'int16u[4]' },
-    117 => 'ColorTempPC1',
-    118 => { Name => 'WB_RGGBLevelsPC2',        Format => 'int16u[4]' },
-    122 => 'ColorTempPC2',
-    123 => { Name => 'WB_RGGBLevelsPC3',        Format => 'int16u[4]' },
-    127 => 'ColorTempPC3',
-    128 => { Name => 'WB_RGGBLevelsCustom',     Format => 'int16u[4]' },
-    132 => 'ColorTempCustom',
-);
-
-# Color balance (MakerNotes tag 0x4001, count=674|692|702) (ref PH)
-%Image::ExifTool::Canon::ColorBalance4 = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    NOTES => 'These tags are used by the 40D, 1DmkIII and 1DSmkIII.',
-    FORMAT => 'int16u',
-    FIRST_ENTRY => 0,
-    WRITABLE => 1,
-    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
-    # (dcraw 8.81 uses index 63 for WB)
-    63 => { Name => 'WB_RGGBLevelsAsShot',      Format => 'int16u[4]' },
-    67 => 'ColorTempAsShot',
-    68 => { Name => 'WB_RGGBLevelsAuto',        Format => 'int16u[4]' },
-    72 => 'ColorTempAuto',
-    73 => { Name => 'WB_RGGBLevelsMeasured',    Format => 'int16u[4]' },
-    77 => 'ColorTempMeasured',
-#    78 => { Name => 'WB_RGGBLevelsUnused',      Format => 'int16u[4]', Unknown => 1 },
-#    82 => { Name => 'ColorTempUnused',   Unknown => 1 },
-    83 => { Name => 'WB_RGGBLevelsDaylight',    Format => 'int16u[4]' },
-    87 => 'ColorTempDaylight',
-    88 => { Name => 'WB_RGGBLevelsShade',       Format => 'int16u[4]' },
-    92 => 'ColorTempShade',
-    93 => { Name => 'WB_RGGBLevelsCloudy',      Format => 'int16u[4]' },
-    97 => 'ColorTempCloudy',
-    98 => { Name => 'WB_RGGBLevelsTungsten',    Format => 'int16u[4]' },
-    102 => 'ColorTempTungsten',
-    103 => { Name => 'WB_RGGBLevelsFluorescent',Format => 'int16u[4]' },
-    107 => 'ColorTempFluorescent',
-    108 => { Name => 'WB_RGGBLevelsKelvin',     Format => 'int16u[4]' },
-    112 => 'ColorTempKelvin',
-    113 => { Name => 'WB_RGGBLevelsFlash',      Format => 'int16u[4]' },
-    117 => 'ColorTempFlash',
-    118 => { Name => 'WB_RGGBLevelsUnknown2',   Format => 'int16u[4]', Unknown => 1 },
-    122 => { Name => 'ColorTempUnknown2', Unknown => 1 },
-    123 => { Name => 'WB_RGGBLevelsUnknown3',   Format => 'int16u[4]', Unknown => 1 },
-    127 => { Name => 'ColorTempUnknown3', Unknown => 1 },
-    128 => { Name => 'WB_RGGBLevelsUnknown4',   Format => 'int16u[4]', Unknown => 1 },
-    132 => { Name => 'ColorTempUnknown4', Unknown => 1 },
-    133 => { Name => 'WB_RGGBLevelsUnknown5',   Format => 'int16u[4]', Unknown => 1 },
-    137 => { Name => 'ColorTempUnknown5', Unknown => 1 },
-    138 => { Name => 'WB_RGGBLevelsUnknown6',   Format => 'int16u[4]', Unknown => 1 },
-    142 => { Name => 'ColorTempUnknown6', Unknown => 1 },
-    143 => { Name => 'WB_RGGBLevelsUnknown7',   Format => 'int16u[4]', Unknown => 1 },
-    147 => { Name => 'ColorTempUnknown7', Unknown => 1 },
-    148 => { Name => 'WB_RGGBLevelsUnknown8',   Format => 'int16u[4]', Unknown => 1 },
-    152 => { Name => 'ColorTempUnknown8', Unknown => 1 },
-    153 => { Name => 'WB_RGGBLevelsUnknown9',   Format => 'int16u[4]', Unknown => 1 },
-    157 => { Name => 'ColorTempUnknown9', Unknown => 1 },
-    158 => { Name => 'WB_RGGBLevelsUnknown10',  Format => 'int16u[4]', Unknown => 1 },
-    162 => { Name => 'ColorTempUnknown10', Unknown => 1 },
-    163 => { Name => 'WB_RGGBLevelsUnknown11',  Format => 'int16u[4]', Unknown => 1 },
-    167 => { Name => 'ColorTempUnknown11', Unknown => 1 },
-);
-
-# Color information (MakerNotes tag 0x4003) (ref PH)
-%Image::ExifTool::Canon::ColorInfo = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
-    FORMAT => 'int16s',
     FIRST_ENTRY => 1,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
     1 => {
-        Condition => '$$self{Model} =~ /EOS-1D/',
-        Name => 'Saturation',
-        %printParameter,
+        # this is basically the inverse of WB_RGGBLevelsMeasured (ref 37)
+        Name => 'MeasuredRGGB',
+        Format => 'int16u[4]',
     },
-    2 => {
-        Name => 'ColorTone',
-        %printParameter,
-    },
-    3 => {
-        Name => 'ColorSpace',
-        RawConv => '$val ? $val : undef', # ignore tag if zero
-        PrintConv => {
-            1 => 'sRGB',
-            2 => 'Adobe RGB',
-        },
-    },
+    # 5 - observed values: 0, 1 - PH
 );
 
 # Flags information (MakerNotes tag 0xb0) (ref PH)
 %Image::ExifTool::Canon::Flags = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int16s',
     FIRST_ENTRY => 1,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
@@ -3416,10 +5456,7 @@ my %printParameter = (
 
 # Modified information (MakerNotes tag 0xb1) (ref PH)
 %Image::ExifTool::Canon::ModifiedInfo = (
-    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
-    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
-    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
-    WRITABLE => 1,
+    %binaryDataAttrs,
     FORMAT => 'int16s',
     FIRST_ENTRY => 1,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
@@ -3437,7 +5474,7 @@ my %printParameter = (
         Condition => '$$self{Model} =~ /\b(1D|5D)/',
     },
     3 => {
-        Name => 'ModifiedSharpnessFreq',
+        Name => 'ModifiedSharpnessFreq', # ModifiedPatternSharpness?
         PrintConv => {
             0 => 'n/a',
             1 => 'Lowest',
@@ -3470,7 +5507,736 @@ my %printParameter = (
     },
 );
 
-# canon composite tags
+# Preview image information (MakerNotes tag 0xb6)
+# - The 300D writes a 1536x1024 preview image that is accessed
+#   through this information - decoded by PH 12/14/03
+%Image::ExifTool::Canon::PreviewImageInfo = (
+    %binaryDataAttrs,
+    FORMAT => 'int32u',
+    FIRST_ENTRY => 1,
+    IS_OFFSET => [ 5 ],   # tag 5 is 'IsOffset'
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
+# the size of the preview block in 2-byte increments
+#    0 => {
+#        Name => 'PreviewImageInfoWords',
+#    },
+    1 => {
+        Name => 'PreviewQuality',
+        PrintConv => \%canonQuality,
+    },
+    2 => {
+        Name => 'PreviewImageLength',
+        OffsetPair => 5,   # point to associated offset
+        DataTag => 'PreviewImage',
+        Protected => 2,
+    },
+    3 => 'PreviewImageWidth',
+    4 => 'PreviewImageHeight',
+    5 => {
+        Name => 'PreviewImageStart',
+        Flags => 'IsOffset',
+        OffsetPair => 2,  # associated byte count tagID
+        DataTag => 'PreviewImage',
+        Protected => 2,
+    },
+    # NOTE: The size of the PreviewImageInfo structure is incorrectly
+    # written as 48 bytes (Count=12, Format=int32u), but only the first
+    # 6 int32u values actually exist
+);
+
+# Sensor information (MakerNotes tag 0xe0) (ref 12)
+%Image::ExifTool::Canon::SensorInfo = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 1,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
+    # Note: Don't make these writable because it confuses Canon decoding software
+    # if these are changed
+    1 => 'SensorWidth',
+    2 => 'SensorHeight',
+    5 => 'SensorLeftBorder', #2
+    6 => 'SensorTopBorder', #2
+    7 => 'SensorRightBorder', #2
+    8 => 'SensorBottomBorder', #2
+    9 => { #22
+        Name => 'BlackMaskLeftBorder',
+        Notes => q{
+            coordinates for the area to the left or right of the image used to calculate
+            the average black level
+        },
+    },
+    10 => 'BlackMaskTopBorder', #22
+    11 => 'BlackMaskRightBorder', #22
+    12 => 'BlackMaskBottomBorder', #22
+);
+
+# Color data (MakerNotes tag 0x4001, count=582) (ref 12)
+%Image::ExifTool::Canon::ColorData1 = (
+    %binaryDataAttrs,
+    NOTES => 'These tags are used by the 20D and 350D.',
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    IS_SUBDIR => [ 0x4b ],
+    # 0x00: size of record in bytes - PH
+    # (dcraw 8.81 uses index 0x19 for WB)
+    0x19 => { Name => 'WB_RGGBLevelsAsShot',      Format => 'int16s[4]' },
+    0x1d => 'ColorTempAsShot',
+    0x1e => { Name => 'WB_RGGBLevelsAuto',        Format => 'int16s[4]' },
+    0x22 => 'ColorTempAuto',
+    0x23 => { Name => 'WB_RGGBLevelsDaylight',    Format => 'int16s[4]' },
+    0x27 => 'ColorTempDaylight',
+    0x28 => { Name => 'WB_RGGBLevelsShade',       Format => 'int16s[4]' },
+    0x2c => 'ColorTempShade',
+    0x2d => { Name => 'WB_RGGBLevelsCloudy',      Format => 'int16s[4]' },
+    0x31 => 'ColorTempCloudy',
+    0x32 => { Name => 'WB_RGGBLevelsTungsten',    Format => 'int16s[4]' },
+    0x36 => 'ColorTempTungsten',
+    0x37 => { Name => 'WB_RGGBLevelsFluorescent', Format => 'int16s[4]' },
+    0x3b => 'ColorTempFluorescent',
+    0x3c => { Name => 'WB_RGGBLevelsFlash',       Format => 'int16s[4]' },
+    0x40 => 'ColorTempFlash',
+    0x41 => { Name => 'WB_RGGBLevelsCustom1',     Format => 'int16s[4]' },
+    0x45 => 'ColorTempCustom1',
+    0x46 => { Name => 'WB_RGGBLevelsCustom2',     Format => 'int16s[4]' },
+    0x4a => 'ColorTempCustom2',
+    0x4b => { #PH
+        Name => 'ColorCalib',
+        Format => 'undef[120]',
+        Unknown => 1, # (all tags are unknown, so we can avoid processing entire directory)
+        Notes => 'A, B, C, Temperature',
+        SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorCalib' }
+    },
+);
+
+# Color data (MakerNotes tag 0x4001, count=653) (ref 12)
+%Image::ExifTool::Canon::ColorData2 = (
+    %binaryDataAttrs,
+    NOTES => 'These tags are used by the 1DmkII and 1DSmkII.',
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    IS_SUBDIR => [ 0xa4 ],
+    0x18 => { Name => 'WB_RGGBLevelsAuto',       Format => 'int16s[4]' },
+    0x1c => 'ColorTempAuto',
+    0x1d => { Name => 'WB_RGGBLevelsUnknown',    Format => 'int16s[4]', Unknown => 1 },
+    0x21 => { Name => 'ColorTempUnknown', Unknown => 1 },
+    # (dcraw 8.81 uses index 0x22 for WB)
+    0x22 => { Name => 'WB_RGGBLevelsAsShot',     Format => 'int16s[4]' },
+    0x26 => 'ColorTempAsShot',
+    0x27 => { Name => 'WB_RGGBLevelsDaylight',   Format => 'int16s[4]' },
+    0x2b => 'ColorTempDaylight',
+    0x2c => { Name => 'WB_RGGBLevelsShade',      Format => 'int16s[4]' },
+    0x30 => 'ColorTempShade',
+    0x31 => { Name => 'WB_RGGBLevelsCloudy',     Format => 'int16s[4]' },
+    0x35 => 'ColorTempCloudy',
+    0x36 => { Name => 'WB_RGGBLevelsTungsten',   Format => 'int16s[4]' },
+    0x3a => 'ColorTempTungsten',
+    0x3b => { Name => 'WB_RGGBLevelsFluorescent',Format => 'int16s[4]' },
+    0x3f => 'ColorTempFluorescent',
+    0x40 => { Name => 'WB_RGGBLevelsKelvin',     Format => 'int16s[4]' },
+    0x44 => 'ColorTempKelvin',
+    0x45 => { Name => 'WB_RGGBLevelsFlash',      Format => 'int16s[4]' },
+    0x49 => 'ColorTempFlash',
+    0x4a => { Name => 'WB_RGGBLevelsUnknown2',   Format => 'int16s[4]', Unknown => 1 },
+    0x4e => { Name => 'ColorTempUnknown2', Unknown => 1 },
+    0x4f => { Name => 'WB_RGGBLevelsUnknown3',   Format => 'int16s[4]', Unknown => 1 },
+    0x53 => { Name => 'ColorTempUnknown3', Unknown => 1 },
+    0x54 => { Name => 'WB_RGGBLevelsUnknown4',   Format => 'int16s[4]', Unknown => 1 },
+    0x58 => { Name => 'ColorTempUnknown4', Unknown => 1 },
+    0x59 => { Name => 'WB_RGGBLevelsUnknown5',   Format => 'int16s[4]', Unknown => 1 },
+    0x5d => { Name => 'ColorTempUnknown5', Unknown => 1 },
+    0x5e => { Name => 'WB_RGGBLevelsUnknown6',   Format => 'int16s[4]', Unknown => 1 },
+    0x62 => { Name => 'ColorTempUnknown6', Unknown => 1 },
+    0x63 => { Name => 'WB_RGGBLevelsUnknown7',   Format => 'int16s[4]', Unknown => 1 },
+    0x67 => { Name => 'ColorTempUnknown7', Unknown => 1 },
+    0x68 => { Name => 'WB_RGGBLevelsUnknown8',   Format => 'int16s[4]', Unknown => 1 },
+    0x6c => { Name => 'ColorTempUnknown8', Unknown => 1 },
+    0x6d => { Name => 'WB_RGGBLevelsUnknown9',   Format => 'int16s[4]', Unknown => 1 },
+    0x71 => { Name => 'ColorTempUnknown9', Unknown => 1 },
+    0x72 => { Name => 'WB_RGGBLevelsUnknown10',  Format => 'int16s[4]', Unknown => 1 },
+    0x76 => { Name => 'ColorTempUnknown10', Unknown => 1 },
+    0x77 => { Name => 'WB_RGGBLevelsUnknown11',  Format => 'int16s[4]', Unknown => 1 },
+    0x7b => { Name => 'ColorTempUnknown11', Unknown => 1 },
+    0x7c => { Name => 'WB_RGGBLevelsUnknown12',  Format => 'int16s[4]', Unknown => 1 },
+    0x80 => { Name => 'ColorTempUnknown12', Unknown => 1 },
+    0x81 => { Name => 'WB_RGGBLevelsUnknown13',  Format => 'int16s[4]', Unknown => 1 },
+    0x85 => { Name => 'ColorTempUnknown13', Unknown => 1 },
+    0x86 => { Name => 'WB_RGGBLevelsUnknown14',  Format => 'int16s[4]', Unknown => 1 },
+    0x8a => { Name => 'ColorTempUnknown14', Unknown => 1 },
+    0x8b => { Name => 'WB_RGGBLevelsUnknown15',  Format => 'int16s[4]', Unknown => 1 },
+    0x8f => { Name => 'ColorTempUnknown15', Unknown => 1 },
+    0x90 => { Name => 'WB_RGGBLevelsPC1',        Format => 'int16s[4]' },
+    0x94 => 'ColorTempPC1',
+    0x95 => { Name => 'WB_RGGBLevelsPC2',        Format => 'int16s[4]' },
+    0x99 => 'ColorTempPC2',
+    0x9a => { Name => 'WB_RGGBLevelsPC3',        Format => 'int16s[4]' },
+    0x9e => 'ColorTempPC3',
+    0x9f => { Name => 'WB_RGGBLevelsUnknown16',  Format => 'int16s[4]', Unknown => 1 },
+    0xa3 => { Name => 'ColorTempUnknown16', Unknown => 1 },
+    0xa4 => { #PH
+        Name => 'ColorCalib',
+        Format => 'undef[120]',
+        Unknown => 1,
+        Notes => 'A, B, C, Temperature',
+        SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorCalib' }
+    },
+    0x26a => { #PH
+        Name => 'RawMeasuredRGGB',
+        Format => 'int32u[4]',
+        Notes => 'raw MeasuredRGGB values, before normalization',
+        # swap words because the word ordering is big-endian, opposite to the byte ordering
+        ValueConv => \&SwapWords,
+        ValueConvInv => \&SwapWords,
+    },
+);
+
+# Color data (MakerNotes tag 0x4001, count=796) (ref 12)
+%Image::ExifTool::Canon::ColorData3 = (
+    %binaryDataAttrs,
+    NOTES => 'These tags are used by the 1DmkIIN, 5D, 30D and 400D.',
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    IS_SUBDIR => [ 0x85 ],
+    0x00 => { #PH
+        Name => 'ColorDataVersion',
+        PrintConv => {
+            1 => '1 (1DmkIIN/5D/30D/400D)',
+        },
+    },
+    # 0x01-0x3e: RGGB coefficients, apparently specific to the
+    # individual camera and possibly used for color calibration (ref 37)
+    # (dcraw 8.81 uses index 0x3f for WB)
+    0x3f => { Name => 'WB_RGGBLevelsAsShot',      Format => 'int16s[4]' },
+    0x43 => 'ColorTempAsShot',
+    0x44 => { Name => 'WB_RGGBLevelsAuto',        Format => 'int16s[4]' },
+    0x48 => 'ColorTempAuto',
+    # not sure exactly what 'Measured' values mean...
+    0x49 => { Name => 'WB_RGGBLevelsMeasured',    Format => 'int16s[4]' },
+    0x4d => 'ColorTempMeasured',
+    0x4e => { Name => 'WB_RGGBLevelsDaylight',    Format => 'int16s[4]' },
+    0x52 => 'ColorTempDaylight',
+    0x53 => { Name => 'WB_RGGBLevelsShade',       Format => 'int16s[4]' },
+    0x57 => 'ColorTempShade',
+    0x58 => { Name => 'WB_RGGBLevelsCloudy',      Format => 'int16s[4]' },
+    0x5c => 'ColorTempCloudy',
+    0x5d => { Name => 'WB_RGGBLevelsTungsten',    Format => 'int16s[4]' },
+    0x61 => 'ColorTempTungsten',
+    0x62 => { Name => 'WB_RGGBLevelsFluorescent', Format => 'int16s[4]' },
+    0x66 => 'ColorTempFluorescent',
+    0x67 => { Name => 'WB_RGGBLevelsKelvin',      Format => 'int16s[4]' },
+    0x6b => 'ColorTempKelvin',
+    0x6c => { Name => 'WB_RGGBLevelsFlash',       Format => 'int16s[4]' },
+    0x70 => 'ColorTempFlash',
+    0x71 => { Name => 'WB_RGGBLevelsPC1',         Format => 'int16s[4]' },
+    0x75 => 'ColorTempPC1',
+    0x76 => { Name => 'WB_RGGBLevelsPC2',         Format => 'int16s[4]' },
+    0x7a => 'ColorTempPC2',
+    0x7b => { Name => 'WB_RGGBLevelsPC3',         Format => 'int16s[4]' },
+    0x7f => 'ColorTempPC3',
+    0x80 => { Name => 'WB_RGGBLevelsCustom',      Format => 'int16s[4]' },
+    0x84 => 'ColorTempCustom',
+    0x85 => { #37
+        Name => 'ColorCalib',
+        Format => 'undef[120]',
+        Unknown => 1,
+        Notes => 'B, C, A, Temperature',
+        SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorCalib' }
+    },
+    # 0xc5-0xc7: looks like black levels (ref 37)
+    # 0xc8-0x1c7: some sort of color table (ref 37)
+    0x248 => { #37
+        Name => 'FlashOutput',
+        ValueConv => '$val >= 255 ? 255 : exp(($val-200)/16*log(2))',
+        ValueConvInv => '$val == 255 ? 255 : 200 + log($val)*16/log(2)',
+        PrintConv => '$val == 255 ? "Strobe or Misfire" : sprintf("%.0f%%", $val * 100)',
+        PrintConvInv => '$val =~ /^(\d(\.?\d*))/ ? $1 / 100 : 255',
+    },
+    0x249 => { #37
+        Name => 'FlashBatteryLevel',
+        # calibration points for external flash: 144=3.76V (almost empty), 192=5.24V (full)
+        # - have seen a value of 201 with internal flash
+        PrintConv => '$val ? sprintf("%.2fV", $val * 5 / 186) : "n/a"',
+        PrintConvInv => '$val=~/^(\d+\.\d+)\s*V?$/i ? int($val*186/5+0.5) : 0',
+    },
+    0x24a => { #37
+        Name => 'ColorTempFlashData',
+        # 0 for no external flash, 35980 for 'Strobe or Misfire'
+        # (lower than ColorTempFlash by up to 200 degrees)
+        RawConv => '($val < 2000 or $val > 12000) ? undef : $val',
+    },
+    # 0x24b: inverse relationship with flash power (ref 37)
+    # 0x286: has value 256 for correct exposure, less for under exposure (seen 96 minimum) (ref 37)
+    0x287 => { #37
+        Name => 'MeasuredRGGBData',
+        Format => 'int32u[4]',
+        Notes => 'MeasuredRGGB may be derived from these data values',
+        # swap words because the word ordering is big-endian, opposite to the byte ordering
+        ValueConv => \&SwapWords,
+        ValueConvInv => \&SwapWords,
+    },
+    # 0x297: ranges from -10 to 30, higher for high ISO (ref 37)
+);
+
+# Color data (MakerNotes tag 0x4001, count=674|692|702|1227|1250|1251|1337|1338|1346) (ref PH)
+%Image::ExifTool::Canon::ColorData4 = (
+    %binaryDataAttrs,
+    NOTES => q{
+        These tags are used by the 1DmkIII, 1DSmkIII, 1DmkIV, 5DmkII, 7D, 40D, 50D,
+        450D, 500D, 550D, 1000D and 1100D.
+    },
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    IS_SUBDIR => [ 0x3f, 0xa8 ],
+    0x00 => {
+        Name => 'ColorDataVersion',
+        PrintConv => {
+            2 => '2 (1DmkIII)',
+            3 => '3 (40D)',
+            4 => '4 (1DSmkIII)',
+            5 => '5 (450D/1000D)',
+            6 => '6 (50D/5DmkII)',
+            7 => '7 (500D/550D/7D/1DmkIV)',
+            9 => '9 (1100D)',
+        },
+    },
+    # 0x01-0x18: unknown RGGB coefficients (int16s[4]) (50D)
+    # (dcraw 8.81 uses index 0x3f for WB)
+    0x3f => {
+        Name => 'ColorCoefs',
+        Format => 'undef[210]', # ColorTempUnknown11 is last entry
+        SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorCoefs' }
+    },
+    0xa8 => {
+        Name => 'ColorCalib',
+        Format => 'undef[120]',
+        Unknown => 1,
+        Notes => 'B, C, A, Temperature',
+        SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorCalib' }
+    },
+    0x280 => { #PH
+        Name => 'RawMeasuredRGGB',
+        Format => 'int32u[4]',
+        Notes => 'raw MeasuredRGGB values, before normalization',
+        # swap words because the word ordering is big-endian, opposite to the byte ordering
+        ValueConv => \&SwapWords,
+        ValueConvInv => \&SwapWords,
+    },
+);
+
+# color coefficients (ref PH)
+%Image::ExifTool::Canon::ColorCoefs = (
+    %binaryDataAttrs,
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    0x00 => { Name => 'WB_RGGBLevelsAsShot',      Format => 'int16s[4]' },
+    0x04 => 'ColorTempAsShot',
+    0x05 => { Name => 'WB_RGGBLevelsAuto',        Format => 'int16s[4]' },
+    0x09 => 'ColorTempAuto',
+    0x0a => { Name => 'WB_RGGBLevelsMeasured',    Format => 'int16s[4]' },
+    0x0e => 'ColorTempMeasured',
+    # the following Unknown values are set for the 50D and 5DmkII, and the
+    # SRAW images of the 40D, and affect thumbnail display for the 50D/5DmkII
+    # and conversion for all modes of the 40D
+    0x0f => { Name => 'WB_RGGBLevelsUnknown',     Format => 'int16s[4]', Unknown => 1 },
+    0x13 => { Name => 'ColorTempUnknown', Unknown => 1 },
+    0x14 => { Name => 'WB_RGGBLevelsDaylight',    Format => 'int16s[4]' },
+    0x18 => 'ColorTempDaylight',
+    0x19 => { Name => 'WB_RGGBLevelsShade',       Format => 'int16s[4]' },
+    0x1d => 'ColorTempShade',
+    0x1e => { Name => 'WB_RGGBLevelsCloudy',      Format => 'int16s[4]' },
+    0x22 => 'ColorTempCloudy',
+    0x23 => { Name => 'WB_RGGBLevelsTungsten',    Format => 'int16s[4]' },
+    0x27 => 'ColorTempTungsten',
+    0x28 => { Name => 'WB_RGGBLevelsFluorescent',Format => 'int16s[4]' },
+    0x2c => 'ColorTempFluorescent',
+    # (changing the Kelvin values has no effect on image in DPP... why not?)
+    0x2d => { Name => 'WB_RGGBLevelsKelvin',     Format => 'int16s[4]' },
+    0x31 => 'ColorTempKelvin',
+    0x32 => { Name => 'WB_RGGBLevelsFlash',      Format => 'int16s[4]' },
+    0x36 => 'ColorTempFlash',
+    0x37 => { Name => 'WB_RGGBLevelsUnknown2',   Format => 'int16s[4]', Unknown => 1 },
+    0x3b => { Name => 'ColorTempUnknown2', Unknown => 1 },
+    0x3c => { Name => 'WB_RGGBLevelsUnknown3',   Format => 'int16s[4]', Unknown => 1 },
+    0x40 => { Name => 'ColorTempUnknown3', Unknown => 1 },
+    0x41 => { Name => 'WB_RGGBLevelsUnknown4',   Format => 'int16s[4]', Unknown => 1 },
+    0x45 => { Name => 'ColorTempUnknown4', Unknown => 1 },
+    0x46 => { Name => 'WB_RGGBLevelsUnknown5',   Format => 'int16s[4]', Unknown => 1 },
+    0x4a => { Name => 'ColorTempUnknown5', Unknown => 1 },
+    0x4b => { Name => 'WB_RGGBLevelsUnknown6',   Format => 'int16s[4]', Unknown => 1 },
+    0x4f => { Name => 'ColorTempUnknown6', Unknown => 1 },
+    0x50 => { Name => 'WB_RGGBLevelsUnknown7',   Format => 'int16s[4]', Unknown => 1 },
+    0x54 => { Name => 'ColorTempUnknown7', Unknown => 1 },
+    0x55 => { Name => 'WB_RGGBLevelsUnknown8',   Format => 'int16s[4]', Unknown => 1 },
+    0x59 => { Name => 'ColorTempUnknown8', Unknown => 1 },
+    0x5a => { Name => 'WB_RGGBLevelsUnknown9',   Format => 'int16s[4]', Unknown => 1 },
+    0x5e => { Name => 'ColorTempUnknown9', Unknown => 1 },
+    0x5f => { Name => 'WB_RGGBLevelsUnknown10',  Format => 'int16s[4]', Unknown => 1 },
+    0x63 => { Name => 'ColorTempUnknown10', Unknown => 1 },
+    0x64 => { Name => 'WB_RGGBLevelsUnknown11',  Format => 'int16s[4]', Unknown => 1 },
+    0x68 => { Name => 'ColorTempUnknown11', Unknown => 1 },
+    0x69 => { Name => 'WB_RGGBLevelsUnknown12',  Format => 'int16s[4]', Unknown => 1 },
+    0x6d => { Name => 'ColorTempUnknown12', Unknown => 1 },
+    0x6e => { Name => 'WB_RGGBLevelsUnknown13',  Format => 'int16s[4]', Unknown => 1 },
+    0x72 => { Name => 'ColorTempUnknown13', Unknown => 1 },
+);
+
+# color calibration (ref 37)
+%Image::ExifTool::Canon::ColorCalib = (
+    %binaryDataAttrs,
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    # these coefficients are in a different order compared to older
+    # models (A,B,C in ColorData1/2 vs. C,A,B in ColorData3/4) - PH
+    # Coefficient A most closely matches the blue curvature, and
+    # coefficient B most closely matches the red curvature, but the match
+    # is not perfect, and I don't know what coefficient C is for (certainly
+    # not a green coefficient) - PH
+    NOTES => q{
+        Camera color calibration data.  For the 20D, 350D, 1DmkII and 1DSmkII the
+        order of the cooefficients is A, B, C, Temperature, but for newer models it
+        is B, C, A, Temperature.  These tags are extracted only when the Unknown
+        option is used.
+    },
+    0x00 => { Name => 'CameraColorCalibration01', %cameraColorCalibration },
+    0x04 => { Name => 'CameraColorCalibration02', %cameraColorCalibration },
+    0x08 => { Name => 'CameraColorCalibration03', %cameraColorCalibration },
+    0x0c => { Name => 'CameraColorCalibration04', %cameraColorCalibration },
+    0x10 => { Name => 'CameraColorCalibration05', %cameraColorCalibration },
+    0x14 => { Name => 'CameraColorCalibration06', %cameraColorCalibration },
+    0x18 => { Name => 'CameraColorCalibration07', %cameraColorCalibration },
+    0x1c => { Name => 'CameraColorCalibration08', %cameraColorCalibration },
+    0x20 => { Name => 'CameraColorCalibration09', %cameraColorCalibration },
+    0x24 => { Name => 'CameraColorCalibration10', %cameraColorCalibration },
+    0x28 => { Name => 'CameraColorCalibration11', %cameraColorCalibration },
+    0x2c => { Name => 'CameraColorCalibration12', %cameraColorCalibration },
+    0x30 => { Name => 'CameraColorCalibration13', %cameraColorCalibration },
+    0x34 => { Name => 'CameraColorCalibration14', %cameraColorCalibration },
+    0x38 => { Name => 'CameraColorCalibration15', %cameraColorCalibration },
+);
+
+# Color data (MakerNotes tag 0x4001, count=5120) (ref PH)
+%Image::ExifTool::Canon::ColorData5 = (
+    %binaryDataAttrs,
+    NOTES => 'These tags are used by the PowerShot G10.',
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    IS_SUBDIR => [ 0x47 ],
+    # 0x00 - oddly, this isn't ColorDataVersion (probably should have been version 8)
+    0x47 => {
+        Name => 'ColorCoefs',
+        Format => 'undef[230]', # ColorTempUnknown13 is last entry
+        SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorCoefs' }
+    },
+    0xba => { Name => 'CameraColorCalibration01', %cameraColorCalibration2,
+              Notes => 'B, C, A, D, Temperature' },
+    0xbf => { Name => 'CameraColorCalibration02', %cameraColorCalibration2 },
+    0xc4 => { Name => 'CameraColorCalibration03', %cameraColorCalibration2 },
+    0xc9 => { Name => 'CameraColorCalibration04', %cameraColorCalibration2 },
+    0xce => { Name => 'CameraColorCalibration05', %cameraColorCalibration2 },
+    0xd3 => { Name => 'CameraColorCalibration06', %cameraColorCalibration2 },
+    0xd8 => { Name => 'CameraColorCalibration07', %cameraColorCalibration2 },
+    0xdd => { Name => 'CameraColorCalibration08', %cameraColorCalibration2 },
+    0xe2 => { Name => 'CameraColorCalibration09', %cameraColorCalibration2 },
+    0xe7 => { Name => 'CameraColorCalibration10', %cameraColorCalibration2 },
+    0xec => { Name => 'CameraColorCalibration11', %cameraColorCalibration2 },
+    0xf1 => { Name => 'CameraColorCalibration12', %cameraColorCalibration2 },
+    0xf6 => { Name => 'CameraColorCalibration13', %cameraColorCalibration2 },
+    0xfb => { Name => 'CameraColorCalibration14', %cameraColorCalibration2 },
+    0x100=> { Name => 'CameraColorCalibration15', %cameraColorCalibration2 },
+);
+
+# Color data (MakerNotes tag 0x4001, count=1273) (ref PH)
+%Image::ExifTool::Canon::ColorData6 = (
+    %binaryDataAttrs,
+    NOTES => 'These tags are used by the EOS 600D.',
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    IS_SUBDIR => [ 0xbc ],
+    0x00 => {
+        Name => 'ColorDataVersion',
+        PrintConv => {
+            10 => '10 (600D)',
+        },
+    },
+    0x3f => { Name => 'WB_RGGBLevelsAsShot',     Format => 'int16s[4]' },
+    0x43 => 'ColorTempAsShot',
+    0x44 => { Name => 'WB_RGGBLevelsAuto',       Format => 'int16s[4]' },
+    0x48 => 'ColorTempAuto',
+    0x49 => { Name => 'WB_RGGBLevelsMeasured',   Format => 'int16s[4]' },
+    0x4d => 'ColorTempMeasured',
+    0x4e => { Name => 'WB_RGGBLevelsUnknown',    Format => 'int16s[4]', Unknown => 1 },
+    0x52 => { Name => 'ColorTempUnknown', Unknown => 1 },
+    0x53 => { Name => 'WB_RGGBLevelsUnknown2',   Format => 'int16s[4]', Unknown => 1 },
+    0x57 => { Name => 'ColorTempUnknown2', Unknown => 1 },
+    0x58 => { Name => 'WB_RGGBLevelsUnknown3',   Format => 'int16s[4]', Unknown => 1 },
+    0x5c => { Name => 'ColorTempUnknown3', Unknown => 1 },
+    0x5d => { Name => 'WB_RGGBLevelsUnknown4',   Format => 'int16s[4]', Unknown => 1 },
+    0x61 => { Name => 'ColorTempUnknown4', Unknown => 1 },
+    0x62 => { Name => 'WB_RGGBLevelsUnknown5',   Format => 'int16s[4]', Unknown => 1 },
+    0x66 => { Name => 'ColorTempUnknown5', Unknown => 1 },
+    0x67 => { Name => 'WB_RGGBLevelsDaylight',   Format => 'int16s[4]' },
+    0x6b => 'ColorTempDaylight',
+    0x6c => { Name => 'WB_RGGBLevelsShade',      Format => 'int16s[4]' },
+    0x70 => 'ColorTempShade',
+    0x71 => { Name => 'WB_RGGBLevelsCloudy',     Format => 'int16s[4]' },
+    0x75 => 'ColorTempCloudy',
+    0x76 => { Name => 'WB_RGGBLevelsTungsten',   Format => 'int16s[4]' },
+    0x7a => 'ColorTempTungsten',
+    0x7b => { Name => 'WB_RGGBLevelsFluorescent',Format => 'int16s[4]' },
+    0x7f => 'ColorTempFluorescent',
+    0x80 => { Name => 'WB_RGGBLevelsKelvin',     Format => 'int16s[4]' },
+    0x84 => 'ColorTempKelvin',
+    0x85 => { Name => 'WB_RGGBLevelsFlash',      Format => 'int16s[4]' },
+    0x89 => 'ColorTempFlash',
+    0x8a => { Name => 'WB_RGGBLevelsUnknown6',   Format => 'int16s[4]', Unknown => 1 },
+    0x8e => { Name => 'ColorTempUnknown6', Unknown => 1 },
+    0x8f => { Name => 'WB_RGGBLevelsUnknown7',   Format => 'int16s[4]', Unknown => 1 },
+    0x93 => { Name => 'ColorTempUnknown7', Unknown => 1 },
+    0x94 => { Name => 'WB_RGGBLevelsUnknown8',   Format => 'int16s[4]', Unknown => 1 },
+    0x98 => { Name => 'ColorTempUnknown8', Unknown => 1 },
+    0x99 => { Name => 'WB_RGGBLevelsUnknown9',   Format => 'int16s[4]', Unknown => 1 },
+    0x9d => { Name => 'ColorTempUnknown9', Unknown => 1 },
+    0x9e => { Name => 'WB_RGGBLevelsUnknown10',  Format => 'int16s[4]', Unknown => 1 },
+    0xa2 => { Name => 'ColorTempUnknown10', Unknown => 1 },
+    0xa3 => { Name => 'WB_RGGBLevelsUnknown11',  Format => 'int16s[4]', Unknown => 1 },
+    0xa7 => { Name => 'ColorTempUnknown11', Unknown => 1 },
+    0xa8 => { Name => 'WB_RGGBLevelsUnknown12',  Format => 'int16s[4]', Unknown => 1 },
+    0xac => { Name => 'ColorTempUnknown12', Unknown => 1 },
+    0xad => { Name => 'WB_RGGBLevelsUnknown13',  Format => 'int16s[4]', Unknown => 1 },
+    0xb1 => { Name => 'ColorTempUnknown13', Unknown => 1 },
+    0xb2 => { Name => 'WB_RGGBLevelsUnknown14',  Format => 'int16s[4]', Unknown => 1 },
+    0xb6 => { Name => 'ColorTempUnknown14', Unknown => 1 },
+    0xb7 => { Name => 'WB_RGGBLevelsUnknown15',  Format => 'int16s[4]', Unknown => 1 },
+    0xbb => { Name => 'ColorTempUnknown15', Unknown => 1 },
+    0xbc => {
+        Name => 'ColorCalib',
+        Format => 'undef[120]',
+        Unknown => 1,
+        Notes => 'B, C, A, Temperature',
+        SubDirectory => { TagTable => 'Image::ExifTool::Canon::ColorCalib' }
+    },
+    0x194 => { #PH
+        Name => 'RawMeasuredRGGB',
+        Format => 'int32u[4]',
+        Notes => 'raw MeasuredRGGB values, before normalization',
+        # swap words because the word ordering is big-endian, opposite to the byte ordering
+        ValueConv => \&SwapWords,
+        ValueConvInv => \&SwapWords,
+    },
+);
+
+# Unknown color data (MakerNotes tag 0x4001)
+%Image::ExifTool::Canon::ColorDataUnknown = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+);
+
+# Color information (MakerNotes tag 0x4003) (ref PH)
+%Image::ExifTool::Canon::ColorInfo = (
+    %binaryDataAttrs,
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 1,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    1 => {
+        Condition => '$$self{Model} =~ /EOS-1D/',
+        Name => 'Saturation',
+        %Image::ExifTool::Exif::printParameter,
+    },
+    2 => {
+        Name => 'ColorTone',
+        %Image::ExifTool::Exif::printParameter,
+    },
+    3 => {
+        Name => 'ColorSpace',
+        RawConv => '$val ? $val : undef', # ignore tag if zero
+        PrintConv => {
+            1 => 'sRGB',
+            2 => 'Adobe RGB',
+        },
+    },
+);
+
+# AF micro-adjustment information (MakerNotes tag 0x4013) (ref PH)
+%Image::ExifTool::Canon::AFMicroAdj = (
+    %binaryDataAttrs,
+    FORMAT => 'int32s',
+    FIRST_ENTRY => 1,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    1 => {
+        Name => 'AFMicroAdjMode',
+        PrintConv => {
+            0 => 'Disable',
+            1 => 'Adjust all by the same amount',
+            2 => 'Adjust by lens',
+        },
+    },
+    2 => {
+        Name => 'AFMicroAdjValue',
+        Format => 'rational64s',
+    },
+);
+
+# Vignetting correction information (MakerNotes tag 0x4015)
+%Image::ExifTool::Canon::VignettingCorr = (
+    %binaryDataAttrs,
+    FORMAT => 'int16s',
+    FIRST_ENTRY => 1,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => q{
+        This information is found in images from the 1DmkIV, 5DmkII, 7D, 50D, 500D
+        and 550D.
+    },
+    # 0 => 'PeripheralLightingVersion', value = 0x1000
+    2 => {
+        Name => 'PeripheralLighting',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+    6 => 'PeripheralLightingValue',
+    # 10 - flags?
+    11 => {
+        Name => 'OriginalImageWidth',
+        Notes => 'full size of original image before being rotated or scaled in camera',
+    },
+    12 => 'OriginalImageHeight',
+);
+
+# More Vignetting correction information (MakerNotes tag 0x4016)
+%Image::ExifTool::Canon::VignettingCorr2 = (
+    %binaryDataAttrs,
+    FORMAT => 'int32s',
+    FIRST_ENTRY => 1,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    5 => {
+        Name => 'PeripheralLightingSetting',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+);
+
+# Auto Lighting Optimizater information (MakerNotes tag 0x4018) (ref PH)
+%Image::ExifTool::Canon::LightingOpt = (
+    %binaryDataAttrs,
+    FORMAT => 'int32s',
+    FIRST_ENTRY => 1,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'This information is new in images from the EOS 7D.',
+    2 => {
+        Name => 'AutoLightingOptimizer',
+        PrintConv => {
+            0 => 'Standard',
+            1 => 'Low',
+            2 => 'Strong',
+            3 => 'Off',
+        },
+    },
+);
+
+# Lens information (MakerNotes tag 0x4019) (ref 20)
+%Image::ExifTool::Canon::LensInfo = (
+    %binaryDataAttrs,
+    FIRST_ENTRY => 0,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    0 => { # this doesn't seem to be valid for some models (ie. 550D, 7D?, 1DmkIV?)
+        Name => 'LensSerialNumber',
+        Notes => q{
+            apparently this is an internal serial number because it doesn't correspond
+            to the one printed on the lens
+        },
+        Condition => '$$valPt !~ /^\0\0\0\0/', # (rules out 550D and older lenses)
+        Format => 'undef[5]',
+        ValueConv => 'unpack("H*", $val)',
+        ValueConvInv => 'pack("H*", $val)',
+    },
+);
+
+# Subject mode ambience information (MakerNotes tag 0x4020) (ref PH)
+%Image::ExifTool::Canon::Ambience = (
+    %binaryDataAttrs,
+    FORMAT => 'int32s',
+    FIRST_ENTRY => 1,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    1 => {
+        Name => 'AmbienceSelection',
+        PrintConv => {
+            0 => 'Standard',
+            1 => 'Vivid',
+            2 => 'Warm',
+            3 => 'Soft',
+            4 => 'Cool',
+            5 => 'Intense',
+            6 => 'Brighter',
+            7 => 'Darker',
+            8 => 'Monochrome',
+        },
+    },
+);
+
+# Creative filter information (MakerNotes tag 0x4024) (ref PH)
+%Image::ExifTool::Canon::FilterInfo = (
+    PROCESS_PROC => \&ProcessFilters,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    NOTES => 'Information about creative filter settings.',
+    0x101 => {
+        Name => 'GrainyBWFilter',
+        Description => 'Grainy B/W Filter',
+        PrintConv => '$val == -1 ? "Off" : "On ($val)"',
+        PrintConvInv => '$val =~ /([-+]?\d+)/ ? $1 : -1',
+    },
+    0x201 => {
+        Name => 'SoftFocusFilter',
+        PrintConv => '$val == -1 ? "Off" : "On ($val)"',
+        PrintConvInv => '$val =~ /([-+]?\d+)/ ? $1 : -1',
+    },
+    0x301 => {
+        Name => 'ToyCameraFilter',
+        PrintConv => '$val == -1 ? "Off" : "On ($val)"',
+        PrintConvInv => '$val =~ /([-+]?\d+)/ ? $1 : -1',
+    },
+    0x401 => {
+        Name => 'MiniatureFilter',
+        PrintConv => '$val == -1 ? "Off" : "On ($val)"',
+        PrintConvInv => '$val =~ /([-+]?\d+)/ ? $1 : -1',
+    },
+    0x0402 => {
+        Name => 'MiniatureFilterOrientation',
+        PrintConv => {
+            0 => 'Horizontal',
+            1 => 'Vertical',
+        },
+    },
+    0x403=> 'MiniatureFilterPosition',
+    # 0x404 - value: 0, 345, 518, ... (miniature filter width maybe?)
+);
+
+# Canon CNTH atoms (ref PH)
+%Image::ExifTool::Canon::CNTH = (
+    GROUPS => { 0 => 'MakerNotes', 1 => 'Canon', 2 => 'Video' },
+    NOTES => q{
+        Canon-specific QuickTime tags found in the CNTH atom of MOV videos from some
+        cameras such as the PowerShot S95.
+    },
+    CNDA => {
+        Name => 'ThumbnailImage',
+        Format => 'undef',
+        Notes => 'the full THM image, embedded metadata is extracted as the first sub-document',
+        RawConv => q{
+            $$self{DOC_NUM} = ++$$self{DOC_COUNT};
+            $self->ExtractInfo(\$val, { ReEntry => 1 });
+            $$self{DOC_NUM} = 0;
+            return \$val;
+        },
+    },
+);
+
+# Canon composite tags
 %Image::ExifTool::Canon::Composite = (
     GROUPS => { 2 => 'Camera' },
     DriveMode => {
@@ -3480,9 +6246,9 @@ my %printParameter = (
         },
         ValueConv => '$val[0] ? 0 : ($val[1] ? 1 : 2)',
         PrintConv => {
-            0 => 'Continuous shooting',
+            0 => 'Continuous Shooting',
             1 => 'Self-timer Operation',
-            2 => 'Single-frame shooting',
+            2 => 'Single-frame Shooting',
         },
     },
     Lens => {
@@ -3511,10 +6277,20 @@ my %printParameter = (
             0 => 'CanonExposureMode',
             1 => 'EasyMode',
         },
-        ValueConv => '$val[0] ? $val[0] : $val[1] + 10',
-        PrintConv => '$val[0] ? $prt[0] : $prt[1]',
+        Desire => {
+            2 => 'BulbDuration',
+        },
+        # most Canon models set CanonExposureMode to Manual (4) for Bulb shots,
+        # but the 1DmkIII uses a value of 7 for Bulb, so use this for other
+        # models too (Note that Canon DPP reports "Manual Exposure" here)
+        ValueConv => '$val[0] ? (($val[0] eq "4" and $val[2]) ? 7 : $val[0]) : $val[1] + 10',
+        PrintConv => '$val eq "7" ? "Bulb" : ($val[0] ? $prt[0] : $prt[1])',
     },
     FlashType => {
+        Notes => q{
+            may report "Built-in Flash" for some Canon cameras with external flash in
+            manual mode
+        },
         Require => {
             0 => 'FlashBits',
         },
@@ -3532,19 +6308,6 @@ my %printParameter = (
         },
         RawConv => '$val[1] ? $val : undef',
         ValueConv => '($val[0]==3 or $val[0]==4 or $val[0]==6) ? 1 : 0',
-        PrintConv => {
-            0 => 'Off',
-            1 => 'On',
-        },
-    },
-    # fudge to display simple Flash On/Off for Canon cameras only
-    FlashOn => {
-        Description => 'Flash',
-        Desire => {
-            0 => 'FlashBits',
-            1 => 'Flash',
-        },
-        ValueConv => 'Image::ExifTool::Canon::FlashOn(@val)',
         PrintConv => {
             0 => 'Off',
             1 => 'On',
@@ -3618,7 +6381,8 @@ my %printParameter = (
             2 => 'Canon:DigitalZoom',
         },
         RawConv => q{
-            return undef unless $val[2] == 3 and $val[0];
+            ToFloat(@val);
+            return undef unless $val[2] and $val[2] == 3 and $val[0] and $val[1];
             return $val[1] / $val[0];
         },
         PrintConv => 'sprintf("%.2fx",$val)',
@@ -3631,9 +6395,16 @@ my %printParameter = (
     },
     FileNumber => {
         Groups => { 2 => 'Image' },
+        Writable => 1,
+        WriteCheck => '$val=~/\d+-\d+/ ? undef : "Invalid format"',
+        DelCheck => '"Can\'t delete"',
         Require => {
             0 => 'DirectoryIndex',
             1 => 'FileIndex',
+        },
+        WriteAlso => {
+            DirectoryIndex => '$val=~/(\d+)-(\d+)/; $1',
+            FileIndex => '$val=~/(\d+)-(\d+)/; $2',
         },
         ValueConv => 'sprintf("%.3d-%.4d",@val)',
     },
@@ -3642,6 +6413,110 @@ my %printParameter = (
 # add our composite tags
 Image::ExifTool::AddCompositeTags('Image::ExifTool::Canon');
 
+#------------------------------------------------------------------------------
+# Return lens name with teleconverter if applicable
+# Inputs: 0) lens name string, 1) short focal length
+# Returns: lens string with tc if appropriate
+sub LensWithTC($$)
+{
+    my ($lens, $shortFocal) = @_;
+
+    # add teleconverter multiplication factor if applicable
+    # (and if the LensType doesn't already include one)
+    if (not $lens =~ /x$/ and $lens =~ /(\d+)/) {
+        my $sf = $1;    # short focal length
+        my $tc;
+        foreach $tc (1, 1.4, 2, 2.8) {
+            next if abs($shortFocal - $sf * $tc) > 0.9;
+            $lens .= " + ${tc}x" if $tc > 1;
+            last;
+        }
+    }
+    return $lens;
+}
+
+#------------------------------------------------------------------------------
+# Attempt to identify the specific lens if multiple lenses have the same LensType
+# Inputs: 0) PrintConv hash ref, 1) LensType, 2) ShortFocal, 3) LongFocal
+#         4) MaxAperture, 5) LensModel
+# Notes: PrintConv, LensType, ShortFocal and LongFocal must be defined.
+#        Other inputs are optional.
+sub PrintLensID(@)
+{
+    my ($printConv, $lensType, $shortFocal, $longFocal, $maxAperture, $lensModel) = @_;
+    my $lens = $$printConv{$lensType};
+    if ($lens) {
+        # return this lens unless other lenses have the same LensType
+        return LensWithTC($lens, $shortFocal) unless $$printConv{"$lensType.1"};
+        $lens =~ s/ or .*//s;    # remove everything after "or"
+        # make list of all possible matching lenses
+        my @lenses = ( $lens );
+        my $i;
+        for ($i=1; $$printConv{"$lensType.$i"}; ++$i) {
+            push @lenses, $$printConv{"$lensType.$i"};
+        }
+        # look for lens in user-defined lenses
+        foreach $lens (@lenses) {
+            next unless $Image::ExifTool::userLens{$lens};
+            return LensWithTC($lens, $shortFocal);
+        }
+        # attempt to determine actual lens
+        my ($tc, @maybe, @likely, @matches);
+        foreach $tc (1, 1.4, 2, 2.8) {  # loop through teleconverter scaling factors
+            foreach $lens (@lenses) {
+                next unless $lens =~ /(\d+)(?:-(\d+))?mm.*?(?:[fF]\/?)(\d+(?:\.\d+)?)(?:-(\d+(?:\.\d+)?))?/;
+                # ($1=short focal, $2=long focal, $3=max aperture wide, $4=max aperture tele)
+                my ($sf, $lf, $sa, $la) = ($1, $2, $3, $4);
+                # see if we can rule out this lens by focal length or aperture
+                $lf = $sf if $sf and not $lf;
+                $la = $sa if $sa and not $la;
+                next if abs($shortFocal - $sf * $tc) > 0.9;
+                my $tclens = $lens;
+                $tclens .= " + ${tc}x" if $tc > 1;
+                push @maybe, $tclens;
+                next if abs($longFocal  - $lf * $tc) > 0.9;
+                push @likely, $tclens;
+                if ($maxAperture) {
+                    # (not 100% sure that TC affects MaxAperture, but it should!)
+                    next if $maxAperture < $sa * $tc - 0.15;
+                    next if $maxAperture > $la * $tc + 0.15;
+                }
+                push @matches, $tclens;
+            }
+            last if @maybe;
+        }
+        return join(' or ', @matches) if @matches;
+        return join(' or ', @likely) if @likely;
+        return join(' or ', @maybe) if @maybe;
+    } elsif ($lensModel and $lensModel =~ /\d/) {
+        # use lens model as written by the camera
+        if ($printConv eq \%canonLensTypes) {
+            # add "Canon" to the start since the Canon cameras only understand Canon lenses
+            return "Canon $lensModel";
+        } else {
+            return $lensModel;
+        }
+    }
+    my $str = '';
+    if ($shortFocal) {
+        $str .= sprintf(' %d', $shortFocal);
+        $str .= sprintf('-%d', $longFocal) if $longFocal and $longFocal != $shortFocal;
+        $str .= 'mm';
+    }
+    return "Unknown$str" if $lensType eq '-1'; # (careful because Sigma LensType's may not be integer)
+    return "Unknown ($lensType)$str";
+}
+
+#------------------------------------------------------------------------------
+# Swap 16-bit words in 32-bit integers
+# Inputs: 0) string of integers
+# Returns: string of word-swapped integers
+sub SwapWords($)
+{
+    my @a = split(' ', shift);
+    $_ = (($_ >> 16) | ($_ << 16)) & 0xffffffff foreach @a;
+    return "@a";
+}
 
 #------------------------------------------------------------------------------
 # Validate first word of Canon binary data
@@ -3697,54 +6572,93 @@ sub ReadODD($$)
 {
     my ($exifTool, $offset) = @_;
     return undef unless $offset;
-    my ($raf, $buff, $buf2, $i);
+    my ($raf, $buff, $buf2, $i, $warn);
     return undef unless defined($raf = $$exifTool{RAF});
-    # the data block is a variable length and starts with ff ff ff ff followed
-    # an int32u count of the number of records.  Then an int32u size of the first
-    # record, then the first record data, int32u size of the 2nd record, etc,
-    # for the specified number of records (for some reason the size of the last
-    # record includes the size word, but the others don't)
+    # the data block is a variable length and starts with 0xffffffff
+    # followed a 4-byte (int32u) version number
     my $pos = $raf->Tell();
     if ($raf->Seek($offset, 0) and $raf->Read($buff, 8)==8 and $buff=~/^\xff{4}.\0\0/s) {
         my $err = 1;
         # must set byte order in case it is different than current byte order
         # (we could be reading this after byte order was changed)
         my $oldOrder = GetByteOrder();
-        my $count = Get32u(\$buff, 4);
-        if ($count > 20) {
+        my $version = Get32u(\$buff, 4);
+        if ($version > 20) {
             ToggleByteOrder();
-            $count = unpack('N',pack('V',$count));
+            $version = unpack('N',pack('V',$version));
         }
-        if ($count and $count <= 20) {
+        if ($version == 1 or   # 1Ds (big endian)
+            $version == 2)     # 5D/20D (little endian)
+        {
+            # this data is structured as follows:
+            #  4 bytes: all 0xff
+            #  4 bytes: version number (=1 or 2)
+            # 20 bytes: sha1
+            #  4 bytes: record count
+            # for each record:
+            # |  4 bytes: record number (beginning at 0)
+            # |  4 bytes: block offset
+            # |  4 bytes: block length
+            # | 20 bytes: block sha1
+            if ($raf->Read($buf2, 24) == 24) {
+                $buff .= $buf2;
+                my $count = Get32u(\$buf2, 20);
+                # read all records if the count is reasonable
+                if ($count and $count < 20 and
+                    $raf->Read($buf2, $count * 32) == $count * 32)
+                {
+                    $buff .= $buf2;
+                    undef $err;
+                }
+            }
+        } elsif ($version == 3) { # newer models (little endian)
+            # this data is structured as follows:
+            #  4 bytes: all 0xff
+            #  4 bytes: version number (=3)
+            # 24 bytes: sha1 A length (=20) + sha1 A
+            # 24 bytes: sha1 B length (=20) + sha1 B
+            #  4 bytes: length of remaining data (including this length word!)
+            #  8 bytes: salt length (=4) + salt ?
+            #  4 bytes: unknown (=3)
+            #  4 bytes: size of file
+            #  4 bytes: unknown (=1 for most models, 2 for 5DmkII)
+            #  4 bytes: unknown (=1)
+            #  4 bytes: unknown (always the same for a given firmware version)
+            #  4 bytes: unknown (random)
+            #  4 bytes: record count
+            # for each record:
+            # |  4 bytes: record number (beginning at 1)
+            # |  8 bytes: salt length (=4) + salt ?
+            # | 24 bytes: sha1 length (=20) + sha1
+            # |  4 bytes: block count
+            # | for each block:
+            # | |  4 bytes: block offset
+            # | |  4 bytes: block length
+            # followed by zero padding to end of ODD data (~72 bytes)
             for ($i=0; ; ++$i) {
-                $i >= $count and undef $err, last;
+                $i == 3 and undef $err, last; # success!
                 $raf->Read($buf2, 4) == 4 or last;
                 $buff .= $buf2;
                 my $len = Get32u(\$buf2, 0);
-                # (apparently the last record includes the size word itself
-                # in the data size, but the others don't. doh!)
-                $len -= 4 if $i == $count - 1 and $len >= 4;
-                # make sure records are a reasonable size (< 1MB)
-                $len <= 0x100000 and $raf->Read($buf2, $len) == $len or last;
+                # (the data length includes the length word itself - doh!)
+                $len -= 4 if $i == 2 and $len >= 4;
+                # make sure records are a reasonable size (<= 64kB)
+                $len <= 0x10000 and $raf->Read($buf2, $len) == $len or last;
                 $buff .= $buf2;
             }
+        } else {
+            $warn = "Unsupported original decision data version $version";
         }
         SetByteOrder($oldOrder);
-        if ($err) {
-            # the Canon 5D doesn't seem to use the same record format as the 40D,
-            # and the above parsing fails.  For the 40D, the data size is 512 bytes
-            # for JPEG images and 608 bytes for CR2 images.  For my only 5D sample
-            # with this information, it is 160 bytes for the CR2 image.  So just to
-            # be safe, let's copy up to 800 bytes:
-            $raf->Seek($offset, 0);
-            $raf->Read($buff, 800);
-        } elsif ($exifTool->Options('HtmlDump')) {
-            $exifTool->HtmlDump($offset, length $buff, '[OriginalDecisionData]', undef);
+        unless ($err) {
+            if ($exifTool->Options('HtmlDump')) {
+                $exifTool->HDump($offset, length $buff, '[OriginalDecisionData]', undef);
+            }
+            $raf->Seek($pos, 0);    # restore original file position
+            return \$buff;
         }
-        $raf->Seek($pos, 0);    # restore original file position
-        return \$buff;
     }
-    $exifTool->Warn('Invalid original decision data');
+    $exifTool->Warn($warn || 'Invalid original decision data');
     $raf->Seek($pos, 0);    # restore original file position
     return undef;
 }
@@ -3797,7 +6711,7 @@ sub PrintFocalRange(@)
 }
 
 #------------------------------------------------------------------------------
-# process a serial stream of binary data
+# Process a serial stream of binary data
 # Inputs: 0) ExifTool object ref, 1) dirInfo ref, 2) tag table ref
 # Returns: 1 on success
 # Notes: The tagID's for serial stream tags are consecutive indices beginning
@@ -3924,21 +6838,6 @@ sub PrintAFPoints1D($)
 }
 
 #------------------------------------------------------------------------------
-# Decide whether flash was on or off
-sub FlashOn(@)
-{
-    my @val = @_;
-
-    if (defined $val[0]) {
-        return $val[0] ? 1 : 0;
-    }
-    if (defined $val[1]) {
-        return $val[1]&0x07 ? 1 : 0;
-    }
-    return undef;
-}
-
-#------------------------------------------------------------------------------
 # Convert Canon hex-based EV (modulo 0x20) to real number
 # Inputs: 0) value to convert
 # ie) 0x00 -> 0
@@ -3996,6 +6895,62 @@ sub CanonEvInv($)
 }
 
 #------------------------------------------------------------------------------
+# Process a creative filter data
+# Inputs: 0) ExifTool object ref, 1) dirInfo ref, 2) tag table ref
+# Returns: 1 on success
+sub ProcessFilters($$$)
+{
+    my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    my $dataPt = $$dirInfo{DataPt};
+    my $pos = $$dirInfo{DirStart};
+    my $dirLen = $$dirInfo{DirLen};
+    my $dataPos = $$dirInfo{DataPos} || 0;
+    my $end = $pos + $dirLen;
+    my $verbose = $exifTool->Options('Verbose');
+
+    return 0 if $dirLen < 8;
+    my $numFilters = Get32u($dataPt, $pos + 4);
+    $verbose and $exifTool->VerboseDir('Creative Filter', $numFilters);
+    $pos += 8;
+    my ($i, $j, $err);
+    for ($i=0; $i<$numFilters; ++$i) {
+        # read filter structure:
+        # 4 bytes - filter number
+        # 4 bytes - filter data length
+        # 4 bytes - number of parameters:
+        # |  4 bytes - paramter ID
+        # |  4 bytes - paramter value count
+        # |  4 bytes * count - paramter values (NC)
+        $pos + 12 > $end and $err = "Truncated data for filter $i", last;
+        my $fnum = Get32u($dataPt, $pos); # (is this an index or an ID?)
+        my $size = Get32u($dataPt, $pos + 4);
+        my $nparm = Get32u($dataPt, $pos + 8);
+        my $nxt = $pos + 4 + $size;
+        $nxt > $end and $err = "Invalid size ($size) for filter $i", last;
+        $verbose and $exifTool->VerboseDir("Filter $fnum", $nparm, $size);
+        $pos += 12;
+        for ($j=0; $j<$nparm; ++$j) {
+            $pos + 12 > $end and $err = "Truncated data for filter $i param $j", last;
+            my $tag = Get32u($dataPt, $pos);
+            my $count = Get32u($dataPt, $pos + 4);
+            $pos += 8;
+            $pos + 4 * $count > $end and $err = "Truncated value for filter $i param $j", last;
+            my $val = ReadValue($dataPt, $pos, 'int32s', $count, 4 * $count);
+            $exifTool->HandleTag($tagTablePtr, $tag, $val,
+                DataPt  => $dataPt,
+                DataPos => $dataPos,
+                Start   => $pos,
+                Size    => 4 * $count,
+            );
+            $pos += 4 * $count;
+        }
+        $pos = $nxt;    # step to next filter
+    }
+    $err and $exifTool->Warn($err, 1);
+    return 1;
+}
+
+#------------------------------------------------------------------------------
 # Write Canon maker notes
 # Inputs: 0) ExifTool object reference, 1) dirInfo ref, 2) tag table ref
 # Returns: data block (may be empty if no Exif data) or undef on error
@@ -4004,7 +6959,7 @@ sub WriteCanon($$$)
     my ($exifTool, $dirInfo, $tagTablePtr) = @_;
     $exifTool or return 1;    # allow dummy access to autoload this package
     my $dirData = Image::ExifTool::Exif::WriteExif($exifTool, $dirInfo, $tagTablePtr);
-    # add trailer which is written by some Canon models (it's a TIFF header)
+    # add footer which is written by some Canon models (format of a TIFF header)
     if (defined $dirData and length $dirData and $$dirInfo{Fixup}) {
         $dirData .= GetByteOrder() . Set16u(42) . Set32u(0);
         $dirInfo->{Fixup}->AddFixup(length($dirData) - 4);
@@ -4032,7 +6987,7 @@ Canon maker notes in EXIF information.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
@@ -4059,9 +7014,9 @@ Thanks Michael Rommel and Daniel Pittman for information they provided about
 the Digital Ixus and PowerShot S70 cameras, Juha Eskelinen and Emil Sit for
 figuring out the 20D and 30D FileNumber, Denny Priebe for figuring out a
 couple of 1D tags, and Michael Tiemann, Rainer Honle, Dave Nicholson, Chris
-Huebsch and Ger Vermeulen for decoding a number of new tags.  Also thanks to
-everyone who made contributions to the LensType lookup list or the meanings
-of other tag values.
+Huebsch, Ger Vermeulen, Darryl Zurn, D.J. Cristi, Bogdan and Vesa Kivisto for
+decoding a number of new tags.  Also thanks to everyone who made contributions
+to the LensType lookup list or the meanings of other tag values.
 
 =head1 SEE ALSO
 

@@ -54,8 +54,6 @@ sub WritePhotoshop($$$)
     my $start = $$dirInfo{DirStart} || 0;
     my $dirLen = $$dirInfo{DirLen} || (length($$dataPt) - $start);
     my $dirEnd = $start + $dirLen;
-    my $verbose = $exifTool->Options('Verbose');
-    my $out = $exifTool->Options('TextOut');
     my $newData = '';
 
     # make a hash of new tag info, keyed on tagID
@@ -103,17 +101,36 @@ sub WritePhotoshop($$$)
         if ($$newTags{$tagID} and $type eq '8BIM') {
             $tagInfo = $$newTags{$tagID};
             delete $$newTags{$tagID};
-            my $newValueHash = $exifTool->GetNewValueHash($tagInfo);
+            my $nvHash = $exifTool->GetNewValueHash($tagInfo);
             # check to see if we are overwriting this tag
             $value = substr($$dataPt, $pos, $size);
-            if (Image::ExifTool::IsOverwriting($newValueHash, $value)) {
-                $verbose > 1 and print $out "    - Photoshop:$$tagInfo{Name} = '$value'\n";
-                $value = Image::ExifTool::GetNewValues($newValueHash);
+            my $isOverwriting = $exifTool->IsOverwriting($nvHash, $value);
+            # handle special 'new' and 'old' values for IPTCDigest
+            if (not $isOverwriting and $tagInfo eq $iptcDigestInfo) {
+                if (grep /^new$/, @{$$nvHash{DelValue}}) {
+                    $isOverwriting = 1 if $$exifTool{NewIPTCDigest} and
+                                          $$exifTool{NewIPTCDigest} eq $value;
+                }
+                if (grep /^old$/, @{$$nvHash{DelValue}}) {
+                    $isOverwriting = 1 if $$exifTool{OldIPTCDigest} and
+                                          $$exifTool{OldIPTCDigest} eq $value;
+                }
+            }
+            if ($isOverwriting) {
+                $exifTool->VerboseValue("- Photoshop:$$tagInfo{Name}", $value);
+                # handle IPTCDigest specially because we want to write it last
+                # so the new IPTC digest will be known
+                if ($tagInfo eq $iptcDigestInfo) {
+                    $$newTags{$tagID} = $tagInfo;   # add later
+                    $value = undef;
+                } else {
+                    $value = $exifTool->GetNewValues($nvHash);
+                }
                 ++$exifTool->{CHANGED};
                 next unless defined $value;     # next if tag is being deleted
                 # set resource name if necessary
                 SetResourceName($tagInfo, $name, \$value);
-                $verbose > 1 and print $out "    + Photoshop:$$tagInfo{Name} = '$value'\n";
+                $exifTool->VerboseValue("+ Photoshop:$$tagInfo{Name}", $value);
             }
         } else {
             if ($type eq '8BIM') {
@@ -167,12 +184,22 @@ sub WritePhotoshop($$$)
         my $name = "\0\0";
         if ($$newTags{$tagID}) {
             $tagInfo = $$newTags{$tagID};
-            my $newValueHash = $exifTool->GetNewValueHash($tagInfo);
-            $value = Image::ExifTool::GetNewValues($newValueHash);
+            my $nvHash = $exifTool->GetNewValueHash($tagInfo);
+            $value = $exifTool->GetNewValues($nvHash);
+            # handle new IPTCDigest value specially
+            if ($tagInfo eq $iptcDigestInfo and defined $value) {
+                if ($value eq 'new') {
+                    $value = $$exifTool{NewIPTCDigest};
+                } elsif ($value eq 'old') {
+                    $value = $$exifTool{OldIPTCDigest};
+                }
+                # (we already know we want to create this tag)
+            } else {
+                # don't add this tag unless specified
+                next unless Image::ExifTool::IsCreating($nvHash);
+            }
             next unless defined $value;     # next if tag is being deleted
-            # don't add this tag unless specified
-            next unless Image::ExifTool::IsCreating($newValueHash);
-            $verbose > 1 and print $out "    + Photoshop:$$tagInfo{Name} = '$value'\n";
+            $exifTool->VerboseValue("+ Photoshop:$$tagInfo{Name}", $value);
             ++$exifTool->{CHANGED};
         } else {
             $tagInfo = $$addDirs{$tagID};
@@ -226,7 +253,7 @@ default resource name, and applied if no appended name is provided.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

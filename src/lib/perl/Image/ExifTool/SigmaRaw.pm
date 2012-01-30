@@ -3,7 +3,8 @@
 #
 # Description:  Read Sigma/Foveon RAW (X3F) meta information
 #
-# Revisions:    10/16/2005 - P. Harvey Created
+# Revisions:    2005/10/16 - P. Harvey Created
+#               2009/11/30 - P. Harvey Support X3F v2.3 written by Sigma DP2
 #
 # References:   1) http://www.x3f.info/technotes/FileDocs/X3F_Format.pdf
 #------------------------------------------------------------------------------
@@ -11,19 +12,45 @@
 package Image::ExifTool::SigmaRaw;
 
 use strict;
-use vars qw($VERSION);
+use vars qw($VERSION %sigmaLensTypes);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.03';
+$VERSION = '1.16';
 
 sub ProcessX3FHeader($$$);
 sub ProcessX3FDirectory($$$);
 sub ProcessX3FProperties($$$);
 
+# sigma LensType lookup (ref PH)
+%sigmaLensTypes = (
+    # 0 => 'Sigma 50mm F2.8 EX Macro', (0 used for other lenses too)
+    # 8 - 18-125mm LENSARANGE@18mm=22-4
+    16 => 'Sigma 18-50mm F3.5-5.6 DC',
+    129 => 'Sigma 14mm F2.8 EX Aspherical',
+    131 => 'Sigma 17-70mm F2.8-4.5 DC Macro',
+    145 => 'Sigma Lens (145)',
+    145.1 => 'Sigma 15-30mm F3.5-4.5 EX DG Aspherical',
+    145.2 => 'Sigma 18-50mm F2.8 EX DG', #(NC)
+    145.3 => 'Sigma 20-40mm F2.8 EX DG',
+    165 => 'Sigma 70-200mm F2.8 EX', # ...but what specific model?:
+    # 70-200mm F2.8 EX APO - Original version, minimum focus distance 1.8m (1999)
+    # 70-200mm F2.8 EX DG - Adds 'digitally optimized' lens coatings to reduce flare (2005)
+    # 70-200mm F2.8 EX DG Macro (HSM) - Minimum focus distance reduced to 1m (2006)
+    # 70-200mm F2.8 EX DG Macro HSM II - Improved optical performance (2007)
+    169 => 'Sigma 18-50mm F2.8 EX DC', #(NC)
+    581 => 'Sigma 18-50mm F2.8 EX DC Macro', # (SD1)
+    8900 => 'Sigma 70-300mm F4-5.6 DG OS', # (SD15)
+    'A100' => 'Sigma 24-70mm F2.8 DG Macro', # (SD15)
+);
+
 # main X3F sections (plus header stuff)
 %Image::ExifTool::SigmaRaw::Main = (
     PROCESS_PROC => \&ProcessX3FDirectory,
-    NOTES => 'These tags are used in Sigma and Foveon RAW (.X3F) images.',
+    NOTES => q{
+        These tags are used in Sigma and Foveon RAW (.X3F) images.  Metadata is also
+        extracted from the JpgFromRaw image if it exists (all models but the SD9 and
+        SD10).  Currently, metadata may only be written to the embedded JpgFromRaw.
+    },
     Header => {
         SubDirectory => { TagTable => 'Image::ExifTool::SigmaRaw::Header' },
     },
@@ -38,10 +65,17 @@ sub ProcessX3FProperties($$$);
         Name => 'PreviewImage',
         Binary => 1,
     },
-    IMA2 => {
-        Name => 'PreviewImage',
-        Binary => 1,
-    },
+    IMA2 => [
+        {
+            Name => 'PreviewImage',
+            Condition => 'not $$self{IsJpgFromRaw}',
+            Binary => 1,
+        },
+        {
+            Name => 'JpgFromRaw',
+            Binary => 1,
+        },
+    ]
 );
 
 # common X3F header structure
@@ -52,11 +86,26 @@ sub ProcessX3FProperties($$$);
         Name => 'FileVersion',
         ValueConv => '($val >> 16) . "." . ($val & 0xffff)',
     },
+    2 => {
+        Name => 'ImageUniqueID',
+        # the serial number (with an extra leading "0") makes up
+        # the first 8 digits of this UID,
+        Format => 'undef[16]',
+        ValueConv => 'unpack("H*", $val)',
+    },
+    6 => {
+        Name => 'MarkBits',
+        PrintConv => { BITMASK => { } },
+    },
     7 => 'ImageWidth',
     8 => 'ImageHeight',
     9 => 'Rotation',
     10 => {
         Name => 'WhiteBalance',
+        Format => 'string[32]',
+    },
+    18 => { #PH (DP2, FileVersion 2.3)
+        Name => 'SceneCaptureType',
         Format => 'string[32]',
     },
 );
@@ -66,16 +115,16 @@ sub ProcessX3FProperties($$$);
     GROUPS => { 2 => 'Camera' },
     NOTES => 'Extended header data found in version 2.1 and 2.2 files',
     0 => 'Unused',
-    1 => { Name => 'ExposureAdjust',PrintConv => 'sprintf("%.2f",$val)' },
-    2 => { Name => 'Contrast',      PrintConv => 'sprintf("%.2f",$val)' },
-    3 => { Name => 'Shadow',        PrintConv => 'sprintf("%.2f",$val)' },
-    4 => { Name => 'Highlight',     PrintConv => 'sprintf("%.2f",$val)' },
-    5 => { Name => 'Saturation',    PrintConv => 'sprintf("%.2f",$val)' },
-    6 => { Name => 'Sharpness',     PrintConv => 'sprintf("%.2f",$val)' },
-    7 => { Name => 'RedAdjust',     PrintConv => 'sprintf("%.2f",$val)' },
-    8 => { Name => 'GreenAdjust',   PrintConv => 'sprintf("%.2f",$val)' },
-    9 => { Name => 'BlueAdjust',    PrintConv => 'sprintf("%.2f",$val)' },
-   10 => { Name => 'X3FillLight',   PrintConv => 'sprintf("%.2f",$val)' },
+    1 => { Name => 'ExposureAdjust',PrintConv => 'sprintf("%.1f",$val)' },
+    2 => { Name => 'Contrast',      PrintConv => 'sprintf("%.1f",$val)' },
+    3 => { Name => 'Shadow',        PrintConv => 'sprintf("%.1f",$val)' },
+    4 => { Name => 'Highlight',     PrintConv => 'sprintf("%.1f",$val)' },
+    5 => { Name => 'Saturation',    PrintConv => 'sprintf("%.1f",$val)' },
+    6 => { Name => 'Sharpness',     PrintConv => 'sprintf("%.1f",$val)' },
+    7 => { Name => 'RedAdjust',     PrintConv => 'sprintf("%.1f",$val)' },
+    8 => { Name => 'GreenAdjust',   PrintConv => 'sprintf("%.1f",$val)' },
+    9 => { Name => 'BlueAdjust',    PrintConv => 'sprintf("%.1f",$val)' },
+   10 => { Name => 'X3FillLight',   PrintConv => 'sprintf("%.1f",$val)' },
 );
 
 # PROP tags
@@ -105,6 +154,7 @@ sub ProcessX3FProperties($$$);
     CAMMODEL    => 'Model',
     CAMNAME     => 'CameraName',
     CAMSERIAL   => 'SerialNumber',
+    CM_DESC     => 'SceneCaptureType', #PH (DP2)
     COLORSPACE  => 'ColorSpace', # observed: sRGB
     DRIVE => {
         Name => 'DriveMode',
@@ -122,12 +172,12 @@ sub ProcessX3FProperties($$$);
     EXPCOMP => {
         Name => 'ExposureCompensation',
         Groups => { 2 => 'Image' },
-        PrintConv => 'Image::ExifTool::Exif::ConvertFraction($val)',
+        PrintConv => 'Image::ExifTool::Exif::PrintFraction($val)',
     },
     EXPNET => {
         Name => 'NetExposureCompensation',
         Groups => { 2 => 'Image' },
-        PrintConv => 'Image::ExifTool::Exif::ConvertFraction($val)',
+        PrintConv => 'Image::ExifTool::Exif::PrintFraction($val)',
     },
     EXPTIME => {
         Name => 'IntegrationTime',
@@ -148,7 +198,10 @@ sub ProcessX3FProperties($$$);
         Name => 'FocalLength',
         PrintConv => 'sprintf("%.1f mm",$val)',
     },
-    FLEQ35MM    => 'FocalLengthIn35mmFormat',
+    FLEQ35MM => {
+        Name => 'FocalLengthIn35mmFormat',
+        PrintConv => 'sprintf("%.1f mm",$val)',
+    },
     FOCUS => {
         Name => 'Focus',
         PrintConv => {
@@ -158,11 +211,23 @@ sub ProcessX3FProperties($$$);
         },
     },
     IMAGERBOARDID => 'ImagerBoardID',
-    IMAGERTEMP  => 'SensorTemperature',
+    IMAGERTEMP  => {
+        Name => 'SensorTemperature',
+        PrintConv => '"$val C"',
+    },
+    IMAGEBOARDID=> 'ImageBoardID', #PH (DP2)
     ISO         => 'ISO',
     LENSARANGE  => 'LensApertureRange',
     LENSFRANGE  => 'LensFocalRange',
-    LENSMODEL   => 'LensID',
+    LENSMODEL   => {
+        Name => 'LensType',
+        Notes => q{
+            decimal values differentiate lenses which would otherwise have the same
+            LensType, and are used by the Composite LensID tag when attempting to
+            identify the specific lens model
+        },
+        PrintConv => \%sigmaLensTypes,
+    },
     PMODE => {
         Name => 'ExposureProgram',
         PrintConv => {
@@ -209,9 +274,8 @@ sub ExtractUnicodeString($$$)
     for ($i=$pos; $i<@$chars; ++$i) {
         last unless $$chars[$i];
     }
-    my $buff = pack('v*',@$chars[$pos..$i-1]);
-    my $val = $exifTool->Unicode2Charset($buff, 'II');
-    return $val;
+    my $buff = pack('v*', @$chars[$pos..$i-1]);
+    return $exifTool->Decode($buff, 'UCS2', 'II');
 }
 
 #------------------------------------------------------------------------------
@@ -221,17 +285,26 @@ sub ExtractUnicodeString($$$)
 sub ProcessX3FHeader($$$)
 {
     my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    my $dataPt = $$dirInfo{DataPt};
+    my $hdrLen = $$dirInfo{DirLen};
     my $verbose = $exifTool->Options('Verbose');
 
     # process the static header structure first
     $exifTool->ProcessBinaryData($dirInfo, $tagTablePtr);
 
     # process extended data if available
-    if ($$dirInfo{DirLen} >= 232) {
-        $verbose and $exifTool->VerboseDir('X3F HeaderExt', 32);
+    if (length $$dataPt >= 232) {
+        if ($verbose) {
+            $exifTool->VerboseDir('X3F HeaderExt', 32);
+            Image::ExifTool::HexDump($dataPt, undef,
+                MaxLen => $verbose > 3 ? 1024 : 96,
+                Out    => $exifTool->Options('TextOut'),
+                Prefix => $$exifTool{INDENT},
+                Start  => $$dirInfo{DirLen},
+            ) if $verbose > 2;
+        }
         $tagTablePtr = GetTagTable('Image::ExifTool::SigmaRaw::HeaderExt');
-        my $dataPt = $$dirInfo{DataPt};
-        my @vals = unpack('x72C32V32', $$dataPt);
+        my @vals = unpack("x${hdrLen}C32V32", $$dataPt);
         my $i;
         my $unused = 0;
         for ($i=0; $i<32; ++$i) {
@@ -249,10 +322,10 @@ sub ProcessX3FHeader($$$)
                 $val = $sign * 2 ** (($val - 0x3f800000) / 0x800000);
             }
             $exifTool->HandleTag($tagTablePtr, $vals[$i], $val,
-                Index => $i,
+                Index  => $i,
                 DataPt => $dataPt,
-                Start => 104 + $i * 4,
-                Size => 4,
+                Start  => $hdrLen + 32 + $i * 4,
+                Size   => 4,
             );
         }
         $exifTool->VPrint(0, "$exifTool->{INDENT}($unused entries unused)\n");
@@ -304,7 +377,7 @@ sub ProcessX3FProperties($$$)
             # add tag information to table
             Image::ExifTool::AddTagToTable($tagTablePtr, $tag, $tagInfo);
         }
-        
+
         $exifTool->HandleTag($tagTablePtr, $tag, $val,
             Index => $index,
             DataPt => $dataPt,
@@ -313,6 +386,109 @@ sub ProcessX3FProperties($$$)
         );
     }
     return 1;
+}
+
+#------------------------------------------------------------------------------
+# Write an X3F file
+# Inputs: 0) ExifTool object reference, 1) DirInfo reference (DirStart = directory offset)
+# Returns: error string, undef on success, or -1 on write error
+# Notes: Writes metadata to embedded JpgFromRaw image
+sub WriteX3F($$)
+{
+    my ($exifTool, $dirInfo) = @_;
+    my $raf = $$dirInfo{RAF};
+    my $outfile = $$dirInfo{OutFile};
+    my ($outDir, $buff, $ver, $entries, $dir, $outPos, $index, $didContain);
+
+    $raf->Seek($$dirInfo{DirStart}, 0) or return 'Error seeking to directory start';
+
+    # read the X3F directory header (will be copied directly to output)
+    $raf->Read($outDir, 12) == 12 or return 'Truncated X3F image';
+    $outDir =~ /^SECd/ or return 'Bad section header';
+    ($ver, $entries) = unpack('x4V2', $outDir);
+
+    # do sanity check on number of entries in directory
+    return 'Invalid X3F directory count' unless $entries > 2 and $entries < 20;
+    # read the directory entries
+    unless ($raf->Read($dir, $entries * 12) == $entries * 12) {
+        return 'Truncated X3F directory';
+    }
+    # do a quick scan to determine the offset of the first data subsection
+    for ($index=0; $index<$entries; ++$index) {
+        my $pos = $index * 12;
+        my ($offset, $len, $tag) = unpack("x${pos}V2a4", $dir);
+        # remember position of first data subsection
+        $outPos = $offset if not defined $outPos or $outPos > $offset;
+    }
+    # copy the file header up to the start of the first data subsection
+    unless ($raf->Seek(0,0) and $raf->Read($buff, $outPos) == $outPos) {
+        return 'Error reading X3F header';
+    }
+    Write($outfile, $buff) or return -1;
+
+    # loop through directory, rewriting each section
+    for ($index=0; $index<$entries; ++$index) {
+
+        my $pos = $index * 12;
+        my ($offset, $len, $tag) = unpack("x${pos}V2a4", $dir);
+        $raf->Seek($offset, 0) or return 'Bad data offset';
+
+        if ($tag eq 'IMA2' and $len > 28) {
+            # check subsection header (28 bytes) to see if this is a JPEG preview image
+            $raf->Read($buff, 28) == 28 or return 'Error reading PreviewImage header';
+            Write($outfile, $buff) or return -1;
+            $len -= 28;
+
+            # only rewrite full-sized JpgFromRaw (version 2.0, type 2, format 18)
+            if ($buff =~ /^SECi\0\0\x02\0\x02\0\0\0\x12\0\0\0/ and
+                $$exifTool{ImageWidth} == unpack('x16V', $buff))
+            {
+                $raf->Read($buff, $len) == $len or return 'Error reading JpgFromRaw';
+                # use same write directories as JPEG
+                $exifTool->InitWriteDirs('JPEG');
+                # rewrite the embedded JPEG in memory
+                my $newData;
+                my %jpegInfo = (
+                    Parent  => 'X3F',
+                    RAF     => new File::RandomAccess(\$buff),
+                    OutFile => \$newData,
+                );
+                $$exifTool{FILE_TYPE} = 'JPEG';
+                my $success = $exifTool->WriteJPEG(\%jpegInfo);
+                $$exifTool{FILE_TYPE} = 'X3F';
+                SetByteOrder('II');
+                return 'Error writing X3F JpgFromRaw' unless $success and $newData;
+                return -1 if $success < 0;
+                # write new data if anything changed, otherwise copy old image
+                my $outPt = $$exifTool{CHANGED} ? \$newData : \$buff;
+                Write($outfile, $$outPt) or return -1;
+                # set $len to the total subsection data length
+                $len = length($$outPt) + 28;
+                $didContain = 1;
+            } else {
+                # copy original image data
+                Image::ExifTool::CopyBlock($raf, $outfile, $len) or return 'Corrupted X3F image';
+                $len += 28;
+            }
+        } else {
+            # copy data for this subsection
+            Image::ExifTool::CopyBlock($raf, $outfile, $len) or return 'Corrupted X3F directory';
+        }
+        # add directory entry and update output file position
+        $outDir .= pack('V2a4', $outPos, $len, $tag);
+        $outPos += $len;
+        # pad data to an even 4-byte boundary
+        if ($len & 0x03) {
+            my $pad = 4 - ($len & 0x03);
+            Write($outfile, "\0" x $pad) or return -1;
+            $outPos += $pad;
+        }
+    }
+    # warn if we couldn't add metadata to this image (should only be SD9 or SD10)
+    $didContain or $exifTool->Warn("Can't yet write SD9 or SD10 X3F images");
+    # write out the directory and the directory pointer, and we are done
+    Write($outfile, $outDir, pack('V', $outPos)) or return -1;
+    return undef;
 }
 
 #------------------------------------------------------------------------------
@@ -328,12 +504,11 @@ sub ProcessX3FDirectory($$$)
     $raf->Seek($$dirInfo{DirStart}, 0) or return 'Error seeking to directory start';
 
     # parse the X3F directory structure
-    my ($buff, $ver, $entries, $index);
+    my ($buff, $ver, $entries, $index, $dir);
     $raf->Read($buff, 12) == 12 or return 'Truncated X3F image';
     $buff =~ /^SECd/ or return 'Bad section header';
     ($ver, $entries) = unpack('x4V2', $buff);
     $verbose and $exifTool->VerboseDir('X3F Subsection', $entries);
-    my $dir;
     $raf->Read($dir, $entries * 12) == $entries * 12 or return 'Truncated X3F directory';
     for ($index=0; $index<$entries; ++$index) {
         my $pos = $index * 12;
@@ -343,13 +518,8 @@ sub ProcessX3FDirectory($$$)
             $exifTool->VPrint(0, "$exifTool->{INDENT}$index) $tag Subsection ($len bytes):\n");
             if ($verbose > 2) {
                 $raf->Seek($offset, 0) or return 'Error seeking';
-                my $n = $verbose > 3 ? $len : 64;
-                $n = $len if $n > $len;
-                $raf->Read($buff, $n) == $n or return 'Truncated image';
-                Image::ExifTool::HexDump(\$buff, undef,
-                    Prefix => $exifTool->{INDENT},
-                    Out => $exifTool->Options('TextOut'),
-                );
+                $raf->Read($buff, $len) == $len or return 'Truncated image';
+                $exifTool->VerboseDump(\$buff);
             }
         }
         next unless $tagInfo;
@@ -357,8 +527,15 @@ sub ProcessX3FDirectory($$$)
         if  ($$tagInfo{Name} eq 'PreviewImage') {
             # check image header to see if this is a JPEG preview image
             $raf->Read($buff, 28) == 28 or return 'Error reading PreviewImage header';
-            # igore all image data but JPEG compressed (type 18)
-            next unless $buff =~ /^SECi.{4}\x02\0\0\0\x12/s;
+            # ignore all image data but JPEG compressed (version 2.0, type 2, format 18)
+            next unless $buff =~ /^SECi\0\0\x02\0\x02\0\0\0\x12\0\0\0/;
+            # check preview image size and extract full-sized preview as JpgFromRaw
+            if ($$exifTool{ImageWidth} == unpack('x16V', $buff)) {
+                $$exifTool{IsJpgFromRaw} = 1;
+                $tagInfo = $exifTool->GetTagInfo($tagTablePtr, $tag);
+                delete $$exifTool{IsJpgFromRaw};
+            }
+            $offset += 28;
             $len -= 28;
         }
         $raf->Read($buff, $len) == $len or return "Error reading $$tagInfo{Name} data";
@@ -368,6 +545,17 @@ sub ProcessX3FDirectory($$$)
             my $subTable = GetTagTable($$subdir{TagTable});
             $exifTool->ProcessDirectory(\%dirInfo, $subTable);
         } else {
+            # extract metadata from JpgFromRaw
+            if ($$tagInfo{Name} eq 'JpgFromRaw') {
+                my %dirInfo = (
+                    Parent => 'X3F',
+                    RAF    => new File::RandomAccess(\$buff),
+                );
+                $$exifTool{BASE} += $offset;
+                $exifTool->ProcessJPEG(\%dirInfo);
+                $$exifTool{BASE} -= $offset;
+                SetByteOrder('II');
+            }
             $exifTool->FoundTag($tagInfo, $buff);
         }
     }
@@ -375,14 +563,16 @@ sub ProcessX3FDirectory($$$)
 }
 
 #------------------------------------------------------------------------------
-# Extract information from a Sigma raw (X3F) image
+# Read/write information from a Sigma raw (X3F) image
 # Inputs: 0) ExifTool object reference, 1) DirInfo reference
-# Returns: 1 on success, 0 if this wasn't a valid X3F image
+# Returns: 1 on success, 0 if this wasn't a valid X3F image, or -1 on write error
 sub ProcessX3F($$)
 {
     my ($exifTool, $dirInfo) = @_;
+    my $outfile = $$dirInfo{OutFile};
     my $raf = $$dirInfo{RAF};
-    my $buff;
+    my $warn = $outfile ? \&Image::ExifTool::Error : \&Image::ExifTool::Warn;
+    my ($buff, $err);
 
     return 0 unless $raf->Read($buff, 40) == 40;
     return 0 unless $buff =~ /^FOVb/;
@@ -394,42 +584,53 @@ sub ProcessX3F($$)
     my $ver = unpack('x4V',$buff);
     $ver = ($ver >> 16) . '.' . ($ver & 0xffff);
     if ($ver >= 3) {
-        $exifTool->Warn("Can't read version $ver X3F image");
+        &$warn($exifTool, "Can't read version $ver X3F image");
         return 1;
+    } elsif ($ver > 2.3) {
+        &$warn($exifTool, 'Untested X3F version. Please submit sample for testing', 1);
     }
-    # read version 2.1/2.2 extended header
+    my $hdrLen = length $buff;
+    # read version 2.1/2.2/2.3 extended header
     if ($ver > 2) {
+        $hdrLen += $ver > 2.2 ? 64 : 32;            # SceneCaptureType string added in 2.3
+        my $more = $hdrLen - length($buff) + 160;   # (extended header is 160 bytes)
         my $buf2;
-        unless ($raf->Read($buf2, 192) == 192) {
-            $exifTool->Warn('Error reading extended header');
+        unless ($raf->Read($buf2, $more) == $more) {
+            &$warn($exifTool, 'Error reading extended header');
             return 1;
         }
         $buff .= $buf2;
     }
+    # extract ImageWidth for later
+    $$exifTool{ImageWidth} = Get32u(\$buff, 28);
     # process header information
     my $tagTablePtr = GetTagTable('Image::ExifTool::SigmaRaw::Main');
-    my $tagInfo = $exifTool->GetTagInfo($tagTablePtr, 'Header');
-    my $subdir = GetTagTable('Image::ExifTool::SigmaRaw::Header');
-    my %dirInfo = (
-        DataPt => \$buff,
-        DirStart => 0,
-        DirLen => length($buff),
-    );
-    $exifTool->ProcessDirectory(\%dirInfo, $subdir);
+    unless ($outfile) {
+        $exifTool->HandleTag($tagTablePtr, 'Header', $buff,
+            DataPt => \$buff,
+            Size   => $hdrLen,
+        );
+    }
     # read the directory pointer
-    $raf->Seek(-4, 2);
+    $raf->Seek(-4, 2) or &$warn($exifTool, 'Seek error'), return 1;
     unless ($raf->Read($buff, 4) == 4) {
-        $exifTool->Warn('Error reading X3F dir pointer');
+        &$warn($exifTool, 'Error reading X3F dir pointer');
         return 1;
     }
     my $offset = unpack('V', $buff);
-    %dirInfo = (
+    my %dirInfo = (
         RAF => $raf,
         DirStart => $offset,
     );
-    # process the X3F subsections
-    my $err = $exifTool->ProcessDirectory(\%dirInfo, $tagTablePtr);
-    $err and $exifTool->Warn($err);
+    if ($outfile) {
+        $dirInfo{OutFile} = $outfile;
+        $err = WriteX3F($exifTool, \%dirInfo);
+        return -1 if $err and $err eq '-1';
+    } else {
+        # process the X3F subsections
+        $err = $exifTool->ProcessDirectory(\%dirInfo, $tagTablePtr);
+    }
+    $err and &$warn($exifTool, $err);
     return 1;
 }
 
@@ -452,7 +653,7 @@ Sigma and Foveon X3F images.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

@@ -12,9 +12,9 @@ package Image::ExifTool::KyoceraRaw;
 
 use strict;
 use vars qw($VERSION);
-use Image::ExifTool qw(:DataAccess);
+use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.00';
+$VERSION = '1.02';
 
 sub ProcessRAW($$);
 
@@ -43,9 +43,11 @@ sub ReverseString($) { pack('C*',reverse unpack('C*',shift)) }
     },
     0x21 => { #1
         Name => 'DateTimeOriginal',
+        Description => 'Date/Time Original',
         Groups => { 2 => 'Time' },
         Format => 'string[20]',
         ValueConv => \&ReverseString,
+        PrintConv => '$self->ConvertDateTime($val)',
     },
     0x34 => {
         Name => 'ISO',
@@ -126,7 +128,7 @@ sub ProcessRAW($$)
         DirStart => 0,
         DirLen => $size,
     );
-    my $tagTablePtr = Image::ExifTool::GetTagTable('Image::ExifTool::KyoceraRaw::Main');
+    my $tagTablePtr = GetTagTable('Image::ExifTool::KyoceraRaw::Main');
     $exifTool->ProcessDirectory(\%dirInfo, $tagTablePtr);
     return 1;
 }
@@ -150,7 +152,7 @@ meta information from Kyocera Contax N Digital RAW images.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

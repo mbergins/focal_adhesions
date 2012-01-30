@@ -14,7 +14,7 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool::Exif;
 
-$VERSION = '1.10';
+$VERSION = '1.15';
 
 my %offOn = (
     0 => 'Off',
@@ -55,6 +55,7 @@ my %offOn = (
             0x0005 => 'Normal/High',
             0x0006 => 'Normal/Very High',
             0x0007 => 'Normal/Super High',
+            # have seen 0x11 with HD2000 in '8M-H JPEG' mode - PH
             0x0100 => 'Fine/Very Low',
             0x0101 => 'Fine/Low',
             0x0102 => 'Fine/Medium Low',
@@ -120,6 +121,7 @@ my %offOn = (
         Writable => 'int16u',
         PrintConv => \%offOn,
     },
+    # 0x0215 - Flash?
     0x0216 => {
         Name => 'VoiceMemo',
         Writable => 'int16u',
@@ -174,10 +176,16 @@ my %offOn = (
             6 => 'Lamp', #PH
         },
     },
-    0x0223 => {
-        Name => 'ManualFocusDistance',
-        Writable => 'rational64u',
-    },
+    0x0223 => [
+        {
+            Name => 'ManualFocusDistance',
+            Condition => '$format eq "rational64u"',
+            Writable => 'rational64u',
+        }, { #PH
+            Name => 'FaceInfo',
+            SubDirectory => { TagTable => 'Image::ExifTool::Sanyo::FaceInfo' },
+        },
+    ],
     0x0224 => {
         Name => 'SequenceShotInterval',
         Writable => 'int16u',
@@ -213,6 +221,26 @@ my %offOn = (
     },
 );
 
+# face detection information (ref PH)
+%Image::ExifTool::Sanyo::FaceInfo = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
+    CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
+    WRITABLE => 1,
+    FORMAT => 'int32u',
+    FIRST_ENTRY => 0,
+    0 => 'FacesDetected',
+    4 => {
+        Name => 'FacePosition',
+        Format => 'int32u[4]',
+        Notes => q{
+            left, top, right and bottom coordinates of detected face in an unrotated
+            640-pixel-wide image, with increasing Y downwards
+        },
+    },
+);
+
 # tags in Sanyo MOV videos (PH - observations from an E6 sample)
 # (similar information in Kodak,Minolta,Nikon,Olympus,Pentax and Sanyo videos)
 %Image::ExifTool::Sanyo::MOV = (
@@ -238,14 +266,14 @@ my %offOn = (
     0x2a => {
         Name => 'FNumber',
         Format => 'int32u',
-        ValueConv => '$val * 0.1',
+        ValueConv => '$val / 10',
         PrintConv => 'sprintf("%.1f",$val)',
     },
     0x32 => {
         Name => 'ExposureCompensation',
         Format => 'int32s',
-        ValueConv => '$val * 0.1',
-        PrintConv => 'Image::ExifTool::Exif::ConvertFraction($val)',
+        ValueConv => '$val / 10',
+        PrintConv => 'Image::ExifTool::Exif::PrintFraction($val)',
     },
     0x44 => {
         Name => 'WhiteBalance',
@@ -262,12 +290,13 @@ my %offOn = (
     0x48 => {
         Name => 'FocalLength',
         Format => 'int32u',
-        ValueConv => '$val * 0.1',
+        ValueConv => '$val / 10',
         PrintConv => 'sprintf("%.1f mm",$val)',
     },
 );
 
 # tags in Sanyo MP4 videos (PH - from C4, C5 and HD1A samples)
+# --> very similar to Samsung MP4 information
 # (there is still a lot more information here that could be decoded!)
 %Image::ExifTool::Sanyo::MP4 = (
     PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
@@ -288,33 +317,69 @@ my %offOn = (
     # some of the shutter speeds should be around 1/500 or so)
     0x32 => {
         Name => 'FNumber',
-        Format => 'int32u',
-        ValueConv => '$val / 10',
+        Format => 'rational64u',
         PrintConv => 'sprintf("%.1f",$val)',
+    },
+    0x3a => { # (NC)
+        Name => 'ExposureCompensation',
+        Format => 'rational64s',
+        PrintConv => '$val ? sprintf("%+.1f", $val) : 0',
     },
     0x6a => {
         Name => 'ISO',
         Format => 'int32u',
     },
-# (these tags are shifted by +1 byte for the C4 compared to the HD1A, so we can't use them)
-#     0xfe => {
-#         Name => 'ThumbnailLength',
-#         Format => 'int32u',
-#     },
-#     0x102 => {
-#         Name => 'ThumbnailOffset',
-#         IsOffset => 1,
-#         Format => 'int32u',
-#         RawConv => '$val + 0xf2',
-#     },
-    # so instead, look for the JPEG header using brute force...
-    0x800 => {
-        Name => 'ThumbnailImage',
-        Notes => 'position varies',
-        Format => 'undef[$size - 0x800]',
-        RawConv => '$val=~s/.*(?=\xff\xd8\xff\xc4)//; $self->ValidateImage(\$val,$tag)',
+    0xd1 => {
+        Name => 'Software',
+        Notes => 'these tags are shifted up by 1 byte for some models like the HD1A',
+        Format => 'undef[32]',
+        RawConv => q{
+            $val =~ /^SANYO/ or return undef;
+            $val =~ tr/\0//d;
+            $$self{SanyoSledder0xd1} = 1;
+            return $val;
+        },
+    },
+    0xd2 => {
+        Name => 'Software',
+        Format => 'undef[32]',
+        RawConv => q{
+            $val =~ /^SANYO/ or return undef;
+            $val =~ tr/\0//d;
+            $$self{SanyoSledder0xd2} = 1;
+            return $val;
+        },
+    },
+    0xf1 => {
+        Name => 'Thumbnail',
+        Condition => '$$self{SanyoSledder0xd1}',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Sanyo::Thumbnail',
+            Base => '$start',
+        },
+    },
+    0xf2 => {
+        Name => 'Thumbnail',
+        Condition => '$$self{SanyoSledder0xd2}',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Sanyo::Thumbnail',
+            Base => '$start',
+        },
     },
 );
+
+# thumbnail image information found in MP4 videos (similar in Olympus,Samsung,Sanyo)
+%Image::ExifTool::Sanyo::Thumbnail = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    FIRST_ENTRY => 0,
+    FORMAT => 'int32u',
+    1 => 'ThumbnailWidth',
+    2 => 'ThumbnailHeight',
+    3 => 'ThumbnailLength',
+    4 => { Name => 'ThumbnailOffset', IsOffset => 1 },
+);
+
 
 #------------------------------------------------------------------------------
 # Patch incorrect offsets in J1, J2, J4, S1, S3 and S4 maker notes
@@ -353,7 +418,7 @@ Sanyo maker notes in EXIF information.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

@@ -12,7 +12,7 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.00';
+$VERSION = '1.01';
 
 sub ProcessFotoStation($$);
 
@@ -190,9 +190,9 @@ sub ProcessFotoStation($$)
                 my $subTable = GetTagTable($tagInfo->{SubDirectory}->{TagTable});
                 $newVal = $exifTool->WriteDirectory(\%subdirInfo, $subTable);
             } else {
-                my $newValueHash = $exifTool->GetNewValueHash($tagInfo);
-                if (Image::ExifTool::IsOverwriting($newValueHash) > 0) {
-                    $newVal = Image::ExifTool::GetNewValues($newValueHash);
+                my $nvHash = $exifTool->GetNewValueHash($tagInfo);
+                if ($exifTool->IsOverwriting($nvHash) > 0) {
+                    $newVal = $exifTool->GetNewValues($nvHash);
                     $newVal = '' unless defined $newVal;
                     if ($verbose > 1) {
                         my $n = length $newVal;
@@ -240,7 +240,7 @@ write information from the FotoWare FotoStation trailer.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

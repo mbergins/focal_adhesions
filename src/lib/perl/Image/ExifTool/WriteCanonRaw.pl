@@ -4,12 +4,19 @@
 # Description:  Write Canon RAW (CRW and CR2) meta information
 #
 # Revisions:    01/25/2005 - P. Harvey Created
+#               09/16/2010 - PH Added ability to write XMP in CRW images
 #------------------------------------------------------------------------------
 package Image::ExifTool::CanonRaw;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD %crwTagFormat);
 use Image::ExifTool::Fixup;
+
+# map for adding directories to CRW
+my %crwMap = (
+    XMP      => 'CanonVRD',
+    CanonVRD => 'Trailer',
+);
 
 # mappings to from RAW tagID to MakerNotes tagID
 # (Note: upper two bits of RawTagID are zero)
@@ -76,7 +83,6 @@ sub BuildMakerNotes($$$$$$)
     # special case: ignore user comment because it gets saved in EXIF
     # (and has the same raw tagID as CanonFileDescription)
     return if $tagInfo and $$tagInfo{Name} eq 'UserComment';
-    my $tagType = ($rawTag >> 8) & 0x38;
     my $format = $Image::ExifTool::Exif::formatNumber{$formName};
     my $fsiz = $Image::ExifTool::Exif::formatSize[$format];
     my $size = length($$valuePt);
@@ -165,7 +171,6 @@ sub SaveMakerNotes($)
 sub CheckCanonRaw($$$)
 {
     my ($exifTool, $tagInfo, $valPtr) = @_;
-    Image::ExifTool::GenerateTagIDs($$tagInfo{Table});
     my $tagName = $$tagInfo{Name};
     if ($tagName eq 'JpgFromRaw' or $tagName eq 'ThumbnailImage') {
         unless ($$valPtr =~ /^\xff\xd8/ or $exifTool->Options('IgnoreMinorErrors')) {
@@ -192,8 +197,8 @@ sub WriteCR2($$$)
 {
     my ($exifTool, $dirInfo, $tagTablePtr) = @_;
     my $dataPt = $$dirInfo{DataPt} or return 0;
-    my $raf = $$dirInfo{RAF} or return 0;
     my $outfile = $$dirInfo{OutFile} or return 0;
+    $$dirInfo{RAF} or return 0;
 
     # check CR2 signature
     if ($$dataPt !~ /^.{8}CR\x02\0/s) {
@@ -241,13 +246,13 @@ sub WriteCR2($$$)
 # Write CanonRaw (CRW) information
 # Inputs: 0) ExifTool object reference, 1) source dirInfo reference,
 #         2) tag table reference
-# Returns: true on sucess
+# Returns: true on success
 # Notes: Increments ExifTool CHANGED flag for each tag changed This routine is
 # different from all of the other write routines because Canon RAW files are
 # designed well!  So it isn't necessary to buffer the data in memory before
 # writing it out.  Therefore this routine doesn't return the directory data as
 # the rest of the Write routines do.  Instead, it writes to the dirInfo
-# Outfile on the fly --> much faster, efficient, and less demanding on memory!
+# OutFile on the fly --> much faster, efficient, and less demanding on memory!
 sub WriteCanonRaw($$$)
 {
     my ($exifTool, $dirInfo, $tagTablePtr) = @_;
@@ -304,6 +309,11 @@ sub WriteCanonRaw($$$)
             $tagInfo = $$newTags{$addTag};
             my $newVal = $exifTool->GetNewValues($tagInfo);
             if (defined $newVal) {
+                # pad value to an even length (Canon ImageBrowser and ZoomBrowser
+                # version 6.1.1 have problems with odd-sized embedded JPEG images
+                # even if the value is padded to maintain alignment, so do this
+                # before calculating the size for the directory entry)
+                $newVal .= "\0" if length($newVal) & 0x01;
                 # add new directory entry
                 $newDir .= Set16u($addTag) . Set32u(length($newVal)) .
                            Set32u($outPos - $outBase);
@@ -317,7 +327,7 @@ sub WriteCanonRaw($$$)
             $delTag{$addTag} = 1;
         }
         last unless defined $tag;           # all done if no more directory entries
-        return 0 if $tag & 0x8000;      # top bit should not be set
+        return 0 if $tag & 0x8000;          # top bit should not be set
         my $tagID = $tag & 0x3fff;          # get tag ID
         my $tagType = ($tag >> 8) & 0x38;   # get tag type
         my $valueInDir = ($tag & 0x4000);   # flag for value in directory
@@ -420,9 +430,9 @@ sub WriteCanonRaw($$$)
                 } else {
                     $oldVal = $value;
                 }
-                my $newValueHash = $exifTool->GetNewValueHash($tagInfo);
-                if (Image::ExifTool::IsOverwriting($newValueHash, $oldVal)) {
-                    my $newVal = Image::ExifTool::GetNewValues($newValueHash);
+                my $nvHash = $exifTool->GetNewValueHash($tagInfo);
+                if ($exifTool->IsOverwriting($nvHash, $oldVal)) {
+                    my $newVal = $exifTool->GetNewValues($nvHash);
                     my $verboseVal;
                     $verboseVal = $newVal if $verbose > 1;
                     # convert to specified format if necessary
@@ -432,12 +442,8 @@ sub WriteCanonRaw($$$)
                     if (defined $newVal) {
                         $value = $newVal;
                         ++$exifTool->{CHANGED};
-                        if ($verbose > 1) {
-                            my $oldStr = $exifTool->Printable($oldVal);
-                            my $newStr = $exifTool->Printable($verboseVal);
-                            print $out "    - CanonRaw:$$tagInfo{Name} = '$oldStr'\n";
-                            print $out "    + CanonRaw:$$tagInfo{Name} = '$newStr'\n";
-                        }
+                        $exifTool->VerboseValue("- CanonRaw:$$tagInfo{Name}", $oldVal);
+                        $exifTool->VerboseValue("+ CanonRaw:$$tagInfo{Name}", $verboseVal);
                     }
                 }
             }
@@ -515,12 +521,16 @@ sub WriteCRW($$)
 
     if ($exifTool->{DEL_GROUP}->{MakerNotes}) {
         if ($type eq 'CCDR') {
-            $exifTool->Error("Can't delete Makernotes group in CRW file");
+            $exifTool->Error("Can't delete MakerNotes group in CRW file");
             return 0;
         } else {
             ++$exifTool->{CHANGED};
             return 1;
         }
+    }
+    # make XMP the preferred group for CRW files
+    if ($$exifTool{FILE_TYPE} eq 'CRW') {
+        $exifTool->InitWriteDirs(\%crwMap, 'XMP');
     }
 
     # write header
@@ -562,6 +572,16 @@ sub WriteCRW($$)
     if ($success) {
         # add CanonVRD trailer if writing as a block
         $trailPt = $exifTool->AddNewTrailers($trailPt,'CanonVRD');
+        if (not $trailPt and $$exifTool{ADD_DIRS}{CanonVRD}) {
+            # create CanonVRD from scratch if necessary
+            my $outbuff = '';
+            my $saveOrder = GetByteOrder();
+            require Image::ExifTool::CanonVRD;
+            if (Image::ExifTool::CanonVRD::ProcessCanonVRD($exifTool, { OutFile => \$outbuff }) > 0) {
+                $trailPt = \$outbuff;
+            }
+            SetByteOrder($saveOrder);
+        }
         # write trailer
         if ($trailPt) {
             # must append DirStart pointer to end of trailer
@@ -603,7 +623,7 @@ files, and would lead to far fewer problems with corrupted metadata.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

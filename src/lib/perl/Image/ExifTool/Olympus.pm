@@ -16,10 +16,14 @@
 #               8) Shingo Noguchi, PhotoXP (http://www.daifukuya.com/photoxp/)
 #               9) Mark Dapoz private communication
 #              10) Lilo Huang private communication (E-330)
-#              11) http://olypedia.de/Olympus_Makernotes
+#              11) http://olypedia.de/Olympus_Makernotes (Nov. 21, 2011)
 #              12) Ioannis Panagiotopoulos private communication (E-510)
 #              13) Chris Shaw private communication (E-3)
 #              14) Viktor Lushnikov private communication (E-400)
+#              15) Yrjo Rauste private communication (E-30)
+#              16) Godfrey DiGiorgi private communcation (E-P1) + http://forums.dpreview.com/forums/read.asp?message=33187567
+#              17) Martin Hibers private communication
+#              18) Tomasz Kawecki private communication
 #------------------------------------------------------------------------------
 
 package Image::ExifTool::Olympus;
@@ -29,10 +33,396 @@ use vars qw($VERSION);
 use Image::ExifTool::Exif;
 use Image::ExifTool::APP12;
 
-$VERSION = '1.49';
+$VERSION = '1.83';
+
+sub PrintLensInfo($$$);
 
 my %offOn = ( 0 => 'Off', 1 => 'On' );
 
+# lookup for Olympus LensType values
+my %olympusLensTypes = (
+    '0 0 0'  => 'None',
+    # Olympus lenses
+    '0 1 0'  => 'Olympus Zuiko Digital ED 50mm F2.0 Macro',
+    '0 1 1'  => 'Olympus Zuiko Digital 40-150mm F3.5-4.5', #8
+    '0 1 16' => 'Olympus M.Zuiko Digital ED 14-42mm F3.5-5.6', #PH (E-P1 pre-production)
+    '0 2 0'  => 'Olympus Zuiko Digital ED 150mm F2.0',
+    '0 2 16' => 'Olympus M.Zuiko Digital 17mm F2.8 Pancake', #PH (E-P1 pre-production)
+    '0 3 0'  => 'Olympus Zuiko Digital ED 300mm F2.8',
+    '0 3 16' => 'Olympus M.Zuiko Digital ED 14-150mm F4.0-5.6', #11
+    '0 4 16' => 'Olympus M.Zuiko Digital ED 9-18mm F4.0-5.6', #11
+    '0 5 0'  => 'Olympus Zuiko Digital 14-54mm F2.8-3.5',
+    '0 5 1'  => 'Olympus Zuiko Digital Pro ED 90-250mm F2.8', #9
+    '0 5 16' => 'Olympus M.Zuiko Digital ED 14-42mm F3.5-5.6', #11
+    '0 6 0'  => 'Olympus Zuiko Digital ED 50-200mm F2.8-3.5',
+    '0 6 1'  => 'Olympus Zuiko Digital ED 8mm F3.5 Fisheye', #9
+    '0 6 16' => 'Olympus M.Zuiko Digital ED 40-150mm F4.0-5.6', #PH
+    '0 7 0'  => 'Olympus Zuiko Digital 11-22mm F2.8-3.5',
+    '0 7 1'  => 'Olympus Zuiko Digital 18-180mm F3.5-6.3', #6
+    '0 7 16' => 'Olumpus M.Zuiko Digital ED 12mm F2.0', #PH
+    '0 8 1'  => 'Olympus Zuiko Digital 70-300mm F4.0-5.6', #7 (seen as release 1 - PH)
+    '0 8 16' => 'Olympus M.Zuiko Digital ED 75-300mm F4.8-6.7', #PH
+    '0 9 16' => 'Olympus M.Zuiko Digital 14-42mm F3.5-5.6 II', #PH (E-PL2)
+    '0 17 16'=> 'Olympus M.Zuiko Digital 45mm F1.8', #17
+    '0 19 16'=> 'Olympus M.Zuiko Digital ED 14-42mm F3.5-5.6 II R', #PH
+    '0 20 16'=> 'Olympus M.Zuiko Digital ED 14-150mm F4.0-5.6 II', #11
+    # (missing:  Olympus M.Zuiko Digital ED 12-50mm F3.5-6.3 EZ)
+    '0 21 0' => 'Olympus Zuiko Digital ED 7-14mm F4.0',
+    '0 23 0' => 'Olympus Zuiko Digital Pro ED 35-100mm F2.0', #7
+    '0 24 0' => 'Olympus Zuiko Digital 14-45mm F3.5-5.6',
+    '0 32 0' => 'Olympus Zuiko Digital 35mm F3.5 Macro', #9
+    '0 34 0' => 'Olympus Zuiko Digital 17.5-45mm F3.5-5.6', #9
+    '0 35 0' => 'Olympus Zuiko Digital ED 14-42mm F3.5-5.6', #PH
+    '0 36 0' => 'Olympus Zuiko Digital ED 40-150mm F4.0-5.6', #PH
+    '0 48 0' => 'Olympus Zuiko Digital ED 50-200mm F2.8-3.5 SWD', #7
+    '0 49 0' => 'Olympus Zuiko Digital ED 12-60mm F2.8-4.0 SWD', #7
+    '0 50 0' => 'Olympus Zuiko Digital ED 14-35mm F2.0 SWD', #PH
+    '0 51 0' => 'Olympus Zuiko Digital 25mm F2.8', #PH
+    '0 52 0' => 'Olympus Zuiko Digital ED 9-18mm F4.0-5.6', #7
+    '0 53 0' => 'Olympus Zuiko Digital 14-54mm F2.8-3.5 II', #PH
+    # Sigma lenses
+    '1 1 0'  => 'Sigma 18-50mm F3.5-5.6', #8
+    '1 2 0'  => 'Sigma 55-200mm F4.0-5.6 DC',
+    '1 3 0'  => 'Sigma 18-125mm F3.5-5.6 DC',
+    '1 4 0'  => 'Sigma 18-125mm F3.5-5.6', #7
+    '1 5 0'  => 'Sigma 30mm F1.4', #10
+    '1 6 0'  => 'Sigma 50-500mm F4.0-6.3 EX DG APO HSM RF', #6
+    '1 7 0'  => 'Sigma 105mm F2.8 DG', #PH
+    '1 8 0'  => 'Sigma 150mm F2.8 DG HSM', #PH
+    '1 16 0' => 'Sigma 24mm F1.8 EX DG Aspherical Macro', #PH
+    '1 17 0' => 'Sigma 135-400mm F4.5-5.6 DG ASP APO RF', #11
+    '1 18 0' => 'Sigma 300-800mm F5.6 EX DG APO', #11
+    '1 19 0' => 'Sigma 30mm F1.4 EX DC HSM', #11
+    '1 20 0' => 'Sigma 50-500mm F4.0-6.3 EX DG APO HSM RF', #11
+    '1 21 0' => 'Sigma 10-20mm F4.0-5.6 EX DC HSM', #11
+    '1 22 0' => 'Sigma 70-200mm F2.8 EX DG Macro HSM II', #11
+    '1 23 0' => 'Sigma 50mm F1.4 EX DG HSM', #11
+    # Leica lenses (ref 11)
+    '2 1 0'  => 'Leica D Vario Elmarit 14-50mm F2.8-3.5 Asph.',
+    '2 1 16' => 'Lumix G Vario 14-45mm F3.5-5.6 Asph. Mega OIS', #16
+    '2 2 0'  => 'Leica D Summilux 25mm F1.4 Asph.',
+    '2 2 16' => 'Lumix G Vario 45-200mm F4-5.6 Mega OIS', #16
+    '2 3 0'  => 'Leica D Vario Elmar 14-50mm F3.8-5.6 Asph. Mega OIS', #11
+    '2 3 1'  => 'Leica D Vario Elmar 14-50mm F3.8-5.6 Asph.', #14 (L10 kit)
+    '2 3 16' => 'Lumix G Vario HD 14-140mm F4-5.8 Asph. Mega OIS', #16
+    '2 4 0'  => 'Leica D Vario Elmar 14-150mm F3.5-5.6', #13
+    '2 4 16' => 'Lumix G Vario 7-14mm F4 Asph.', #PH (E-P1 pre-production)
+    '2 5 16' => 'Lumix G 20mm F1.7 Asph.', #16
+    '2 6 16' => 'Leica DG Macro-Elmarit 45mm F2.8', #PH
+    '2 8 16' => 'Lumix G Fisheye 8mm F3.5', #PH
+    '2 9 16' => 'Lumix G Vario 100-300mm F4.0-5.6 OIS', #11
+    '2 16 16'=> 'Lumix G 14mm F2.5 Asph.', #17
+    '3 1 0'  => 'Leica D Vario Elmarit 14-50mm F2.8-3.5 Asph.',
+    '3 2 0'  => 'Leica D Summilux 25mm F1.4 Asph.',
+);
+
+# lookup for Olympus camera types (ref PH)
+my %olympusCameraTypes = (
+    Notes => q{
+        These values are currently decoded only for Olympus models.  Models with
+        Olympus-style maker notes from other brands such as Acer, BenQ, Hitachi, HP,
+        Premier, Konica-Minolta, Maginon, Ricoh, Rollei, SeaLife, Sony, Supra,
+        Vivitar are not listed.
+    },
+    D4028 => 'X-2,C-50Z',
+    D4029 => 'E-20,E-20N,E-20P',
+    D4034 => 'C720UZ',
+    D4040 => 'E-1',
+    D4041 => 'E-300',
+    D4083 => 'C2Z,D520Z,C220Z',
+    D4106 => 'u20D,S400D,u400D',
+    D4120 => 'X-1',
+    D4122 => 'u10D,S300D,u300D',
+    D4125 => 'AZ-1',
+    D4141 => 'C150,D390',
+    D4193 => 'C-5000Z',
+    D4194 => 'X-3,C-60Z',
+    D4199 => 'u30D,S410D,u410D',
+    D4205 => 'X450,D535Z,C370Z',
+    D4210 => 'C160,D395',
+    D4211 => 'C725UZ',
+    D4213 => 'FerrariMODEL2003',
+    D4216 => 'u15D',
+    D4217 => 'u25D',
+    D4220 => 'u-miniD,Stylus V',
+    D4221 => 'u40D,S500,uD500',
+    D4231 => 'FerrariMODEL2004',
+    D4240 => 'X500,D590Z,C470Z',
+    D4244 => 'uD800,S800',
+    D4256 => 'u720SW,S720SW',
+    D4261 => 'X600,D630,FE5500',
+    D4262 => 'uD600,S600',
+    D4301 => 'u810/S810', # (yes, "/".  Olympus is not consistent in the notation)
+    D4302 => 'u710,S710',
+    D4303 => 'u700,S700',
+    D4304 => 'FE100,X710',
+    D4305 => 'FE110,X705',
+    D4310 => 'FE-130,X-720',
+    D4311 => 'FE-140,X-725',
+    D4312 => 'FE150,X730',
+    D4313 => 'FE160,X735',
+    D4314 => 'u740,S740',
+    D4315 => 'u750,S750',
+    D4316 => 'u730/S730',
+    D4317 => 'FE115,X715',
+    D4321 => 'SP550UZ',
+    D4322 => 'SP510UZ',
+    D4324 => 'FE170,X760',
+    D4326 => 'FE200',
+    D4327 => 'FE190/X750', # (also SX876)
+    D4328 => 'u760,S760',
+    D4330 => 'FE180/X745', # (also SX875)
+    D4331 => 'u1000/S1000',
+    D4332 => 'u770SW,S770SW',
+    D4333 => 'FE240/X795',
+    D4334 => 'FE210,X775',
+    D4336 => 'FE230/X790',
+    D4337 => 'FE220,X785',
+    D4338 => 'u725SW,S725SW',
+    D4339 => 'FE250/X800',
+    D4341 => 'u780,S780',
+    D4343 => 'u790SW,S790SW',
+    D4344 => 'u1020,S1020',
+    D4346 => 'FE15,X10',
+    D4348 => 'FE280,X820,C520',
+    D4349 => 'FE300,X830',
+    D4350 => 'u820,S820',
+    D4351 => 'u1200,S1200',
+    D4352 => 'FE270,X815,C510',
+    D4353 => 'u795SW,S795SW',
+    D4354 => 'u1030SW,S1030SW',
+    D4355 => 'SP560UZ',
+    D4356 => 'u1010,S1010',
+    D4357 => 'u830,S830',
+    D4359 => 'u840,S840',
+    D4360 => 'FE350WIDE,X865',
+    D4361 => 'u850SW,S850SW',
+    D4362 => 'FE340,X855,C560',
+    D4363 => 'FE320,X835,C540',
+    D4364 => 'SP570UZ',
+    D4366 => 'FE330,X845,C550',
+    D4368 => 'FE310,X840,C530',
+    D4370 => 'u1050SW,S1050SW',
+    D4371 => 'u1060,S1060',
+    D4372 => 'FE370,X880,C575',
+    D4374 => 'SP565UZ',
+    D4377 => 'u1040,S1040',
+    D4378 => 'FE360,X875,C570',
+    D4379 => 'FE20,X15,C25',
+    D4380 => 'uT6000,ST6000',
+    D4381 => 'uT8000,ST8000',
+    D4382 => 'u9000,S9000',
+    D4384 => 'SP590UZ',
+    D4385 => 'FE3010,X895',
+    D4386 => 'FE3000,X890',
+    D4387 => 'FE35,X30',
+    D4388 => 'u550WP,S550WP',
+    D4390 => 'FE5000,X905',
+    D4391 => 'u5000',
+    D4392 => 'u7000,S7000',
+    D4396 => 'FE5010,X915',
+    D4397 => 'FE25,X20',
+    D4398 => 'FE45,X40',
+    D4401 => 'XZ-1',
+    D4402 => 'uT6010,ST6010',
+    D4406 => 'u7010,S7010 / u7020,S7020',
+    D4407 => 'FE4010,X930',
+    D4408 => 'X560WP',
+    D4409 => 'FE26,X21',
+    D4410 => 'FE4000,X920,X925',
+    D4411 => 'FE46,X41,X42',
+    D4412 => 'FE5020,X935',
+    D4413 => 'uTough-3000',
+    D4414 => 'StylusTough-6020',
+    D4415 => 'StylusTough-8010',
+    D4417 => 'u5010,S5010',
+    D4418 => 'u7040,S7040',
+    D4419 => 'u9010,S9010',
+    D4423 => 'FE4040',
+    D4424 => 'FE47,X43',
+    D4426 => 'FE4030,X950',
+    D4428 => 'FE5030,X965,X960',
+    D4432 => 'SP600UZ',
+    D4434 => 'SP800UZ',
+    D4439 => 'FE4020,X940',
+    D4442 => 'FE5035',
+    D4448 => 'FE4050,X970',
+    D4450 => 'FE5050,X985',
+    D4454 => 'u-7050',
+    D4464 => 'T10,X27',
+    D4470 => 'FE5040,X980',
+    D4472 => 'TG-310',
+    D4474 => 'TG-610',
+    D4476 => 'TG-810',
+    D4478 => 'VG145,VG140,D715',
+    D4479 => 'VG130,D710',
+    D4480 => 'VG120,D705',
+    D4482 => 'VR310,D720',
+    D4484 => 'VR320,D725',
+    D4488 => 'VG110,D700',
+    D4490 => 'SP-610UZ',
+    D4492 => 'SZ-10',
+    D4494 => 'SZ-20',
+    D4496 => 'SZ-30MR',
+    D4498 => 'SP-810UZ',
+    D4500 => 'SZ-11',
+    D4504 => 'TG-615',
+    D4809 => 'C2500L',
+    D4842 => 'E-10',
+    D4856 => 'C-1',
+    D4857 => 'C-1Z,D-150Z',
+    DCHC => 'D500L',
+    DCHT => 'D600L / D620L',
+    S0003 => 'E-330',
+    S0004 => 'E-500',
+    S0009 => 'E-400',
+    S0010 => 'E-510',
+    S0011 => 'E-3',
+    S0013 => 'E-410',
+    S0016 => 'E-420',
+    S0017 => 'E-30',
+    S0018 => 'E-520',
+    S0019 => 'E-P1',
+    S0023 => 'E-620',
+    S0026 => 'E-P2',
+    S0027 => 'E-PL1',
+    S0029 => 'E-450',
+    S0030 => 'E-600',
+    S0032 => 'E-P3',
+    S0033 => 'E-5',
+    S0034 => 'E-PL2',
+    S0038 => 'E-PL3',
+    S0039 => 'E-PM1',
+    S0040 => 'E-PL1s',
+    SR45 => 'D220',
+    SR55 => 'D320L',
+    SR83 => 'D340L',
+    SR85 => 'C830L,D340R',
+    SR852 => 'C860L,D360L',
+    SR872 => 'C900Z,D400Z',
+    SR874 => 'C960Z,D460Z',
+    SR951 => 'C2000Z',
+    SR952 => 'C21',
+    SR953 => 'C21T.commu',
+    SR954 => 'C2020Z',
+    SR955 => 'C990Z,D490Z',
+    SR956 => 'C211Z',
+    SR959 => 'C990ZS,D490Z',
+    SR95A => 'C2100UZ',
+    SR971 => 'C100,D370',
+    SR973 => 'C2,D230',
+    SX151 => 'E100RS',
+    SX351 => 'C3000Z / C3030Z',
+    SX354 => 'C3040Z',
+    SX355 => 'C2040Z',
+    SX357 => 'C700UZ',
+    SX358 => 'C200Z,D510Z',
+    SX374 => 'C3100Z,C3020Z',
+    SX552 => 'C4040Z',
+    SX553 => 'C40Z,D40Z',
+    SX556 => 'C730UZ',
+    SX558 => 'C5050Z',
+    SX571 => 'C120,D380',
+    SX574 => 'C300Z,D550Z',
+    SX575 => 'C4100Z,C4000Z',
+    SX751 => 'X200,D560Z,C350Z',
+    SX752 => 'X300,D565Z,C450Z',
+    SX753 => 'C750UZ',
+    SX754 => 'C740UZ',
+    SX755 => 'C755UZ',
+    SX756 => 'C5060WZ',
+    SX757 => 'C8080WZ',
+    SX758 => 'X350,D575Z,C360Z',
+    SX759 => 'X400,D580Z,C460Z',
+    SX75A => 'AZ-2ZOOM',
+    SX75B => 'D595Z,C500Z',
+    SX75C => 'X550,D545Z,C480Z',
+    SX75D => 'IR-300',
+    SX75F => 'C55Z,C5500Z',
+    SX75G => 'C170,D425',
+    SX75J => 'C180,D435',
+    SX771 => 'C760UZ',
+    SX772 => 'C770UZ',
+    SX773 => 'C745UZ',
+    SX774 => 'X250,D560Z,C350Z',
+    SX775 => 'X100,D540Z,C310Z',
+    SX776 => 'C460ZdelSol',
+    SX777 => 'C765UZ',
+    SX77A => 'D555Z,C315Z',
+    SX851 => 'C7070WZ',
+    SX852 => 'C70Z,C7000Z',
+    SX853 => 'SP500UZ',
+    SX854 => 'SP310',
+    SX855 => 'SP350',
+    SX873 => 'SP320',
+    SX875 => 'FE180/X745', # (also D4330)
+    SX876 => 'FE190/X750', # (also D4327)
+#   other brands
+#    4MP9Q3 => 'Camera 4MP-9Q3'
+#    4MP9T2 => 'BenQ DC C420 / Camera 4MP-9T2'
+#    5MP9Q3 => 'Camera 5MP-9Q3',
+#    5MP9X9 => 'Camera 5MP-9X9',
+#   '5MP-9T'=> 'Camera 5MP-9T3',
+#   '5MP-9Y'=> 'Camera 5MP-9Y2',
+#   '6MP-9U'=> 'Camera 6MP-9U9',
+#    7MP9Q3 => 'Camera 7MP-9Q3',
+#   '8MP-9U'=> 'Camera 8MP-9U4',
+#    CE5330 => 'Acer CE-5330',
+#   'CP-853'=> 'Acer CP-8531',
+#    CS5531 => 'Acer CS5531',
+#    DC500  => 'SeaLife DC500',
+#    DC7370 => 'Camera 7MP-9GA',
+#    DC7371 => 'Camera 7MP-9GM',
+#    DC7371 => 'Hitachi HDC-751E',
+#    DC7375 => 'Hitachi HDC-763E / Rollei RCP-7330X / Ricoh Caplio RR770 / Vivitar ViviCam 7330',
+#   'DC E63'=> 'BenQ DC E63+',
+#   'DC P86'=> 'BenQ DC P860',
+#    DS5340 => 'Maginon Performic S5 / Premier 5MP-9M7',
+#    DS5341 => 'BenQ E53+ / Supra TCM X50 / Maginon X50 / Premier 5MP-9P8',
+#    DS5346 => 'Premier 5MP-9Q2',
+#    E500   => 'Konica Minolta DiMAGE E500',
+#    MAGINO => 'Maginon X60',
+#    Mz60   => 'HP Photosmart Mz60',
+#    Q3DIGI => 'Camera 5MP-9Q3',
+#    SLIMLI => 'Supra Slimline X6',
+#    V8300s => 'Vivitar V8300s',
+);
+
+# ArtFilter and MagicFilter values (ref PH)
+my %filters = (
+    0    => 'Off',
+    1 => 'Soft Focus', # (XZ-1)
+    2 => 'Pop Art', # (SZ-10 magic filter 1)
+    3 => 'Pale & Light Color',
+    4 => 'Light Tone',
+    5 => 'Pin Hole', # (SZ-10 magic filter 2)
+    6 => 'Grainy Film',
+    9 => 'Diorama',
+    10 => 'Cross Process',
+    12 => 'Fish Eye', # (SZ-10 magic filter 3)
+    13 => 'Drawing', # (SZ-10 magic filter 4)
+    14 => 'Gentle Sepia', # (E-5)
+    15 => 'Tender Light', #11
+    16 => 'Pop Art II', #11
+    17 => 'Pin Hole II', #11
+    18 => 'Pin Hole III', #11
+    19 => 'Grainy Film II', #11
+    20 => 'Dramatic Tone', # (XZ-1)
+    21 => 'Punk', # (SZ-10 magic filter 6)
+    22 => 'Soft Focus 2', # (SZ-10 magic filter 5)
+    23 => 'Sparkle', # (SZ-10 magic filter 7)
+    24 => 'Watercolor', # (SZ-10 magic filter 8)
+);
+
+# tag information for WAV "Index" tags
+my %indexInfo = (
+    Format => 'int32u',
+    RawConv => '$val == 0xffffffff ? undef : $val',
+    ValueConv => '$val / 1000',
+    PrintConv => 'ConvertDuration($val)',
+);
+
+# Olympus tags
 %Image::ExifTool::Olympus::Main = (
     WRITE_PROC => \&Image::ExifTool::Exif::WriteExif,
     CHECK_PROC => \&Image::ExifTool::Exif::CheckExif,
@@ -40,6 +430,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
 #
 # Tags 0x0000 through 0x0103 are the same as Konica/Minolta cameras (ref 3)
+# (removed 0x0101-0x0103 because they weren't supported by my samples - PH)
 #
     0x0000 => {
         Name => 'MakerNoteVersion',
@@ -88,42 +479,6 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Writable => 'undef',
         WriteCheck => '$self->CheckImage(\$val)',
         Binary => 1,
-    },
-    0x0101 => {
-        Name => 'ColorMode',
-        Writable => 'int16u',
-        PrintConv => {
-            0 => 'Natural color',
-            1 => 'Black&white',
-            2 => 'Vivid color',
-            3 => 'Solarization',
-            4 => 'Adobe RGB',
-        },
-    },
-    0x0102 => {
-        Name => 'MinoltaQuality',
-        Writable => 'int16u',
-        PrintConv => {
-            0 => 'Raw',
-            1 => 'Superfine',
-            2 => 'Fine',
-            3 => 'Normal',
-            4 => 'Economy',
-            5 => 'Extra fine',
-        },
-    },
-    # (0x0103 is the same as 0x0102 above)
-    0x0103 => {
-        Name => 'MinoltaQuality',
-        Writable => 'int16u',
-        PrintConv => {
-            0 => 'Raw',
-            1 => 'Superfine',
-            2 => 'Fine',
-            3 => 'Normal',
-            4 => 'Economy',
-            5 => 'Extra fine',
-        },
     },
     0x0104 => { #11
         Name => 'BodyFirmwareVersion',
@@ -198,7 +553,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     },
     0x0203 => { #6
         Name => 'BWMode',
-        Description => 'Black & White Mode',
+        Description => 'Black And White Mode',
         Writable => 'int16u',
         PrintConv => \%offOn,
     },
@@ -224,6 +579,10 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Writable => 'string',
         DataMember => 'CameraType',
         RawConv => '$self->{CameraType} = $val',
+        SeparateTable => 'CameraType',
+        PrintConv => \%olympusCameraTypes,
+        Priority => 0,
+        # 'NORMAL' for some models: u730,SP510UZ,u1000,FE240
     },
     0x0208 => {
         Name => 'TextInfo',
@@ -282,10 +641,12 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x0403 => { #11
         Name => 'SceneMode',
         Writable => 'int16u',
+        PrintConvColumns => 2,
         PrintConv => {
             0 => 'Normal',
             1 => 'Standard',
             2 => 'Auto',
+            3 => 'Intelligent Auto', #PH (guess, u7040)
             4 => 'Portrait',
             5 => 'Landscape+Portrait',
             6 => 'Landscape',
@@ -317,6 +678,8 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             32 => 'Face Portrait',
             33 => 'Pet',
             34 => 'Smile Shot',
+            35 => 'Quick Shutter',
+            101 => 'Magic Filter', #PH
         },
     },
     0x0404 => { #PH (D595Z, C7070WZ)
@@ -345,14 +708,34 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Writable => 0,
         Binary => 1,
     },
+    0x0f04 => {
+        Name => 'ZoomedPreviewStart',
+        # NOTE: this tag is not currently updated properly when the image is rewritten!
+        OffsetPair => 0xf05,
+        DataTag => 'ZoomedPreviewImage',
+        Writable => 'int32u',
+        Protected => 2,
+    },
+    0x0f05 => {
+        Name => 'ZoomedPreviewLength',
+        OffsetPair => 0xf04,
+        DataTag => 'ZoomedPreviewImage',
+        Writable => 'int32u',
+        Protected => 2,
+    },
+    0x0f06 => {
+        Name => 'ZoomedPreviewSize',
+        Writable => 'int16u',
+        Count => 2,
+    },
     0x1000 => { #6
         Name => 'ShutterSpeedValue',
         Writable => 'rational64s',
         Priority => 0,
-        ValueConv => 'abs($val)<100 ? 1/(2**$val) : 0',
+        ValueConv => 'abs($val)<100 ? 2**(-$val) : 0',
         ValueConvInv => '$val>0 ? -log($val)/log(2) : -100',
         PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
-        PrintConvInv => 'eval $val',
+        PrintConvInv => 'Image::ExifTool::Exif::ConvertFraction($val)',
     },
     0x1001 => { #6
         Name => 'ISOValue',
@@ -480,6 +863,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Name => 'WBMode',
         Writable => 'int16u',
         Count => 2,
+        PrintConvColumns => 2,
         PrintConv => {
             '1'   => 'Auto',
             '1 0' => 'Auto',
@@ -657,6 +1041,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Protected => 2,
     },
     0x1037 => { #6
+        # (may contain data from multiple previews - PH, FE320)
         Name => 'PreviewImageLength',
         OffsetPair => 0x1036, # point to associated offset
         DataTag => 'PreviewImage',
@@ -681,11 +1066,11 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         PrintConv => \%offOn,
     },
     0x103b => { #6
-        Name => 'InfinityLensStep',
+        Name => 'FocusStepInfinity',
         Writable => 'int16u',
     },
     0x103c => { #6
-        Name => 'NearLensStep',
+        Name => 'FocusStepNear',
         Writable => 'int16u',
     },
     0x103d => { #11
@@ -707,21 +1092,25 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
 # the size, but also the count is 2 bytes short for the subdirectory itself
 # (presumably the Olympus programmers forgot about the 2-byte entry count at the
 # start of the subdirectory).  This mess is straightened out and these subdirs
-# are written properly when ExifTool rewrites the file.  (This problem has been
-# fixed in the new-style MakerNoteOlympus2 maker notes since a standard SubIFD
-# offset value is used.) - PH
+# are written properly when ExifTool rewrites the file.  Note that this problem
+# has been fixed by Olympus in the new-style IFD maker notes since a standard
+# SubIFD offset value is used.  As written by the camera, the old style
+# directories have format 'undef' or 'string', and the new style has format
+# 'ifd'.  However, some older versions of exiftool may have rewritten the new
+# style as 'int32u', so handle both cases. - PH
 #
     0x2010 => [ #PH
         {
             Name => 'Equipment',
-            Condition => 'not $$self{OlympusType2}',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2, # (so HtmlDump doesn't show these as double-referenced)
             SubDirectory => {
                 TagTable => 'Image::ExifTool::Olympus::Equipment',
                 ByteOrder => 'Unknown',
             },
         },
         {
-            Name => 'Equipment2',
+            Name => 'EquipmentIFD',
             Groups => { 1 => 'MakerNotes' },    # SubIFD needs group 1 set
             Flags => 'SubIFD',
             FixFormat => 'ifd',
@@ -734,14 +1123,15 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x2020 => [ #PH
         {
             Name => 'CameraSettings',
-            Condition => 'not $$self{OlympusType2}',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
             SubDirectory => {
                 TagTable => 'Image::ExifTool::Olympus::CameraSettings',
                 ByteOrder => 'Unknown',
             },
         },
         {
-            Name => 'CameraSettings2',
+            Name => 'CameraSettingsIFD',
             Groups => { 1 => 'MakerNotes' },
             Flags => 'SubIFD',
             FixFormat => 'ifd',
@@ -754,14 +1144,15 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x2030 => [ #PH
         {
             Name => 'RawDevelopment',
-            Condition => 'not $$self{OlympusType2}',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
             SubDirectory => {
                 TagTable => 'Image::ExifTool::Olympus::RawDevelopment',
                 ByteOrder => 'Unknown',
             },
         },
         {
-            Name => 'RawDevelopment2',
+            Name => 'RawDevelopmentIFD',
             Groups => { 1 => 'MakerNotes' },
             Flags => 'SubIFD',
             FixFormat => 'ifd',
@@ -774,14 +1165,15 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x2031 => [ #11
         {
             Name => 'RawDev2',
-            Condition => 'not $$self{OlympusType2}',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
             SubDirectory => {
                 TagTable => 'Image::ExifTool::Olympus::RawDevelopment2',
                 ByteOrder => 'Unknown',
             },
         },
         {
-            Name => 'RawDev2_2',
+            Name => 'RawDev2IFD',
             Groups => { 1 => 'MakerNotes' },
             Flags => 'SubIFD',
             FixFormat => 'ifd',
@@ -794,14 +1186,15 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x2040 => [ #PH
         {
             Name => 'ImageProcessing',
-            Condition => 'not $$self{OlympusType2}',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
             SubDirectory => {
                 TagTable => 'Image::ExifTool::Olympus::ImageProcessing',
                 ByteOrder => 'Unknown',
             },
         },
         {
-            Name => 'ImageProcessing2',
+            Name => 'ImageProcessingIFD',
             Groups => { 1 => 'MakerNotes' },
             Flags => 'SubIFD',
             FixFormat => 'ifd',
@@ -814,14 +1207,15 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x2050 => [ #PH
         {
             Name => 'FocusInfo',
-            Condition => 'not ($$self{OlympusType2} or $$self{OlympusCAMER})',
+            Condition => '$format ne "ifd" and $format ne "int32u" and not $$self{OlympusCAMER}',
+            NestedHtmlDump => 2,
             SubDirectory => {
                 TagTable => 'Image::ExifTool::Olympus::FocusInfo',
                 ByteOrder => 'Unknown',
             },
         },
         {
-            Name => 'FocusInfo2',
+            Name => 'FocusInfoIFD',
             Condition => 'not $$self{OlympusCAMER}',
             Groups => { 1 => 'MakerNotes' },
             Flags => 'SubIFD',
@@ -839,85 +1233,263 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             Binary => 1,
         },
     ],
-    0x2100 => { #11
-        Name => 'Olympus2100',
-        SubDirectory => {
-            TagTable => 'Image::ExifTool::Olympus::FETags',
-            ByteOrder => 'Unknown',
+    0x2100 => [
+        { #11
+            Name => 'Olympus2100',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+            },
         },
-    },
-    0x2200 => { #11
-        Name => 'Olympus2200',
-        SubDirectory => {
-            TagTable => 'Image::ExifTool::Olympus::FETags',
-            ByteOrder => 'Unknown',
+        { #PH
+            Name => 'Olympus2100IFD',
+            Groups => { 1 => 'MakerNotes' },
+            Flags => 'SubIFD',
+            FixFormat => 'ifd',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+                Start => '$val',
+            },
         },
-    },
-    0x2300 => { #11
-        Name => 'Olympus2300',
-        SubDirectory => {
-            TagTable => 'Image::ExifTool::Olympus::FETags',
-            ByteOrder => 'Unknown',
+    ],
+    0x2200 => [
+        { #11
+            Name => 'Olympus2200',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+            },
         },
-    },
-    0x2400 => { #11
-        Name => 'Olympus2400',
-        SubDirectory => {
-            TagTable => 'Image::ExifTool::Olympus::FETags',
-            ByteOrder => 'Unknown',
+        { #PH
+            Name => 'Olympus2200IFD',
+            Groups => { 1 => 'MakerNotes' },
+            Flags => 'SubIFD',
+            FixFormat => 'ifd',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+                Start => '$val',
+            },
         },
-    },
-    0x2500 => { #11
-        Name => 'Olympus2500',
-        SubDirectory => {
-            TagTable => 'Image::ExifTool::Olympus::FETags',
-            ByteOrder => 'Unknown',
+    ],
+    0x2300 => [
+        { #11
+            Name => 'Olympus2300',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+            },
         },
-    },
-    0x2600 => { #11
-        Name => 'Olympus2600',
-        SubDirectory => {
-            TagTable => 'Image::ExifTool::Olympus::FETags',
-            ByteOrder => 'Unknown',
+        { #PH
+            Name => 'Olympus2300IFD',
+            Groups => { 1 => 'MakerNotes' },
+            Flags => 'SubIFD',
+            FixFormat => 'ifd',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+                Start => '$val',
+            },
         },
-    },
-    0x2700 => { #11
-        Name => 'Olympus2700',
-        SubDirectory => {
-            TagTable => 'Image::ExifTool::Olympus::FETags',
-            ByteOrder => 'Unknown',
+    ],
+    0x2400 => [
+        { #11
+            Name => 'Olympus2400',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+            },
         },
-    },
-    0x2800 => { #11
-        Name => 'Olympus2800',
-        SubDirectory => {
-            TagTable => 'Image::ExifTool::Olympus::FETags',
-            ByteOrder => 'Unknown',
+        { #PH
+            Name => 'Olympus2400IFD',
+            Groups => { 1 => 'MakerNotes' },
+            Flags => 'SubIFD',
+            FixFormat => 'ifd',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+                Start => '$val',
+            },
         },
-    },
-    0x2900 => { #11
-        Name => 'Olympus2900',
-        SubDirectory => {
-            TagTable => 'Image::ExifTool::Olympus::FETags',
-            ByteOrder => 'Unknown',
+    ],
+    0x2500 => [
+        { #11
+            Name => 'Olympus2500',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+            },
         },
-    },
+        { #PH
+            Name => 'Olympus2500IFD',
+            Groups => { 1 => 'MakerNotes' },
+            Flags => 'SubIFD',
+            FixFormat => 'ifd',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+                Start => '$val',
+            },
+        },
+    ],
+    0x2600 => [
+        { #11
+            Name => 'Olympus2600',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+            },
+        },
+        { #PH
+            Name => 'Olympus2600IFD',
+            Groups => { 1 => 'MakerNotes' },
+            Flags => 'SubIFD',
+            FixFormat => 'ifd',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+                Start => '$val',
+            },
+        },
+    ],
+    0x2700 => [
+        { #11
+            Name => 'Olympus2700',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+            },
+        },
+        { #PH
+            Name => 'Olympus2700IFD',
+            Groups => { 1 => 'MakerNotes' },
+            Flags => 'SubIFD',
+            FixFormat => 'ifd',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+                Start => '$val',
+            },
+        },
+    ],
+    0x2800 => [
+        { #11
+            Name => 'Olympus2800',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+            },
+        },
+        { #PH
+            Name => 'Olympus2800IFD',
+            Groups => { 1 => 'MakerNotes' },
+            Flags => 'SubIFD',
+            FixFormat => 'ifd',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+                Start => '$val',
+            },
+        },
+    ],
+    0x2900 => [
+        { #11
+            Name => 'Olympus2900',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+            },
+        },
+        { #PH
+            Name => 'Olympus2900IFD',
+            Groups => { 1 => 'MakerNotes' },
+            Flags => 'SubIFD',
+            FixFormat => 'ifd',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::FETags',
+                ByteOrder => 'Unknown',
+                Start => '$val',
+            },
+        },
+    ],
     0x3000 => [
         { #6
             Name => 'RawInfo',
-            Condition => 'not $$self{OlympusType2}',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
             SubDirectory => {
                 TagTable => 'Image::ExifTool::Olympus::RawInfo',
                 ByteOrder => 'Unknown',
             },
         },
         { #PH
-            Name => 'RawInfo2',
+            Name => 'RawInfoIFD',
             Groups => { 1 => 'MakerNotes' },
             Flags => 'SubIFD',
             FixFormat => 'ifd',
             SubDirectory => {
                 TagTable => 'Image::ExifTool::Olympus::RawInfo',
+                Start => '$val',
+            },
+        },
+    ],
+    0x4000 => [ #PH
+        {
+            Name => 'MainInfo',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::Main',
+                ByteOrder => 'Unknown',
+            },
+        },
+        {
+            Name => 'MainInfoIFD',
+            Groups => { 1 => 'MakerNotes' },
+            Flags => 'SubIFD',
+            FixFormat => 'ifd',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::Main',
+                Start => '$val',
+            },
+        },
+    ],
+    0x5000 => [ #PH
+        {
+            Name => 'UnknownInfo',
+            Condition => '$format ne "ifd" and $format ne "int32u"',
+            NestedHtmlDump => 2,
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::UnknownInfo',
+                ByteOrder => 'Unknown',
+            },
+        },
+        {
+            Name => 'UnknownInfoIFD',
+            Groups => { 1 => 'MakerNotes' },
+            Flags => 'SubIFD',
+            FixFormat => 'ifd',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Olympus::UnknownInfo',
                 Start => '$val',
             },
         },
@@ -939,6 +1511,8 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Groups => { 2 => 'Camera' },
         DataMember => 'CameraType',
         RawConv => '$self->{CameraType} = $val',
+        SeparateTable => 'CameraType',
+        PrintConv => \%olympusCameraTypes,
     },
 );
 
@@ -951,12 +1525,15 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x000 => { #PH
         Name => 'EquipmentVersion',
         Writable => 'undef',
+        RawConv => '$val=~s/\0+$//; $val',  # (may be null terminated)
         Count => 4,
     },
     0x100 => { #6
         Name => 'CameraType2',
         Writable => 'string',
         Count => 6,
+        SeparateTable => 'CameraType',
+        PrintConv => \%olympusCameraTypes,
     },
     0x101 => { #PH
         Name => 'SerialNumber',
@@ -987,8 +1564,19 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Name => 'LensType',
         Writable => 'int8u',
         Count => 6,
-        Notes => '6 numbers: 1. Make, 2. Unknown, 3. Model, 4. Release, 5-6. Unknown',
-        PrintConv => 'Image::ExifTool::Olympus::PrintLensInfo($val,"Lens")',
+        Notes => q{
+            6 numbers: 0. Make, 1. Unknown, 2. Model, 3. Sub-model, 4-5. Unknown.  Only
+            the Make, Model and Sub-model are used to determine the lens model
+        },
+        SeparateTable => 'LensType',
+        # Have seen these values for the unknown numbers:
+        # 1: 0
+        # 4: 0, 2(Olympus lenses for which I have also seen 0 for this number)
+        # 5: 0, 16(new Lumix lenses)
+        ValueConv => 'my @a = split(" ",$val); "$a[0] $a[2] $a[3]"',
+        # set unknown values to zero when writing
+        ValueConvInv => 'my @a=split(" ",$val); "$a[0] 0 $a[1] $a[2] 0 0"',
+        PrintConv => \%olympusLensTypes,
     },
     # apparently the first 3 digits of the lens s/n give the type (ref 4):
     # 010 = 50macro
@@ -1004,6 +1592,10 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Count => 32,
         PrintConv => '$val=~s/\s+$//;$val',
         PrintConvInv => 'pack("A31",$val)', # pad with spaces to 31 chars
+    },
+    0x203 => { #17
+        Name => 'LensModel',
+        Writable => 'string',
     },
     0x204 => { #6
         Name => 'LensFirmwareVersion',
@@ -1053,8 +1645,18 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Name => 'Extender',
         Writable => 'int8u',
         Count => 6,
-        Notes => '6 numbers: 1. Make, 2. Unknown, 3. Model, 4. Release, 5-6. Unknown',
-        PrintConv => 'Image::ExifTool::Olympus::PrintLensInfo($val,"Extender")',
+        Notes => q{
+            6 numbers: 0. Make, 1. Unknown, 2. Model, 3. Sub-model, 4-5. Unknown.  Only
+            the Make and Model are used to determine the extender model
+        },
+        ValueConv => 'my @a = split(" ",$val); "$a[0] $a[2]"',
+        ValueConvInv => 'my @a=split(" ",$val); "$a[0] 0 $a[1] 0 0 0"',
+        PrintConv => {
+            '0 0'   => 'None',
+            '0 4'   => 'Olympus Zuiko Digital EC-14 1.4x Teleconverter',
+            '0 8'   => 'Olympus EX-25 Extension Tube',
+            '0 16'  => 'Olympus Zuiko Digital EC-20 2.0x Teleconverter', #7
+        },
     },
     0x302 => { #4
         Name => 'ExtenderSerialNumber',
@@ -1083,15 +1685,17 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x1001 => { #6
         Name => 'FlashModel',
         Writable => 'int16u',
+        PrintConvColumns => 2,
         PrintConv => {
             0 => 'None',
-            1 => 'FL-20',
-            2 => 'FL-50', # (or Metzblitz+SCA, ref 11)
+            1 => 'FL-20', # (or subtronic digital or Inon UW flash, ref 11)
+            2 => 'FL-50', # (or Metzblitz+SCA or Cullmann 34, ref 11)
             3 => 'RF-11',
             4 => 'TF-22',
             5 => 'FL-36',
             6 => 'FL-50R', #11 (or Metz mecablitz digital)
             7 => 'FL-36R', #11
+            # have seen value of 9 - PH
         },
     },
     0x1002 => { #6
@@ -1116,6 +1720,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x000 => { #PH
         Name => 'CameraSettingsVersion',
         Writable => 'undef',
+        RawConv => '$val=~s/\0+$//; $val',  # (may be null terminated)
         Count => 4,
     },
     0x100 => { #6
@@ -1166,6 +1771,10 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             1027 => 'Spot+Shadow control', #6
         },
     },
+    0x203 => { #11 (some E-models only)
+        Name => 'ExposureShift',
+        Writable => 'rational64s',
+    },
     0x300 => { #6
         Name => 'MacroMode',
         Writable => 'int16u',
@@ -1185,8 +1794,16 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             1 => 'Sequential shooting AF',
             2 => 'Continuous AF',
             3 => 'Multi AF',
+            5 => 'Face detect', #11
             10 => 'MF',
-        }, {}], # (E-520 writes 2 values, 2nd is unknown - PH)
+        }, { BITMASK => { #11
+            0 => 'S-AF',
+            2 => 'C-AF',
+            4 => 'MF',
+            5 => 'Face detect',
+            6 => 'Imager AF',
+            8 => 'AF sensor',
+        }}],
     },
     0x302 => { #6
         Name => 'FocusProcess',
@@ -1196,7 +1813,11 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         PrintConv => [{
             0 => 'AF Not Used',
             1 => 'AF Used',
-        }, {}], # (E-520 writes 2 values, 2nd is unknown - PH)
+        }],
+        # 2nd value written only by some models (u1050SW, u9000, uT6000, uT6010,
+        # uT8000, E-30, E-420, E-450, E-520, E-620, E-P1 and E-P2): - PH
+        # observed values when "AF Not Used": 0, 16
+        # observed values when "AF Used": 64, 96(face detect on), 256
     },
     0x303 => { #6
         Name => 'AFSearch',
@@ -1208,9 +1829,32 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     },
     0x304 => { #PH/4
         Name => 'AFAreas',
-        Format => 'int32u',
+        Notes => 'coordinates range from 0 to 255',
+        Writable => 'int32u',
         Count => 64,
         PrintConv => 'Image::ExifTool::Olympus::PrintAFAreas($val)',
+    },
+    0x0305 => { #PH
+        Name => 'AFPointSelected',
+        Notes => 'coordinates expressed as a percent',
+        Writable => 'rational64s',
+        Count => 5,
+        ValueConv => '$val =~ s/\S* //; $val', # ignore first undefined value
+        ValueConvInv => '"undef $val"',
+        PrintConv => q{
+            return $val if $val =~ /undef/;
+            sprintf("(%d%%,%d%%) (%d%%,%d%%)", map {$_ * 100} split(" ",$val));
+        }
+    },
+    0x306 => { #11
+        Name => 'AFFineTune',
+        Writable => 'int8u',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+    0x307 => { #15
+        Name => 'AFFineTuneAdj',
+        Format => 'int16s',
+        Count => 3, # not sure what the 3 values mean
     },
     0x400 => { #6
         Name => 'FlashMode',
@@ -1230,6 +1874,53 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x401 => { #6
         Name => 'FlashExposureComp',
         Writable => 'rational64s',
+    },
+    # 0x402 - FlashMode? bit0=TTL, bit2=SuperFP (ref 11)
+    0x403 => { #11
+        Name => 'FlashRemoteControl',
+        Writable => 'int16u',
+        PrintHex => 1,
+        PrintConvColumns => 2,
+        PrintConv => {
+            0 => 'Off',
+            0x01 => 'Channel 1, Low',
+            0x02 => 'Channel 2, Low',
+            0x03 => 'Channel 3, Low',
+            0x04 => 'Channel 4, Low',
+            0x09 => 'Channel 1, Mid',
+            0x0a => 'Channel 2, Mid',
+            0x0b => 'Channel 3, Mid',
+            0x0c => 'Channel 4, Mid',
+            0x11 => 'Channel 1, High',
+            0x12 => 'Channel 2, High',
+            0x13 => 'Channel 3, High',
+            0x14 => 'Channel 4, High',
+        },
+    },
+    0x404 => { #11
+        Name => 'FlashControlMode',
+        Writable => 'int16u',
+        Count => 3,
+        PrintConv => [{
+            0 => 'Off',
+            3 => 'TTL',
+            4 => 'Auto',
+            5 => 'Manual',
+        }],
+    },
+    0x405 => { #11
+        Name => 'FlashIntensity',
+        Writable => 'rational64s',
+        Count => 3,
+        PrintConv => '$val eq "undef undef undef" ? "n/a" : $val',
+        PrintConvInv => '$val eq "n/a" ? "undef undef undef" : $val',
+    },
+    0x406 => { #11
+        Name => 'ManualFlashStrength',
+        Writable => 'rational64s',
+        Count => 3,
+        PrintConv => '$val eq "undef undef undef" ? "n/a" : $val',
+        PrintConvInv => '$val eq "n/a" ? "undef undef undef" : $val',
     },
     0x500 => { #6
         Name => 'WhiteBalance2',
@@ -1318,6 +2009,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x509 => { #6
         Name => 'SceneMode',
         Writable => 'int16u',
+        PrintConvColumns => 2,
         PrintConv => {
             0 => 'Standard',
             6 => 'Auto', #6
@@ -1332,9 +2024,10 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             15 => 'Movie', #11
             16 => 'Landscape+Portrait', #6
             17 => 'Night+Portrait',
-            18 => 'Indoor', #11
+            18 => 'Indoor', #11 (Party - PH)
             19 => 'Fireworks',
             20 => 'Sunset',
+            21 => 'Beauty Skin', #PH
             22 => 'Macro',
             23 => 'Super Macro', #11
             24 => 'Food', #11
@@ -1364,6 +2057,15 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             48 => 'Nature Macro', #6
             49 => 'Underwater Snapshot', #11
             50 => 'Shooting Guide', #11
+            54 => 'Face Portrait', #11
+            57 => 'Bulb', #11
+            59 => 'Smile Shot', #11
+            60 => 'Quick Shutter', #11
+            63 => 'Slow Shutter', #11
+            64 => 'Bird Watching', #11
+            65 => 'Multiple Exposure', #11
+            66 => 'e-Portrait', #11
+            67 => 'Soft Background Shot', #11
         },
     },
     0x50a => { #PH/4/6
@@ -1374,6 +2076,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
                 0 => 'Noise Reduction',
                 1 => 'Noise Filter',
                 2 => 'Noise Filter (ISO Boost)',
+                3 => 'Auto', #11
             },
         },
     },
@@ -1416,6 +2119,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             2 => 'Natural',
             3 => 'Muted',
             4 => 'Portrait',
+            5 => 'i-Enhance', #11
             256 => 'Monotone',
             512 => 'Sepia',
         }],
@@ -1453,6 +2157,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x525 => { #6
         Name => 'PictureModeBWFilter',
         Writable => 'int16s',
+        PrintConvColumns => 2,
         PrintConv => {
             0 => 'n/a',
             1 => 'Neutral',
@@ -1465,6 +2170,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x526 => { #6
         Name => 'PictureModeTone',
         Writable => 'int16s',
+        PrintConvColumns => 2,
         PrintConv => {
             0 => 'n/a',
             1 => 'Neutral',
@@ -1483,6 +2189,31 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
            '-1 -2 1' => 'Low',
            '0 -2 1' => 'Standard',
            '1 -2 1' => 'High',
+        },
+    },
+    0x529 => { #PH
+        Name => 'ArtFilter',
+        Writable => 'int16u',
+        Count => 4,
+        PrintConvColumns => 2,
+        PrintConv => [ \%filters ],
+    },
+    0x52c => { #PH
+        Name => 'MagicFilter',
+        Writable => 'int16u',
+        Count => 4, # (2nd number is 0, 1280 or 1792, 3rd/4th are 0)
+        # (1792 observed for E-5 Gentle Sepia and XZ-1 Dramatic Tone)
+        PrintConvColumns => 2,
+        PrintConv => [ \%filters ],
+    },
+    0x52d => { #11
+        Name => 'PictureModeEffect',
+        Writable => 'int16s',
+        Count => 3,
+        PrintConv => {
+           '-1 -1 1' => 'Low',
+           '0 -1 1' => 'Standard',
+           '1 -1 1' => 'High',
         },
     },
     0x600 => { #PH/4
@@ -1521,10 +2252,10 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             my ($a,$b) = split ' ',$val;
             return 'Off' unless $a;
             my %a = (
-                1 => 'Left to right',
-                2 => 'Right to left',
-                3 => 'Bottom to top',
-                4 => 'Top to bottom',
+                1 => 'Left to Right',
+                2 => 'Right to Left',
+                3 => 'Bottom to Top',
+                4 => 'Top to Bottom',
             );
             return ($a{$a} || "Unknown ($a)") . ', Shot ' . $b;
         },
@@ -1537,6 +2268,19 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             2 => 'HQ',
             3 => 'SHQ',
             4 => 'RAW',
+            5 => 'SQ (5)', # (E-500)
+        },
+    },
+    0x604 => { #PH
+        Name => 'ImageStabilization',
+        Writable => 'int32u',
+        DataMember => 'ImageStabilization',
+        RawConv => '$$self{ImageStabilization} = $val',
+        PrintConv => {
+            0 => 'Off',
+            1 => 'On, Mode 1',
+            2 => 'On, Mode 2',
+            3 => 'On, Mode 3',
         },
     },
     0x900 => { #11
@@ -1552,11 +2296,23 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Name => 'ManometerReading',
         Writable => 'int32s',
         Count => 2,
+        ValueConv => 'my @a=split(" ",$val); $_ /= 10 foreach @a; "@a"',
+        ValueConvInv => 'my @a=split(" ",$val); $_ *= 10 foreach @a; "@a"',
         PrintConv => '$val=~s/(\S+) (\S+)/$1 m, $2 ft/; $val',
         PrintConvInv => '$val=~s/ ?(m|ft)//gi; $val',
     },
     0x902 => { #11
         Name => 'ExtendedWBDetect',
+        Writable => 'int16u',
+        PrintConv => \%offOn,
+    },
+    0x903 => { #11
+        Name => 'LevelGaugeRoll',
+        Writable => 'int16u',
+        PrintConv => \%offOn,
+    },
+    0x904 => { #11
+        Name => 'LevelGaugePitch',
         Writable => 'int16u',
         PrintConv => \%offOn,
     },
@@ -1571,6 +2327,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x000 => { #PH
         Name => 'RawDevVersion',
         Writable => 'undef',
+        RawConv => '$val=~s/\0+$//; $val',  # (may be null terminated)
         Count => 4,
     },
     0x100 => {
@@ -1655,13 +2412,13 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         PrintConv => { #11
             BITMASK => {
                 0 => 'WB Color Temp',
-                2 => 'WB Gray Point',
-                3 => 'Saturation',
-                4 => 'Contrast',
-                5 => 'Sharpness',
-                6 => 'Color Space',
-                7 => 'High Function',
-                8 => 'Noise Reduction',
+                1 => 'WB Gray Point',
+                2 => 'Saturation',
+                3 => 'Contrast',
+                4 => 'Sharpness',
+                5 => 'Color Space',
+                6 => 'High Function',
+                7 => 'Noise Reduction',
             },
         },
     },
@@ -1676,6 +2433,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x000 => {
         Name => 'RawDevVersion',
         Writable => 'undef',
+        RawConv => '$val=~s/\0+$//; $val',  # (may be null terminated)
         Count => 4,
     },
     0x100 => {
@@ -1828,6 +2586,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x000 => { #PH
         Name => 'ImageProcessingVersion',
         Writable => 'undef',
+        RawConv => '$val=~s/\0+$//; $val',  # (may be null terminated)
         Count => 4,
     },
     0x100 => { #6
@@ -2056,6 +2815,16 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Writable => 'int16u',
         PrintConv => \%offOn,
     },
+    0x101c => { #11
+        Name => 'MultipleExposureMode',
+        Writable => 'int16u',
+        Count => 2,
+        PrintConv => [{
+            0 => 'Off',
+            2 => 'On (2 frames)',
+            3 => 'On (3 frames)',
+        }],
+    },
     0x1103 => { #PH
         Name => 'UnknownBlock',
         Writable => 'undef',
@@ -2063,22 +2832,61 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         # 'Drop' because too large for APP1 in JPEG images
         Flags => [ 'Unknown', 'Binary', 'Drop' ],
     },
-    0x1200 => { #11
-        Name => 'FaceDetect',
+    0x1112 => { #11
+        Name => 'AspectRatio',
+        Writable => 'int8u',
+        Count => 2,
+        PrintConv => {
+            '1 1' => '4:3',
+            '2 2' => '3:2',
+            '3 3' => '16:9',
+            '4 4' => '6:6',
+            '5 5' => '5:4',
+            '6 6' => '7:6',
+            '7 7' => '6:5',
+            '8 8' => '7:5',
+            '9 9' => '3:4',
+        },
+    },
+    0x1113 => { #11
+        Name => 'AspectFrame',
+        Writable => 'int16u',
+        Count => 4,
+    },
+    0x1200 => { #11/PH
+        Name => 'FacesDetected',
         Writable => 'int32u',
         Count => -1,
         Notes => '2 or 3 values',
-        Relist => [ [0, 1], 2 ],
-        PrintConv => [{
-            '0 0' => 'Off',
-            '1 0' => 'On',
-        }, {}],
     },
-    0x1201 => { #11
+    0x1201 => { #11/PH
         Name => 'FaceDetectArea',
         Writable => 'int16s',
-        Count => 80,
-        Binary => 1,
+        Count => -1, # (varies with model)
+        Binary => 1, # (too long)
+        Notes => q{
+            for models with 2 values in FacesDetected this gives X/Y coordinates in the
+            FaceDetectFrame for all 4 corners of the face rectangle.  For models with 3
+            values in FacesDetected this gives X/Y coordinates, size and rotation angle
+            of the face detect square
+        },
+    },
+    0x1202 => { #PH
+        Name => 'MaxFaces',
+        Writable => 'int32u',
+        Count => 3,
+    },
+    0x1203 => { #PH
+        Name => 'FaceDetectFrameSize',
+        Writable => 'int16u',
+        Count => 6,
+        Notes => 'width/height of the full face detect frame',
+    },
+    0x1207 => { #PH
+        Name => 'FaceDetectFrameCrop',
+        Writable => 'int16s',
+        Count => 12,
+        Notes => 'X/Y offset and width/height of the cropped face detect frame',
     },
 );
 
@@ -2091,6 +2899,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x000 => { #PH
         Name => 'FocusInfoVersion',
         Writable => 'undef',
+        RawConv => '$val=~s/\0+$//; $val',  # (may be null terminated)
         Count => 4,
     },
     0x209 => { #PH/4
@@ -2153,19 +2962,20 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         PrintConv => '$val ? "$val m" : "inf"',
         PrintConvInv => '$val eq "inf" ? 0 : $val=~s/\s*m$//, $val',
     },
-    0x308 => [
+    0x308 => [ # NEED A BETTER WAY TO DETERMINE WHICH MODELS USE WHICH ENCODING!
         {
             Name => 'AFPoint',
-            Condition => '$$self{Model} =~ /E-3\b/',
+            Condition => '$$self{Model} =~ /E-(3|5|30)\b/',
             Writable => 'int16u',
             PrintHex => 1,
             # decoded by ref 6
             Notes => q{
-                for E-3, the value is separated into 2 parts: low 5 bits give AP point,
-                upper bits give AF target selection mode
+                for the E-3, E-5 and E-30 the value is separated into 2 parts: low 5 bits
+                give AF point, upper bits give AF target selection mode
             },
             ValueConv => '($val & 0x1f) . " " . ($val & 0xffe0)',
             ValueConvInv => 'my @v=split(" ",$val); @v == 2 ? $v[0] + $v[1] : $val',
+            PrintConvColumns => 2,
             PrintConv => [
                 {
                     0x00 => '(none)',
@@ -2198,12 +3008,33 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
                     0x80 => 'Dynamic Single Target',
                 }
             ],
+        },{ #PH (models with 7-point AF)
+            Name => 'AFPoint',
+            Condition => '$$self{Model} =~ /E-(520|600|620)\b/',
+            Notes => 'models with 7-point AF',
+            Writable => 'int16u',
+            PrintHex => 1,
+            ValueConv => '($val & 0x1f) . " " . ($val & 0xffe0)',
+            ValueConvInv => 'my @v=split(" ",$val); @v == 2 ? $v[0] + $v[1] : $val',
+            PrintConv => [
+                {
+                    0x00 => '(none)',
+                    0x01 => 'Center',
+                    # need to fill this in...
+                },
+                {
+                    0x00 => 'Single Target',
+                    0x40 => 'All Target', # (guess)
+                },
+            ]
         },{ #11
             Name => 'AFPoint',
             Writable => 'int16u',
             Notes => 'other models',
+            RawConv => '($val or $$self{Model} ne "E-P1") ? $val : undef',
             PrintConv => {
-                0 => 'Left',
+                # (E-P1 always writes 0, maybe other models do too - PH)
+                0 => 'Left (or n/a)',
                 1 => 'Center (horizontal)', #6 (E-510)
                 2 => 'Right',
                 3 => 'Center (vertical)', #6 (E-510)
@@ -2212,6 +3043,14 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         }
     ],
     # 0x31a Continuous AF parameters?
+    # 0x328 Related to AF (maybe Imager AF data?) (ref PH, E-PL1):
+    #  - offset 0x2a (int8u)  ImagerAFMode?  0=Manual, 1=Auto
+    #  - offset 0x30 (int16u) AFAreaXPosition
+    #  - offset 0x32 (int16u) AFAreaWidth (202)
+    #  - offset 0x34 (int16u) AFAreaYPosition
+    #  - offset 0x36 (int16u) AFAreaHeight (50)
+    #  (AF area positions above give the top-left coordinates of the AF area in the
+    #   AF frame. Increasing Y is downwards, and the AF frame size is about 1280x256)
     # 0x1200-0x1209 Flash information:
     0x1201 => { #6
         Name => 'ExternalFlash',
@@ -2267,11 +3106,13 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Writable => 'int16s',
         Notes => q{
             approximately Celsius for E-1, unknown calibration for E-3/410/420/510, and
-            always zero for E-300/330/400/500
+            always zero for E-300/330/400/500, divide by 10 for E-P1?
         },
     },
     0x1600 => { # ref http://fourthirdsphoto.com/vbb/showpost.php?p=107607&postcount=15
         Name => 'ImageStabilization',
+        # (the other value is more reliable, so ignore this totally if the other exists)
+        Condition => 'not defined $$self{ImageStabilization}',
         Writable => 'undef',
         # if the first 4 bytes are non-zero, then bit 0x01 of byte 44
         # gives the stabilization mode
@@ -2292,61 +3133,62 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x000 => {
         Name => 'RawInfoVersion',
         Writable => 'undef',
+        RawConv => '$val=~s/\0+$//; $val',  # (may be null terminated)
         Count => 4,
     },
     0x100 => {
         Name => 'WB_RBLevelsUsed',
-        Writable => 'int16',
+        Writable => 'int16u',
         Count => 2,
     },
     0x110 => {
         Name => 'WB_RBLevelsAuto',
-        Writable => 'int16',
+        Writable => 'int16u',
         Count => 2,
     },
     0x120 => {
         Name => 'WB_RBLevelsShade',
-        Writable => 'int16',
+        Writable => 'int16u',
         Count => 2,
     },
     0x121 => {
         Name => 'WB_RBLevelsCloudy',
-        Writable => 'int16',
+        Writable => 'int16u',
         Count => 2,
     },
     0x122 => {
         Name => 'WB_RBLevelsFineWeather',
-        Writable => 'int16',
+        Writable => 'int16u',
         Count => 2,
     },
     0x123 => {
         Name => 'WB_RBLevelsTungsten',
-        Writable => 'int16',
+        Writable => 'int16u',
         Count => 2,
     },
     0x124 => {
         Name => 'WB_RBLevelsEveningSunlight',
-        Writable => 'int16',
+        Writable => 'int16u',
         Count => 2,
     },
     0x130 => {
         Name => 'WB_RBLevelsDaylightFluor',
-        Writable => 'int16',
+        Writable => 'int16u',
         Count => 2,
     },
     0x131 => {
         Name => 'WB_RBLevelsDayWhiteFluor',
-        Writable => 'int16',
+        Writable => 'int16u',
         Count => 2,
     },
     0x132 => {
         Name => 'WB_RBLevelsCoolWhiteFluor',
-        Writable => 'int16',
+        Writable => 'int16u',
         Count => 2,
     },
     0x133 => {
         Name => 'WB_RBLevelsWhiteFluorescent',
-        Writable => 'int16',
+        Writable => 'int16u',
         Count => 2,
     },
     0x200 => {
@@ -2409,12 +3251,12 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             16 => 'Shade',
             17 => 'Cloudy',
             18 => 'Fine Weather',
-            20 => 'Tungsten (incandescent)',
+            20 => 'Tungsten (Incandescent)',
             22 => 'Evening Sunlight',
-            33 => 'Daylight Fluorescent (D 5700 - 7100K)',
-            34 => 'Day White Fluorescent (N 4600 - 5400K)',
-            35 => 'Cool White Fluorescent (W 3900 - 4500K)',
-            36 => 'White Fluorescent (WW 3200 - 3700K)',
+            33 => 'Daylight Fluorescent',
+            34 => 'Day White Fluorescent',
+            35 => 'Cool White Fluorescent',
+            36 => 'White Fluorescent',
             256 => 'One Touch White Balance',
             512 => 'Custom 1-4',
         },
@@ -2485,6 +3327,13 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     },
 );
 
+# Olympus unknown information tags
+%Image::ExifTool::Olympus::UnknownInfo = (
+    WRITE_PROC => \&Image::ExifTool::Exif::WriteExif,
+    CHECK_PROC => \&Image::ExifTool::Exif::CheckExif,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+);
+
 # Tags found only in some FE models
 %Image::ExifTool::Olympus::FETags = (
     WRITE_PROC => \&Image::ExifTool::Exif::WriteExif,
@@ -2516,7 +3365,10 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     },
     0x18 => {
         Name => 'Model',
+        Description => 'Camera Model Name',
         Format => 'string[8]',
+        SeparateTable => 'CameraType',
+        PrintConv => \%olympusCameraTypes,
     },
     # (01 00 at offset 0x20)
     0x26 => {
@@ -2535,7 +3387,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x32 => { #(NC)
         Name => 'ExposureCompensation',
         Format => 'rational64s',
-        PrintConv => 'Image::ExifTool::Exif::ConvertFraction($val)',
+        PrintConv => 'Image::ExifTool::Exif::PrintFraction($val)',
     },
   # 0x44 => WhiteBalance ?
     0x48 => {
@@ -2562,7 +3414,9 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     },
     0x18 => {
         Name => 'Model',
+        Description => 'Camera Model Name',
         Format => 'string[24]',
+        Notes => 'the actual model name, no decoding necessary',
     },
     # (01 00 at offset 0x30)
     0x36 => {
@@ -2579,7 +3433,7 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x42 => { #(NC)
         Name => 'ExposureCompensation',
         Format => 'rational64s',
-        PrintConv => 'Image::ExifTool::Exif::ConvertFraction($val)',
+        PrintConv => 'Image::ExifTool::Exif::PrintFraction($val)',
     },
     0x58 => {
         Name => 'FocalLength',
@@ -2592,7 +3446,102 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     },
 );
 
+# tags in Olympus MP4 videos (ref PH)
+%Image::ExifTool::Olympus::MP4 = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    FIRST_ENTRY => 0,
+    NOTES => q{
+        This information is found in MP4 videos from Olympus models such as the
+        u7040 and u9010.
+    },
+    0x00 => {
+        Name => 'Make',
+        Format => 'string[24]',
+    },
+    0x18 => {
+        Name => 'Model',
+        Description => 'Camera Model Name',
+        Format => 'string[24]',
+        Notes => 'oddly different than CameraType values in JPEG images by the same camera',
+        PrintConv => {
+            SG472 => 'u7040,S7040',
+            SG473 => 'u9010,S9010',
+            SG475 => 'SP800UZ',
+            SG551 => 'SZ-30MR',
+            SG553 => 'SP-610UZ',
+            SG554 => 'SZ-10',
+            SG555 => 'SZ-20',
+        },
+    },
+    0x28 => {
+        Name => 'FNumber',
+        Format => 'rational64u',
+        PrintConv => 'sprintf("%.1f",$val)',
+    },
+    0x30 => { #(NC)
+        Name => 'ExposureCompensation',
+        Format => 'rational64s',
+        PrintConv => 'Image::ExifTool::Exif::PrintFraction($val)',
+    },
+    # 0x38 - int32u: 3
+    # 0x3c - int32u: 1
+    # 0x40 - int16u: 5
+    # 0x42 - int16u: 0,4,9
+    # 0x64 - int32u: 0,6000,12000
+    # 0x48 - int32u: 100 (ISO?)
+    0x68 => {
+        Name => 'MovableInfo',
+        Condition => '$$valPt =~ /^DIGI/',
+        SubDirectory => { TagTable => 'Image::ExifTool::Olympus::MovableInfo' },
+    },
+    0x72 => {
+        Name => 'MovableInfo',
+        Condition => '$$valPt =~ /^DIGI/',
+        SubDirectory => { TagTable => 'Image::ExifTool::Olympus::MovableInfo' },
+    },
+);
+
+# movable information found in MP4 videos
+%Image::ExifTool::Olympus::MovableInfo = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    FIRST_ENTRY => 0,
+    0x04 => { #(NC)
+        Name => 'ISO',
+        Format => 'int32u',
+    },
+    0x2c => {
+        Name => 'EncoderVersion',
+        Format => 'string[16]',
+    },
+    0x3c => {
+        Name => 'DecoderVersion',
+        Format => 'string[16]',
+    },
+    0x83 => {
+        Name => 'Thumbnail',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Olympus::Thumbnail',
+            Base => '$start', # (use a separate table because of this)
+        },
+    },
+);
+
+# thumbnail image information found in MP4 videos (similar in Olympus,Samsung,Sanyo)
+%Image::ExifTool::Olympus::Thumbnail = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
+    FIRST_ENTRY => 0,
+    FORMAT => 'int32u',
+    1 => 'ThumbnailWidth',
+    2 => 'ThumbnailHeight',
+    3 => 'ThumbnailLength',
+    4 => { Name => 'ThumbnailOffset', IsOffset => 1 },
+);
+
 # tags in Olympus AVI videos (ref PH)
+# (very similar to Pentax::Junk2 tags)
 %Image::ExifTool::Olympus::AVI = (
     PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Camera' },
@@ -2603,8 +3552,11 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Format => 'string[24]',
     },
     0x2c => {
-        Name => 'ModelType',
+        Name => 'Model',
+        Description => 'Camera Model Name',
         Format => 'string[24]',
+        SeparateTable => 'CameraType',
+        PrintConv => \%olympusCameraTypes,
     },
     0x5e => {
         Name => 'FNumber',
@@ -2614,10 +3566,20 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
     0x83 => {
         Name => 'DateTime1',
         Format => 'string[24]',
+        Groups => { 2 => 'Time' },
     },
     0x9d => {
         Name => 'DateTime2',
         Format => 'string[24]',
+        Groups => { 2 => 'Time' },
+    },
+    0x129 => {
+        Name => 'ThumbnailWidth',
+        Format => 'int16u',
+    },
+    0x12b => {
+        Name => 'ThumbnailHeight',
+        Format => 'int16u',
     },
     0x12d => {
         Name => 'ThumbnailLength',
@@ -2629,6 +3591,79 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
         Notes => '160x120 JPEG thumbnail image',
         RawConv => '$self->ValidateImage(\$val,$tag)',
     },
+);
+
+# tags in WAV files from Olympus PCM linear recorders (ref 18)
+%Image::ExifTool::Olympus::WAV = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 0 => 'MakerNotes', 2 => 'Audio' },
+    FIRST_ENTRY => 0,
+    NOTES => q{
+        This information is found in WAV files from Olympus PCM linear recorders
+        like the LS-5, LS-10, LS-11.
+    },
+    0x0c => {
+        Name => 'Model',
+        Description => 'Camera Model Name',
+        Format => 'string[16]',
+    },
+    0x1c => {
+        Name => 'FileNumber',
+        Format => 'int32u',
+        PrintConv => 'sprintf("%.4d", $val)',
+    },
+    0x26 => {
+        Name => 'DateTimeOriginal',
+        Description => 'Date/Time Original',
+        Groups => { 2 => 'Time' },
+        Format => 'undef[12]',
+        Notes => 'time at start of recording',
+        ValueConv => q{
+            return undef unless $val =~ /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/;
+            my $y = $1 < 70 ? "20$1" : "19$1";
+            return "$y:$2:$3 $4:$5:$6";
+        },
+        PrintConv => '$self->ConvertDateTime($val)',
+    },
+    0x32 => {
+        Name => 'DateTimeEnd',
+        Groups => { 2 => 'Time' },
+        Format => 'undef[12]',
+        Notes => 'time at end of recording',
+        ValueConv => q{
+            return undef unless $val =~ /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/;
+            my $y = $1 < 70 ? "20$1" : "19$1";
+            return "$y:$2:$3 $4:$5:$6";
+        },
+        PrintConv => '$self->ConvertDateTime($val)',
+    },
+    0x3e => {
+        Name => 'RecordingTime',
+        Format => 'undef[6]',
+        ValueConv => '$val =~ s/^(\d{2})(\d{2})/$1:$2:/; $val',
+    },
+    0x200 => {
+        Name => 'Duration',
+        Format => 'int32u',
+        ValueConv => '$val / 1000',
+        PrintConv => 'ConvertDuration($val)',
+    },
+    0x20a => { Name => 'Index01', %indexInfo },
+    0x214 => { Name => 'Index02', %indexInfo },
+    0x21e => { Name => 'Index03', %indexInfo },
+    0x228 => { Name => 'Index04', %indexInfo },
+    0x232 => { Name => 'Index05', %indexInfo },
+    0x23c => { Name => 'Index06', %indexInfo },
+    0x246 => { Name => 'Index07', %indexInfo },
+    0x250 => { Name => 'Index08', %indexInfo },
+    0x25a => { Name => 'Index09', %indexInfo },
+    0x264 => { Name => 'Index10', %indexInfo },
+    0x26e => { Name => 'Index11', %indexInfo },
+    0x278 => { Name => 'Index12', %indexInfo },
+    0x282 => { Name => 'Index13', %indexInfo },
+    0x28c => { Name => 'Index14', %indexInfo },
+    0x296 => { Name => 'Index15', %indexInfo },
+    0x2a0 => { Name => 'Index16', %indexInfo },
 );
 
 # Olympus composite tags
@@ -2652,6 +3687,13 @@ my %offOn = ( 0 => 'Off', 1 => 'On' );
             2 => 'Removed',
         },
     },
+    ZoomedPreviewImage => {
+        Require => {
+            0 => 'ZoomedPreviewStart',
+            1 => 'ZoomedPreviewLength',
+        },
+        RawConv => 'Image::ExifTool::Exif::ExtractImage($self,$val[0],$val[1],"ZoomedPreviewImage")',
+    },
 );
 
 # add our composite tags
@@ -2671,99 +3713,15 @@ sub ExtenderStatus($$$)
     my ($extender, $lensType, $maxAperture) = @_;
     my @info = split ' ', $extender;
     # validate that extender identifier is reasonable
-    return 0 unless @info >= 4 and $info[2];
+    return 0 unless @info >= 2 and $info[1];
     # if it's not an EC-14 (id 0 4) then assume it was really attached
     # (other extenders don't seem to affect the reported max aperture)
-    return 1 if "$info[0] $info[2]" ne "0 4";
+    return 1 if "$info[0] $info[1]" ne '0 4';
     # get the maximum aperture for this lens (in $1)
     $lensType =~ / F(\d+(.\d+)?)/ or return 1;
     # If the maximum aperture at the maximum focal length is greater than the
     # known max/max aperture of the lens, then the extender must be attached
     return ($maxAperture - $1 > 0.2) ? 1 : 2;
-}
-
-#------------------------------------------------------------------------------
-# Print lens information (ref 6)
-# Inputs: 0) Lens info (string of integers: Make, Unknown, Model, Release, ...)
-#         1) 'Lens' or 'Extender'
-sub PrintLensInfo($$)
-{
-    my ($val, $type) = @_;
-    my @info = split ' ', $val;
-    return "Unknown ($val)" unless @info >= 4;
-    return 'None' unless $info[2];
-    my %make = (
-        0 => 'Olympus',
-        1 => 'Sigma',
-        2 => 'Leica',
-        3 => 'Leica',
-    );
-    my %model = (
-        Lens => {
-            # Olympus lenses (key is "make model" with optional "release")
-            '0 1 0' => 'Zuiko Digital ED 50mm F2.0 Macro',
-            '0 1 1' => 'Zuiko Digital 40-150mm F3.5-4.5', #8
-            '0 2'   => 'Zuiko Digital ED 150mm F2.0',
-            '0 3'   => 'Zuiko Digital ED 300mm F2.8',
-            '0 5 0' => 'Zuiko Digital 14-54mm F2.8-3.5',
-            '0 5 1' => 'Zuiko Digital Pro ED 90-250mm F2.8', #9
-            '0 6 0' => 'Zuiko Digital ED 50-200mm F2.8-3.5',
-            '0 6 1' => 'Zuiko Digital ED 8mm F3.5 Fisheye', #9
-            '0 7 0' => 'Zuiko Digital 11-22mm F2.8-3.5',
-            '0 7 1' => 'Zuiko Digital 18-180mm F3.5-6.3', #6
-            '0 8'   => 'Zuiko Digital 70-300mm F4.0-5.6', #7
-            '0 21'  => 'Zuiko Digital ED 7-14mm F4.0',
-            '0 23'  => 'Zuiko Digital Pro ED 35-100mm F2.0', #7
-            '0 24'  => 'Zuiko Digital 14-45mm F3.5-5.6',
-            '0 32'  => 'Zuiko Digital 35mm F3.5 Macro', #9
-            '0 34'  => 'Zuiko Digital 17.5-45mm F3.5-5.6', #9
-            '0 35'  => 'Zuiko Digital ED 14-42mm F3.5-5.6', #PH
-            '0 36'  => 'Zuiko Digital ED 40-150mm F4.0-5.6', #PH
-            '0 48'  => 'Zuiko Digital ED 50-200mm F2.8-3.5 SWD', #7
-            '0 49'  => 'Zuiko Digital ED 12-60mm F2.8-4.0 SWD', #7
-            '0 50'  => 'Zuiko Digital ED 14-35mm F2.0 SWD', #PH
-            '0 51'  => 'Zuiko Digital 25mm F2.8', #PH
-            # Sigma lenses
-            '1 1'   => '18-50mm F3.5-5.6', #8
-            '1 2'   => '55-200mm F4.0-5.6 DC',
-            '1 3'   => '18-125mm F3.5-5.6 DC',
-            '1 4'   => '18-125mm F3.5-5.6', #7
-            '1 5'   => '30mm F1.4', #10
-            '1 6'   => '50-500mm F4.0-6.3 EX DG APO HSM RF', #6
-            '1 7'   => '105mm F2.8 DG', #PH
-            '1 8'   => '150mm F2.8 DG HSM', #PH
-            '1 17'  => '135-400mm F4.5-5.6 DG ASP APO RF', #11
-            '1 18'  => '300-800mm F5.6 EX DG APO', #11
-            # Leica lenses (ref 11)
-            '2 1'   => 'D Vario Elmarit 14-50mm F2.8-3.5 Asph.',
-            '2 2'   => 'D Summilux 25mm F1.4 Asph.',
-            '2 3 1' => 'D Vario Elmar 14-50mm F3.8-5.6 Asph.', #14 (L10 kit)
-            '2 4'   => 'D Vario Elmar 14-150mm F3.5-5.6', #13
-            '3 1'   => 'D Vario Elmarit 14-50mm F2.8-3.5 Asph.',
-            '3 2'   => 'D Summilux 25mm F1.4 Asph.',
-        },
-        Extender => {
-            # Olympus extenders
-            '0 4'   => 'Zuiko Digital EC-14 1.4x Teleconverter',
-            '0 8'   => 'EX-25 Extension Tube',
-            '0 16'  => 'Zuiko Digital EC-20 2.0x Teleconverter', #7
-        },
-    );
-    my %release = (
-        0 => '', # production
-        1 => ' (pre-release)',
-    );
-    my $make = $make{$info[0]} || "Unknown Make ($info[0])";
-    my $str = "$info[0] $info[2]";
-    my $rel = $release{$info[3]};
-    my $model = $model{$type}->{"$str $info[3]"};
-    if ($model) {
-        $rel = '';  # don't print release if it is used to differentiate models
-    } else {
-        $rel = " Unknown Release ($info[3])" unless defined $rel;
-        $model = $model{$type}->{$str} || "Unknown Model ($str)";
-    }
-    return "$make $model$rel";
 }
 
 #------------------------------------------------------------------------------
@@ -2823,7 +3781,7 @@ Olympus or Epson maker notes in EXIF information.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
@@ -2845,9 +3803,9 @@ under the same terms as Perl itself.
 =head1 ACKNOWLEDGEMENTS
 
 Thanks to Markku Hanninen, Remi Guyomarch, Frank Ledwon, Michael Meissner,
-Mark Dapoz and Ioannis Panagiotopoulos for their help figuring out some
-Olympus tags, and Lilo Huang, Chris Shaw and Viktor Lushnikov for adding to
-the LensType list.
+Mark Dapoz, Ioannis Panagiotopoulos and Tomasz Kawecki for their help
+figuring out some Olympus tags, and Lilo Huang, Chris Shaw and Viktor
+Lushnikov for adding to the LensType list.
 
 =head1 SEE ALSO
 

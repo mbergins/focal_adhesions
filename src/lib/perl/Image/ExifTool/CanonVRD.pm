@@ -3,7 +3,15 @@
 #
 # Description:  Read/write Canon VRD information
 #
-# Revisions:    10/30/2006 - P. Harvey Created
+# Revisions:    2006/10/30 - P. Harvey Created
+#               2007/10/23 - PH Added new VRD 3.0 tags
+#               2008/08/29 - PH Added new VRD 3.4 tags
+#               2008/12/02 - PH Added new VRD 3.5 tags
+#               2010/06/18 - PH Support variable-length CustomPictureStyle data
+#               2010/09/14 - PH Added r/w support for XMP in VRD
+#
+# References:   1) Bogdan private communication (Canon DPP v3.4.1.1)
+#               2) Gert Kello private communiation (DPP 3.8)
 #------------------------------------------------------------------------------
 
 package Image::ExifTool::CanonVRD;
@@ -12,25 +20,59 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.05';
+$VERSION = '1.15';
 
-sub ProcessCanonVRD($$);
+sub ProcessCanonVRD($$;$);
+sub WriteCanonVRD($$;$);
+sub ProcessEditData($$$);
+sub ProcessIHL($$$);
+sub ProcessIHLExif($$$);
 
-my $debug;  # set this to 1 for offsets relative to binary data start
+# map for adding directories to VRD
+my %vrdMap = (
+    XMP      => 'CanonVRD',
+    CanonVRD => 'VRD',
+);
 
 my %noYes = ( 0 => 'No', 1 => 'Yes' );
 
-# main tag table IPTC-format records in CanonVRD trailer
+# main tag table blocks in CanonVRD trailer (ref PH)
 %Image::ExifTool::CanonVRD::Main = (
-    VARS => { ID_LABEL => 'Index' }, # change TagID label in documentation
+    WRITE_PROC => \&WriteCanonVRD,
+    PROCESS_PROC => \&ProcessCanonVRD,
     NOTES => q{
         Canon Digital Photo Professional writes VRD (Recipe Data) information as a
         trailer record to JPEG, TIFF, CRW and CR2 images, or as a stand-alone VRD
-        file. The tags listed below represent information found in this record.  The
-        complete VRD data record may be accessed as a block using the Extra
+        file.  The tags listed below represent information found in this record. 
+        The complete VRD data record may be accessed as a block using the Extra
         'CanonVRD' tag, but this tag is not extracted or copied unless specified
         explicitly.
     },
+    0xffff00f4 => {
+        Name => 'EditData',
+        SubDirectory => { TagTable => 'Image::ExifTool::CanonVRD::Edit' },
+    },
+    0xffff00f5 => {
+        Name => 'IHLData',
+        SubDirectory => { TagTable => 'Image::ExifTool::CanonVRD::IHL' },
+    },
+    0xffff00f6 => {
+        Name => 'XMP',
+        Flags => [ 'Binary', 'Protected' ],
+        Writable => 'undef',    # allow writing/deleting as a block
+        SubDirectory => {
+            DirName => 'XMP',
+            TagTable => 'Image::ExifTool::XMP::Main',
+        },
+    },
+);
+
+# the VRD edit information is divided into sections
+%Image::ExifTool::CanonVRD::Edit = (
+    WRITE_PROC => \&ProcessEditData,
+    PROCESS_PROC => \&ProcessEditData,
+    VARS => { ID_LABEL => 'Index' }, # change TagID label in documentation
+    NOTES => 'Canon VRD edit information.',
     0 => {
         Name => 'VRD1',
         Size => 0x272,  # size of version 1.0 edit information in bytes
@@ -49,13 +91,62 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
     },
 );
 
-# VRD version 1 tags
+# "IHL Created Optional Item Data" tags (not yet writable)
+%Image::ExifTool::CanonVRD::IHL = (
+    PROCESS_PROC => \&ProcessIHL,
+    TAG_PREFIX => 'VRD_IHL',
+    GROUPS => { 2 => 'Image' },
+    1 => [
+        # this contains edited TIFF-format data, with an original IFD at 0x0008
+        # and an edited IFD with offset given in the TIFF header.
+        {
+            Name => 'IHL_EXIF',
+            Condition => '$self->Options("ExtractEmbedded")',
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Exif::Main',
+                ProcessProc => \&ProcessIHLExif,
+            },
+        },{
+            Name => 'IHL_EXIF',
+            Notes => q{
+                extracted as a block if the Unknown option is used, or processed as the
+                first sub-document with the ExtractEmbedded option
+            },
+            Binary => 1,
+            Unknown => 1,
+        },
+    ],
+    # 2 - written by DPP 3.0.2.6, and it looks something like edit data,
+    #     but I haven't decoded it yet - PH
+    3 => {
+        # (same size as the PreviewImage with DPP 3.0.2.6)
+        Name => 'ThumbnailImage',
+        Binary => 1,
+    },
+    4 => {
+        Name => 'PreviewImage',
+        Binary => 1,
+    },
+    5 => {
+        Name => 'RawCodecVersion',
+        ValueConv => '$val =~ s/\0.*//; $val',  # truncate string at null
+    },
+    6 => {
+        Name => 'CRCDevelParams',
+        Binary => 1,
+        Unknown => 1,
+    },
+);
+
+# VRD version 1 tags (ref PH)
 %Image::ExifTool::CanonVRD::Ver1 = (
     PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
     WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
     CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
     WRITABLE => 1,
+    FIRST_ENTRY => 0,
     GROUPS => { 2 => 'Image' },
+    DATAMEMBER => [ 0x002 ],   # necessary for writing
 #
 # RAW image adjustment
 #
@@ -63,12 +154,13 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
         Name => 'VRDVersion',
         Format => 'int16u',
         Writable => 0,
+        DataMember => 'VRDVersion',
+        RawConv => '$$self{VRDVersion} = $val',
         PrintConv => 'sprintf("%.2f", $val / 100)',
     },
-    # 0x006 related somehow to RGB levels
-    0x008 => {
-        Name => 'WBAdjRGBLevels',
-        Format => 'int16u[3]',
+    0x006 => {
+        Name => 'WBAdjRGGBLevels',
+        Format => 'int16u[4]',
     },
     0x018 => {
         Name => 'WhiteBalanceAdj',
@@ -91,7 +183,6 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
         Format => 'int16u',
     },
     # 0x01c similar to 0x006
-    # 0x01e similar to 0x008
     0x024 => {
         Name => 'WBFineTuneActive',
         Format => 'int16u',
@@ -161,6 +252,10 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
         Format => 'int16u',
         PrintConv => \%noYes,
     },
+    0x113 => {
+        Name => 'ToneCurveMode',
+        PrintConv => { 0 => 'RGB', 1 => 'Luminance' },
+    },
     0x114 => {
         Name => 'BrightnessAdj',
         Format => 'int8s',
@@ -178,18 +273,35 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
         Notes => 'in degrees, so -1 is the same as 359',
         Format => 'int32s',
     },
+    0x126 => {
+        Name => 'LuminanceCurvePoints',
+        Format => 'int16u[21]',
+        PrintConv => 'Image::ExifTool::CanonVRD::ToneCurvePrint($val)',
+        PrintConvInv => 'Image::ExifTool::CanonVRD::ToneCurvePrintInv($val)',
+    },
+    0x150 => {
+        Name => 'LuminanceCurveLimits',
+        Notes => '4 numbers: input and output highlight and shadow points',
+        Format => 'int16u[4]',
+    },
+    0x159 => {
+        Name => 'ToneCurveInterpolation',
+        PrintConv => { 0 => 'Curve', 1 => 'Straight' },
+    },
     0x160 => {
         Name => 'RedCurvePoints',
         Format => 'int16u[21]',
         PrintConv => 'Image::ExifTool::CanonVRD::ToneCurvePrint($val)',
         PrintConvInv => 'Image::ExifTool::CanonVRD::ToneCurvePrintInv($val)',
     },
+    # 0x193 same as 0x159
     0x19a => {
         Name => 'GreenCurvePoints',
         Format => 'int16u[21]',
         PrintConv => 'Image::ExifTool::CanonVRD::ToneCurvePrint($val)',
         PrintConvInv => 'Image::ExifTool::CanonVRD::ToneCurvePrintInv($val)',
     },
+    # 0x1cd same as 0x159
     0x1d4 => {
         Name => 'BlueCurvePoints',
         Format => 'int16u[21]',
@@ -198,7 +310,6 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
     },
     0x18a => {
         Name => 'RedCurveLimits',
-        Notes => '4 numbers: input and output highlight and shadow points',
         Format => 'int16u[4]',
     },
     0x1c4 => {
@@ -209,6 +320,7 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
         Name => 'BlueCurveLimits',
         Format => 'int16u[4]',
     },
+    # 0x207 same as 0x159
     0x20e => {
         Name => 'RGBCurvePoints',
         Format => 'int16u[21]',
@@ -219,6 +331,7 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
         Name => 'RGBCurveLimits',
         Format => 'int16u[4]',
     },
+    # 0x241 same as 0x159
     0x244 => {
         Name => 'CropActive',
         Format => 'int16u',
@@ -239,6 +352,10 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
     },
     0x24c => {
         Name => 'CropHeight',
+        Format => 'int16u',
+    },
+    0x25a => {
+        Name => 'SharpnessAdj',
         Format => 'int16u',
     },
     0x260 => {
@@ -302,10 +419,10 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
             4 => 'ColorMatch RGB',
         },
     },
-    # (VRD 1.0 edit data ends here -- 0x272 bytes long)
+    # (VRD 1.0 edit data ends here -- 0x272 bytes)
 );
 
-# VRD Stamp Tool tags
+# VRD Stamp Tool tags (ref PH)
 %Image::ExifTool::CanonVRD::StampTool = (
     PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
     GROUPS => { 2 => 'Image' },
@@ -315,17 +432,19 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
     },
 );
 
-# VRD version 2 and 3 tags
+# VRD version 2 and 3 tags (ref PH)
 %Image::ExifTool::CanonVRD::Ver2 = (
     PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
     WRITE_PROC => \&Image::ExifTool::WriteBinaryData,
     CHECK_PROC => \&Image::ExifTool::CheckBinaryData,
     WRITABLE => 1,
+    FIRST_ENTRY => 0,
+    FORMAT => 'int16s',
+    DATAMEMBER => [ 0x58 ], # (required for writable var-format tags)
     GROUPS => { 2 => 'Image' },
     NOTES => 'Tags added in DPP version 2.0 and later.',
-    0x04 => {
+    0x02 => {
         Name => 'PictureStyle',
-        Format => 'int16u',
         PrintConv => {
             0 => 'Standard',
             1 => 'Portrait',
@@ -333,40 +452,76 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
             3 => 'Neutral',
             4 => 'Faithful',
             5 => 'Monochrome',
+            6 => 'Unknown?', # PH (maybe in-camera custom picture style?)
+            7 => 'Custom',
         },
     },
-    0x1a => {
-        Name => 'RawColorToneAdj',
-        Format => 'int16s',
-    },
-    0x1c => {
-        Name => 'RawSaturationAdj',
-        Format => 'int16s',
-    },
-    0x1e => {
-        Name => 'RawContrastAdj',
-        Format => 'int16s',
-    },
-    0x20 => {
-        Name => 'RawLinear',
-        Format => 'int16u',
+    0x03 => {
+        Name => 'IsCustomPictureStyle',
         PrintConv => \%noYes,
     },
+    0x0d => 'StandardRawColorTone',
+    0x0e => 'StandardRawSaturation',
+    0x0f => 'StandardRawContrast',
+    0x10 => {
+        Name => 'StandardRawLinear',
+        PrintConv => \%noYes,
+    },
+    0x11 => 'StandardRawSharpness',
+    0x12 => 'StandardRawHighlightPoint',
+    0x13 => 'StandardRawShadowPoint',
+    0x14 => 'StandardOutputHighlightPoint', #2
+    0x15 => 'StandardOutputShadowPoint', #2
+    0x16 => 'PortraitRawColorTone',
+    0x17 => 'PortraitRawSaturation',
+    0x18 => 'PortraitRawContrast',
+    0x19 => {
+        Name => 'PortraitRawLinear',
+        PrintConv => \%noYes,
+    },
+    0x1a => 'PortraitRawSharpness',
+    0x1b => 'PortraitRawHighlightPoint',
+    0x1c => 'PortraitRawShadowPoint',
+    0x1d => 'PortraitOutputHighlightPoint',
+    0x1e => 'PortraitOutputShadowPoint',
+    0x1f => 'LandscapeRawColorTone',
+    0x20 => 'LandscapeRawSaturation',
+    0x21 => 'LandscapeRawContrast',
     0x22 => {
-        Name => 'RawSharpnessAdj',
-        Format => 'int16s',
+        Name => 'LandscapeRawLinear',
+        PrintConv => \%noYes,
     },
-    0x24 => {
-        Name => 'RawHighlightPoint',
-        Format => 'int16s',
+    0x23 => 'LandscapeRawSharpness',
+    0x24 => 'LandscapeRawHighlightPoint',
+    0x25 => 'LandscapeRawShadowPoint',
+    0x26 => 'LandscapeOutputHighlightPoint',
+    0x27 => 'LandscapeOutputShadowPoint',
+    0x28 => 'NeutralRawColorTone',
+    0x29 => 'NeutralRawSaturation',
+    0x2a => 'NeutralRawContrast',
+    0x2b => {
+        Name => 'NeutralRawLinear',
+        PrintConv => \%noYes,
     },
-    0x26 => {
-        Name => 'RawShadowPoint',
-        Format => 'int16s',
+    0x2c => 'NeutralRawSharpness',
+    0x2d => 'NeutralRawHighlightPoint',
+    0x2e => 'NeutralRawShadowPoint',
+    0x2f => 'NeutralOutputHighlightPoint',
+    0x30 => 'NeutralOutputShadowPoint',
+    0x31 => 'FaithfulRawColorTone',
+    0x32 => 'FaithfulRawSaturation',
+    0x33 => 'FaithfulRawContrast',
+    0x34 => {
+        Name => 'FaithfulRawLinear',
+        PrintConv => \%noYes,
     },
-    0x74 => {
+    0x35 => 'FaithfulRawSharpness',
+    0x36 => 'FaithfulRawHighlightPoint',
+    0x37 => 'FaithfulRawShadowPoint',
+    0x38 => 'FaithfulOutputHighlightPoint',
+    0x39 => 'FaithfulOutputShadowPoint',
+    0x3a => {
         Name => 'MonochromeFilterEffect',
-        Format => 'int16s',
         PrintConv => {
             -2 => 'None',
             -1 => 'Yellow',
@@ -375,9 +530,8 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
             2 => 'Green',
         },
     },
-    0x76 => {
+    0x3b => {
         Name => 'MonochromeToningEffect',
-        Format => 'int16s',
         PrintConv => {
             -2 => 'None',
             -1 => 'Sepia',
@@ -386,48 +540,339 @@ my %noYes = ( 0 => 'No', 1 => 'Yes' );
             2 => 'Green',
         },
     },
-    0x78 => {
-        Name => 'MonochromeContrast',
-        Format => 'int16s',
-    },
-    0x7a => {
+    0x3c => 'MonochromeContrast',
+    0x3d => {
         Name => 'MonochromeLinear',
-        Format => 'int16u',
         PrintConv => \%noYes,
     },
-    0x7c => {
-        Name => 'MonochromeSharpness',
-        Format => 'int16s',
+    0x3e => 'MonochromeSharpness',
+    0x3f => 'MonochromeRawHighlightPoint',
+    0x40 => 'MonochromeRawShadowPoint',
+    0x41 => 'MonochromeOutputHighlightPoint',
+    0x42 => 'MonochromeOutputShadowPoint',
+    0x45 => { Name => 'UnknownContrast',            Unknown => 1 },
+    0x46 => {
+        Name => 'UnknownLinear',
+        Unknown => 1,
+        PrintConv => \%noYes,
     },
-    # (VRD 2.0 edit data ends here -- offset 0xb2)
-    0xbc => {
+    0x47 => { Name => 'UnknownSharpness',           Unknown => 1 },
+    0x48 => { Name => 'UnknownRawHighlightPoint',   Unknown => 1 },
+    0x49 => { Name => 'UnknownRawShadowPoint',      Unknown => 1 },
+    0x4a => { Name => 'UnknownOutputHighlightPoint',Unknown => 1 },
+    0x4b => { Name => 'UnknownOutputShadowPoint',   Unknown => 1 },
+    0x4e => 'CustomContrast',
+    0x4f => {
+        Name => 'CustomLinear',
+        PrintConv => \%noYes,
+    },
+    0x50 => 'CustomSharpness',
+    0x51 => 'CustomRawHighlightPoint',
+    0x52 => 'CustomRawShadowPoint',
+    0x53 => 'CustomOutputHighlightPoint',
+    0x54 => 'CustomOutputShadowPoint',
+    0x58 => {
+        Name => 'CustomPictureStyleData',
+        Format => 'var_int16u',
+        Binary => 1,
+        Notes => 'variable-length data structure',
+        Writable => 0,
+        RawConv => 'length($val) == 2 ? undef : $val', # ignore if no data
+    },
+    # (VRD 2.0 edit data ends here: 178 bytes, index 0x59)
+    0x5e => [{
         Name => 'ChrominanceNoiseReduction',
-        Format => 'int16u',
+        Condition => '$$self{VRDVersion} < 330',
+        Notes => 'VRDVersion prior to 3.30',
         PrintConv => {
             0   => 'Off',
             58  => 'Low',
             100 => 'High',
         },
-    },
-    0xbe => {
+    },{ #1
+        Name => 'ChrominanceNoiseReduction',
+        Notes => 'VRDVersion 3.30 or later',
+        PrintHex => 1,
+        PrintConvColumns => 4,
+        PrintConv => {
+            0x00 => 0,
+            0x10 => 1,
+            0x21 => 2,
+            0x32 => 3,
+            0x42 => 4,
+            0x53 => 5,
+            0x64 => 6,
+            0x74 => 7,
+            0x85 => 8,
+            0x96 => 9,
+            0xa6 => 10,
+            0xa7 => 11,
+            0xa8 => 12,
+            0xa9 => 13,
+            0xaa => 14,
+            0xab => 15,
+            0xac => 16,
+            0xad => 17,
+            0xae => 18,
+            0xaf => 19,
+            0xb0 => 20,
+        },
+    }],
+    0x5f => [{
         Name => 'LuminanceNoiseReduction',
-        Format => 'int16u',
+        Condition => '$$self{VRDVersion} < 330',
+        Notes => 'VRDVersion prior to 3.30',
         PrintConv => {
             0   => 'Off',
             65  => 'Low',
             100 => 'High',
         },
-    },
-    0xc0 => {
+    },{ #1
+        Name => 'LuminanceNoiseReduction',
+        Notes => 'VRDVersion 3.30 or later',
+        PrintHex => 1,
+        PrintConvColumns => 4,
+        PrintConv => {
+            0x00 => 0,
+            0x41 => 1,
+            0x64 => 2,
+            0x6e => 3,
+            0x78 => 4,
+            0x82 => 5,
+            0x8c => 6,
+            0x96 => 7,
+            0xa0 => 8,
+            0xaa => 9,
+            0xb4 => 10,
+            0xb5 => 11,
+            0xb6 => 12,
+            0xb7 => 13,
+            0xb8 => 14,
+            0xb9 => 15,
+            0xba => 16,
+            0xbb => 17,
+            0xbc => 18,
+            0xbd => 19,
+            0xbe => 20,
+        },
+    }],
+    0x60 => [{
         Name => 'ChrominanceNR_TIFF_JPEG',
-        Format => 'int16u',
+        Condition => '$$self{VRDVersion} < 330',
+        Notes => 'VRDVersion prior to 3.30',
         PrintConv => {
             0   => 'Off',
             33  => 'Low',
             100 => 'High',
         },
-    }
-    # (VRD 3.0 edit data ends here -- offset 0xc4)
+    },{ #1
+        Name => 'ChrominanceNR_TIFF_JPEG',
+        Notes => 'VRDVersion 3.30 or later',
+        PrintHex => 1,
+        PrintConvColumns => 4,
+        PrintConv => {
+            0x00 => 0,
+            0x10 => 1,
+            0x21 => 2,
+            0x32 => 3,
+            0x42 => 4,
+            0x53 => 5,
+            0x64 => 6,
+            0x74 => 7,
+            0x85 => 8,
+            0x96 => 9,
+            0xa6 => 10,
+            0xa7 => 11,
+            0xa8 => 12,
+            0xa9 => 13,
+            0xaa => 14,
+            0xab => 15,
+            0xac => 16,
+            0xad => 17,
+            0xae => 18,
+            0xaf => 19,
+            0xb0 => 20,
+        },
+    }],
+    # (VRD 3.0 edit data ends here: 196 bytes, index 0x62)
+    0x62 => {
+        Name => 'ChromaticAberrationOn',
+        ValueConv => \%noYes,
+    },
+    0x63 => {
+        Name => 'DistortionCorrectionOn',
+        ValueConv => \%noYes,
+    },
+    0x64 => {
+        Name => 'PeripheralIlluminationOn',
+        ValueConv => \%noYes,
+    },
+    0x65 => {
+        Name => 'ColorBlur',
+        ValueConv => \%noYes,
+    },
+    0x66 => {
+        Name => 'ChromaticAberration',
+        ValueConv => '$val / 0x400',
+        ValueConvInv => 'int($val * 0x400 + 0.5)',
+        PrintConv => 'sprintf("%.0f%%", $val * 100)',
+        PrintConvInv => 'ToFloat($val) / 100',
+    },
+    0x67 => {
+        Name => 'DistortionCorrection',
+        ValueConv => '$val / 0x400',
+        ValueConvInv => 'int($val * 0x400 + 0.5)',
+        PrintConv => 'sprintf("%.0f%%", $val * 100)',
+        PrintConvInv => 'ToFloat($val) / 100',
+    },
+    0x68 => {
+        Name => 'PeripheralIllumination',
+        ValueConv => '$val / 0x400',
+        ValueConvInv => 'int($val * 0x400 + 0.5)',
+        PrintConv => 'sprintf("%.0f%%", $val * 100)',
+        PrintConvInv => 'ToFloat($val) / 100',
+    },
+    0x69 => {
+        Name => 'AberrationCorrectionDistance',
+        Notes => '100% = infinity',
+        RawConv => '$val == 0x7fff ? undef : $val',
+        ValueConv => '1 - $val / 0x400',
+        ValueConvInv => 'int((1 - $val) * 0x400 + 0.5)',
+        PrintConv => 'sprintf("%.0f%%", $val * 100)',
+        PrintConvInv => 'ToFloat($val) / 100',
+    },
+    0x6a => 'ChromaticAberrationRed',
+    0x6b => 'ChromaticAberrationBlue',
+    0x6d => { #1
+        Name => 'LuminanceNR_TIFF_JPEG',
+        Notes => 'val = raw / 10',
+        ValueConv => '$val / 10',
+        ValueConvInv => 'int($val * 10 + 0.5)',
+    },
+    # (VRD 3.4 edit data ends here: 220 bytes, index 0x6e)
+    0x6e => {
+        Name => 'AutoLightingOptimizerOn',
+        PrintConv => \%noYes,
+    },
+    0x6f => {
+        Name => 'AutoLightingOptimizer',
+        PrintConv => {
+            100 => 'Low',
+            200 => 'Standard',
+            300 => 'Strong',
+            0x7fff => 'n/a', #1
+        },
+    },
+    # (VRD 3.5 edit data ends here: 232 bytes, index 0x74)
+    0x75 => {
+        Name => 'StandardRawHighlight',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x76 => {
+        Name => 'PortraitRawHighlight',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x77 => {
+        Name => 'LandscapeRawHighlight',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x78 => {
+        Name => 'NeutralRawHighlight',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x79 => {
+        Name => 'FaithfulRawHighlight',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x7a => {
+        Name => 'MonochromeRawHighlight',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x7b => {
+        Name => 'UnknownRawHighlight',
+        Unknown => 1,
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x7c => {
+        Name => 'CustomRawHighlight',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x7e => {
+        Name => 'StandardRawShadow',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x7f => {
+        Name => 'PortraitRawShadow',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x80 => {
+        Name => 'LandscapeRawShadow',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x81 => {
+        Name => 'NeutralRawShadow',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x82 => {
+        Name => 'FaithfulRawShadow',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x83 => {
+        Name => 'MonochromeRawShadow',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x84 => {
+        Name => 'UnknownRawShadow',
+        Unknown => 1,
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x85 => {
+        Name => 'CustomRawShadow',
+        ValueConv => '$val / 10',
+        ValueConvInv => '$val * 10',
+    },
+    0x8b => { #2
+        Name => 'AngleAdj',
+        Format => 'int32s',
+        ValueConv => '$val / 100',
+        ValueConvInv => '$val * 100',
+    },
+    0x8e => {
+        Name => 'CheckMark2',
+        Format => 'int16u',
+        PrintConv => {
+            0 => 'Clear',
+            1 => 1,
+            2 => 2,
+            3 => 3,
+            4 => 4,
+            5 => 5,
+        },
+    },
+    # (VRD 3.8 edit data ends here: 286 bytes, index 0x8f)
+    0x90 => {
+        Name => 'UnsharpMask',
+        PrintConv => { 0 => 'Off', 1 => 'On' },
+    },
+    0x92 => 'UnsharpMaskStrength',
+    0x94 => 'UnsharpMaskFineness',
+    0x96 => 'UnsharpMaskThreshold',
+    # (VRD 3.91 edit data ends here: 392 bytes, index 0xc4)
 );
 
 #------------------------------------------------------------------------------
@@ -460,6 +905,164 @@ sub ToneCurvePrintInv($)
 }
 
 #------------------------------------------------------------------------------
+# Read/Write VRD edit data
+# Inputs: 0) ExifTool object ref, 1) dirInfo ref, 2) tag table ref
+# Returns: Reading: 1 on success; Writing: modified edit data, or undef if nothing changed
+sub ProcessEditData($$$)
+{
+    my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    $exifTool or return 1;    # allow dummy access
+    my $dataPt = $$dirInfo{DataPt};
+    my $pos = $$dirInfo{DirStart};
+    my $dataPos = $$dirInfo{DataPos};
+    my $outfile = $$dirInfo{OutFile};
+    my $dirLen = $$dirInfo{DirLen};
+    my $dirEnd = $pos + $dirLen;
+    my $verbose = $exifTool->Options('Verbose');
+    my $out = $exifTool->Options('TextOut');
+    my $oldChanged = $$exifTool{CHANGED};
+
+    $exifTool->VerboseDir('VRD Edit Data', 0, $dirLen);
+
+    # loop through all records in the edit data
+    my ($recNum, $recLen, $err);
+    for ($recNum=0;; ++$recNum, $pos+=$recLen) {
+        if ($pos + 4 > $dirEnd) {
+            last if $pos == $dirEnd;    # all done if we arrived at end
+            $recLen = 0;    # just reset record size (will exit loop on test below)
+        } else {
+            $recLen = Get32u($dataPt, $pos);
+        }
+        $pos += 4;          # move to start of record
+        if ($pos + $recLen > $dirEnd) {
+            $exifTool->Warn('Possibly corrupt CanonVRD Edit record');
+            $err = 1;
+            last;
+        }
+        if ($verbose > 1 and not $outfile) {
+            printf $out "$$exifTool{INDENT}CanonVRD Edit record ($recLen bytes at offset 0x%x)\n",
+                   $pos + $dataPos;
+        }
+
+        # our edit information is the 0th record, so don't process the others
+        next if $recNum;
+
+        # process VRD edit information
+        my $subTablePtr = GetTagTable('Image::ExifTool::CanonVRD::Edit');
+        my $index;
+        my $editData = substr($$dataPt, $pos, $recLen);
+        my %subdirInfo = (
+            DataPt => \$editData,
+            DataPos => $dataPos + $pos,
+        );
+        my $start = 0;
+        # loop through various sections of the VRD edit data
+        for ($index=0; ; ++$index) {
+            my $tagInfo = $$subTablePtr{$index} or last;
+            my $dirLen;
+            my $maxLen = $recLen - $start;
+            if ($$tagInfo{Size}) {
+                $dirLen = $$tagInfo{Size};
+            } elsif (defined $$tagInfo{Size}) {
+                # get size from int32u at $start
+                last unless $start + 4 <= $recLen;
+                $dirLen = Get32u(\$editData, $start);
+                $start += 4; # skip the length word
+            } else {
+                $dirLen = $maxLen;
+            }
+            $dirLen > $maxLen and $dirLen = $maxLen;
+            if ($dirLen) {
+                my $subTable = GetTagTable($tagInfo->{SubDirectory}->{TagTable});
+                my $subName = $$tagInfo{Name};
+                $subdirInfo{DirStart} = $start;
+                $subdirInfo{DirLen} = $dirLen;
+                $subdirInfo{DirName} = $subName;
+                if ($outfile) {
+                    # rewrite this section of the VRD edit information
+                    $verbose and print $out "  Rewriting Canon $subName\n";
+                    my $newVal = $exifTool->WriteDirectory(\%subdirInfo, $subTable);
+                    substr($$dataPt, $pos+$start, $dirLen) = $newVal if $newVal;
+                } else {
+                    $exifTool->VPrint(0, "$$exifTool{INDENT}$subName (SubDirectory) -->\n");
+                    $exifTool->VerboseDump(\$editData,
+                        Start => $start,
+                        Addr  => $dataPos + $pos + $start,
+                        Len   => $dirLen,
+                    );
+                    # extract tags from this section of the VRD edit information
+                    $exifTool->ProcessDirectory(\%subdirInfo, $subTable);
+                }
+            }
+            # next section starts at the end of this one
+            $start += $dirLen;
+        }
+    }
+    if ($outfile) {
+        return undef if $oldChanged == $$exifTool{CHANGED};
+        return substr($$dataPt, $$dirInfo{DirStart}, $dirLen);
+    }
+    return $err ? 0 : 1;
+}
+
+#------------------------------------------------------------------------------
+# Process VRD IHL data
+# Inputs: 0) ExifTool object ref, 1) dirInfo ref, 2) tag table ref
+# Returns: 1 on success
+sub ProcessIHL($$$)
+{
+    my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    my $dataPt = $$dirInfo{DataPt};
+    my $dataPos = $$dirInfo{DataPos};
+    my $pos = $$dirInfo{DirStart};
+    my $dirLen = $$dirInfo{DirLen};
+    my $dirEnd = $pos + $dirLen;
+
+    $exifTool->VerboseDir('VRD IHL', 0, $dirLen);
+
+    SetByteOrder('II'); # (make up your mind, Canon!)
+    while ($pos + 48 <= $dirEnd) {
+        my $hdr = substr($$dataPt, $pos, 48);
+        unless ($hdr =~ /^IHL Created Optional Item Data\0\0/) {
+            $exifTool->Warn('Possibly corrupted VRD IHL data');
+            last;
+        }
+        my $tag  = Get32u($dataPt, $pos + 36);
+        my $size = Get32u($dataPt, $pos + 40); # size of data in IHL record
+        my $next = Get32u($dataPt, $pos + 44); # size of complete IHL record
+        if ($size > $next or $pos + 48 + $next > $dirEnd) {
+            $exifTool->Warn(sprintf('Bad size for VRD IHL tag 0x%.4x', $tag));
+            last;
+        }
+        $pos += 48;
+        $exifTool->HandleTag($tagTablePtr, $tag, substr($$dataPt, $pos, $size),
+            DataPt  => $dataPt,
+            DataPos => $dataPos,
+            Start   => $pos,
+            Size    => $size
+        );
+        $pos += $next;
+    }
+    return 1;
+}    
+    
+#------------------------------------------------------------------------------
+# Process VRD IHL EXIF data
+# Inputs: 0) ExifTool object ref, 1) dirInfo ref, 2) tag table ref
+# Returns: 1 on success
+sub ProcessIHLExif($$$)
+{
+    my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    $$exifTool{DOC_NUM} = 1;
+    # the IHL-edited maker notes may look messed up, but the offsets should be OK
+    my $oldFix = $exifTool->Options(FixBase => 0);
+    my $rtnVal = $exifTool->ProcessTIFF($dirInfo, $tagTablePtr);
+    $exifTool->Options(FixBase => $oldFix);
+    delete $$exifTool{DOC_NUM};
+    return $rtnVal;
+}
+
+#------------------------------------------------------------------------------
 # Read/write Canon VRD file
 # Inputs: 0) ExifTool object reference, 1) dirInfo reference
 # Returns: 1 if this was a Canon VRD file, 0 otherwise, -1 on write error
@@ -469,6 +1072,10 @@ sub ProcessVRD($$)
     my $raf = $$dirInfo{RAF};
     my $buff;
     my $num = $raf->Read($buff, 0x1c);
+
+    # initialize write directories if necessary
+    $exifTool->InitWriteDirs(\%vrdMap, 'XMP') if $$dirInfo{OutFile};
+
     if (not $num and $$dirInfo{OutFile}) {
         # create new VRD file from scratch
         my $newVal = $exifTool->GetNewValues('CanonVRD');
@@ -477,6 +1084,15 @@ sub ProcessVRD($$)
             Write($$dirInfo{OutFile}, $newVal) or return -1;
             ++$exifTool->{CHANGED};
         } else {
+            # allow VRD to be created from individual tags
+            if ($$exifTool{ADD_DIRS}{CanonVRD}) {
+                my $newVal = '';
+                if (ProcessCanonVRD($exifTool, { OutFile => \$newVal }) > 0) {
+                    Write($$dirInfo{OutFile}, $newVal) or return -1;
+                    ++$exifTool->{CHANGED};
+                    return 1;
+                }
+            }
             $exifTool->Error('No CanonVRD information to write');
         }
     } else {
@@ -492,22 +1108,52 @@ sub ProcessVRD($$)
 }
 
 #------------------------------------------------------------------------------
+# Write VRD data record as a block
+# Inputs: 0) ExifTool object ref, 1) dirInfo ref, 2) tag table ref
+# Returns: VRD data block (may be empty if no VRD data)
+# Notes: Increments ExifTool CHANGED flag if changed
+sub WriteCanonVRD($$;$)
+{
+    my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    $exifTool or return 1;    # allow dummy access
+    my $nvHash = $exifTool->GetNewValueHash($Image::ExifTool::Extra{CanonVRD});
+    return undef unless $exifTool->IsOverwriting($nvHash);
+    my $val = $exifTool->GetNewValues($nvHash);
+    $val = '' unless defined $val;
+    ++$exifTool->{CHANGED};
+    return $val;
+}
+
+#------------------------------------------------------------------------------
 # Read/write CanonVRD information
 # Inputs: 0) ExifTool object reference, 1) dirInfo reference
 # Returns: 1 on success, 0 not valid VRD, or -1 error writing
 # - updates DataPos to point to start of CanonVRD information
 # - updates DirLen to trailer length
-sub ProcessCanonVRD($$)
+sub ProcessCanonVRD($$;$)
 {
-    my ($exifTool, $dirInfo) = @_;
+    my ($exifTool, $dirInfo, $tagTablePtr) = @_;
     my $raf = $$dirInfo{RAF};
     my $offset = $$dirInfo{Offset} || 0;
     my $outfile = $$dirInfo{OutFile};
     my $verbose = $exifTool->Options('Verbose');
     my $out = $exifTool->Options('TextOut');
-    my ($buff, $footer, $header, $err);
-    my ($blockLen, $blockType, $recLen, $size);
+    my ($buff, $footer, $header, $created, $err);
+    my ($blockLen, $blockType, $size, %didDir);
 
+    if (not $raf) {
+        my $vrdPt = $$dirInfo{DataPt};
+        unless ($vrdPt) {
+            return 1 unless $outfile;
+            # create blank VRD data from scratch
+            my $blank = "CANON OPTIONAL DATA\0\0\x01\0\0\0\0\0\0" .
+                        "CANON OPTIONAL DATA\0" . ("\0" x 42) . "\xff\xd9";
+            $vrdPt = \$blank;
+            $verbose and printf $out "  Creating CanonVRD trailer\n";
+            $created = 1;
+        }
+        $raf = new File::RandomAccess($vrdPt);
+    }
     # read and validate the trailer footer
     $raf->Seek(-64-$offset, 2)    or return 0;
     $raf->Read($footer, 64) == 64 or return 0;
@@ -516,7 +1162,7 @@ sub ProcessCanonVRD($$)
 
     # read and validate the header too
     # (header is 0x1c bytes and footer is 0x40 bytes)
-    unless ($size > 12 and ($size & 0x80000000) == 0 and
+    unless (($size & 0x80000000) == 0 and
             $raf->Seek(-$size-0x5c, 1) and
             $raf->Read($header, 0x1c) == 0x1c and
             $header =~ /^CANON OPTIONAL DATA\0/ and
@@ -526,7 +1172,9 @@ sub ProcessCanonVRD($$)
         return 0;
     }
     # extract CanonVRD block if Binary option set, or if requested
-    if ($exifTool->{OPTIONS}->{Binary} or $exifTool->{REQ_TAG_LOOKUP}->{canonvrd}) {
+    if (($exifTool->{OPTIONS}{Binary} and not $exifTool->{EXCL_TAG_LOOKUP}{canonvrd}) or
+        $exifTool->{REQ_TAG_LOOKUP}{canonvrd})
+    {
         $exifTool->FoundTag('CanonVRD', $header . $buff . $footer);
     }
     # set variables returned in dirInfo hash
@@ -534,6 +1182,7 @@ sub ProcessCanonVRD($$)
     $$dirInfo{DirLen} = $size + 0x5c;
 
     if ($outfile) {
+        $verbose and not $created and printf $out "  Rewriting CanonVRD trailer\n";
         # delete CanonVRD information if specified
         if ($exifTool->{DEL_GROUP}->{CanonVRD} or $exifTool->{DEL_GROUP}->{Trailer} or
             # also delete if writing as a block (will get added back again later)
@@ -563,108 +1212,135 @@ sub ProcessCanonVRD($$)
             return 1;
         }
     } elsif ($verbose or $exifTool->{HTML_DUMP}) {
-        $exifTool->DumpTrailer($dirInfo);
+        $exifTool->DumpTrailer($dirInfo) if $$dirInfo{RAF};
     }
+
+    $tagTablePtr = GetTagTable('Image::ExifTool::CanonVRD::Main');
 
     # validate VRD trailer and get position and length of edit record
     SetByteOrder('MM');
     my $pos = 0;
     my $vrdPos = $$dirInfo{DataPos} + length($header);
-Block: for (;;) {
+    my $dataPt = \$buff;
+
+    # loop through the VRD blocks
+    for (;;) {
         if ($pos + 8 > $size) {
             last if $pos == $size;
             $blockLen = $size;  # mark as invalid
         } else {
-            $blockType = Get32u(\$buff, $pos);
-            $blockLen = Get32u(\$buff, $pos + 4);
+            $blockType = Get32u($dataPt, $pos);
+            $blockLen = Get32u($dataPt, $pos + 4);
         }
         $pos += 8;          # move to start of block
         if ($pos + $blockLen > $size) {
             $exifTool->Warn('Possibly corrupt CanonVRD block');
             last;
         }
-        printf $out "  CanonVRD block %x ($blockLen bytes at offset 0x%x)\n",
-            $blockType, $pos + $vrdPos if $verbose > 1 and not $outfile;
-        # process edit-data block
-        if ($blockType == 0xffff00f4) {
-            my $blockEnd = $pos + $blockLen;
-            my $recNum;
-            for ($recNum=0;; ++$recNum, $pos+=$recLen) {
-                if ($pos + 4 > $blockEnd) {
-                    last Block if $pos == $blockEnd;  # all done if we arrived at end
-                    $recLen = $blockEnd;    # mark as invalid
-                } else {
-                    $recLen = Get32u(\$buff, $pos);
-                }
-                $pos += 4;      # move to start of record
-                if ($pos + $recLen > $blockEnd) {
-                    $exifTool->Warn('Possibly corrupt CanonVRD record');
-                    last Block;
-                }
-                printf $out "  CanonVRD record ($recLen bytes at offset 0x%x)\n",
-                    $pos + $vrdPos if $verbose > 1 and not $outfile;
-
-                # our edit information is the first record
-                # (don't process if simply deleting VRD)
-                next if $recNum;
-
-                # process VRD edit information
-                my $tagTablePtr = GetTagTable('Image::ExifTool::CanonVRD::Main');
-                my $index;
-                my $editData = substr($buff, $pos, $recLen);
-                my %subdirInfo = (
-                    DataPt => \$editData,
-                    DataPos => $debug ? 0 : $vrdPos + $pos,
+        if ($verbose > 1 and not $outfile) {
+            printf $out "  CanonVRD block 0x%.8x ($blockLen bytes at offset 0x%x)\n",
+                $blockType, $pos + $vrdPos;
+            if ($verbose > 2) {
+                my %parms = (
+                    Start  => $pos,
+                    Addr   => $pos + $vrdPos,
+                    Out    => $out,
+                    Prefix => $$exifTool{INDENT},
                 );
-                my $start = 0;
-                for ($index=0; ; ++$index) {
-                    my $tagInfo = $$tagTablePtr{$index} or last;
-                    my $dirLen;
-                    my $maxLen = $recLen - $start;
-                    if ($$tagInfo{Size}) {
-                        $dirLen = $$tagInfo{Size};
-                    } elsif (defined $$tagInfo{Size}) {
-                        # get size from int32u at $start
-                        last unless $start + 4 <= $recLen;
-                        $dirLen = Get32u(\$editData, $start);
-                        $start += 4; # skip the length word
-                    } else {
-                        $dirLen = $maxLen;
-                    }
-                    $dirLen > $maxLen and $dirLen = $maxLen;
-                    if ($dirLen) {
-                        my $subTable = GetTagTable($tagInfo->{SubDirectory}->{TagTable});
-                        my $subName = $$tagInfo{Name};
-                        $subdirInfo{DirStart} = $start;
-                        $subdirInfo{DirLen} = $dirLen;
-                        $subdirInfo{DirName} = $subName;
-                        if ($outfile) {
-                            # rewrite CanonVRD information
-                            $verbose and print $out "  Rewriting Canon $subName\n";
-                            my $newVal = $exifTool->WriteDirectory(\%subdirInfo, $subTable);
-                            substr($buff, $pos+$start, $dirLen) = $newVal if $newVal;
-                        } else {
-                            Image::ExifTool::HexDump(\$editData, $dirLen,
-                                Start  => $start,
-                                Addr   => 0,
-                                Prefix => $$tagInfo{Name}
-                            ) if $debug;
-                            # extract CanonVRD information
-                            $exifTool->ProcessDirectory(\%subdirInfo, $subTable);
-                        }
-                    }
-                    # next directory starts at the end of this one
-                    $start += $dirLen;
+                $parms{MaxLen} = $verbose == 3 ? 96 : 2048 if $verbose < 5;
+                Image::ExifTool::HexDump($dataPt, $blockLen, %parms);
+            }
+        }
+        my $tagInfo = $$tagTablePtr{$blockType};
+        unless ($tagInfo) {
+            unless ($exifTool->Options('Unknown')) {
+                $pos += $blockLen;  # step to next block
+                next;
+            }
+            my $name = sprintf('CanonVRD_0x%.8x', $blockType);
+            my $desc = $name;
+            $desc =~ tr/_/ /;
+            $tagInfo = {
+                Name        => $name,
+                Description => $desc,
+                Binary      => 1,
+            };
+            Image::ExifTool::AddTagToTable($tagTablePtr, $blockType, $tagInfo);
+        }
+        if ($$tagInfo{SubDirectory}) {
+            my $subTablePtr = GetTagTable($$tagInfo{SubDirectory}{TagTable});
+            my %subdirInfo = (
+                DataPt   => $dataPt,
+                DataLen  => length $$dataPt,
+                DataPos  => $vrdPos,
+                DirStart => $pos,
+                DirLen   => $blockLen,
+                DirName  => $$tagInfo{Name},
+                Parent   => 'CanonVRD',
+                OutFile  => $outfile,
+            );
+            if ($outfile) {
+                # set flag indicating we did this directory
+                $didDir{$$tagInfo{Name}} = 1;
+                my $dat;
+                if ($$exifTool{NEW_VALUE}{$tagInfo}) {
+                    # write as a block
+                    $exifTool->VPrint(0, "Writing $$tagInfo{Name} as a block\n");
+                    $dat = $exifTool->GetNewValues($tagInfo);
+                    $dat = '' unless defined $dat;
+                    ++$$exifTool{CHANGED};
+                } else {
+                    $dat = $exifTool->WriteDirectory(\%subdirInfo, $subTablePtr);
                 }
+                # update data with new directory
+                if (defined $dat) {
+                    my $buf2;
+                    if (length $dat or $$exifTool{FILE_TYPE} !~ /^(CRW|VRD)$/) {
+                        # replace with new block (updating the block length word)
+                        $buf2 = substr($$dataPt, 0, $pos - 4) . Set32u(length $dat) . $dat;
+                    } else {
+                        # remove block totally (CRW/VRD files only)
+                        $buf2 = substr($$dataPt, 0, $pos - 8);
+                    }
+                    my $oldBlockEnd = $pos + $blockLen;
+                    $pos = length $$dataPt; # set to start of next block
+                    $buf2 .= substr($$dataPt, $oldBlockEnd);
+                    undef $$dataPt;         # free the memory
+                    $dataPt = \$buf2;
+                    # update the new VRD length in the header/footer
+                    Set32u(length($buf2), \$header, 0x18);
+                    Set32u(length($buf2), \$footer, 0x14);
+                    next;
+                }
+            } else {
+                # extract as a block if requested
+                $exifTool->ProcessDirectory(\%subdirInfo, $subTablePtr);
             }
         } else {
-            $pos += $blockLen;  # skip other blocks
+            $exifTool->HandleTag($tagTablePtr, $blockType, substr($$dataPt, $pos, $blockLen));
+        }
+        $pos += $blockLen;  # step to next block
+    }
+    if ($outfile) {
+        # create XMP block if necessary (CRW/VRD files only)
+        if ($$exifTool{ADD_DIRS}{CanonVRD} and not $didDir{XMP}) {
+            my $subTablePtr = GetTagTable('Image::ExifTool::XMP::Main');
+            my $dat = $exifTool->WriteDirectory({ Parent => 'CanonVRD' }, $subTablePtr);
+            if ($dat) {
+                $$dataPt .= Set32u(0xffff00f6) . Set32u(length $dat) . $dat;
+                # update the new VRD length in the header/footer
+                Set32u(length($$dataPt), \$header, 0x18);
+                Set32u(length($$dataPt), \$footer, 0x14);
+            }
+        }
+        # write CanonVRD trailer unless it is empty
+        if (length $$dataPt) {
+            Write($outfile, $header, $$dataPt, $footer) or $err = 1;
+        } else {
+            $verbose and printf $out "  Deleting CanonVRD trailer\n";
         }
     }
-    # write CanonVRD trailer
-    Write($outfile, $header, $buff, $footer) or $err = 1 if $outfile;
-
-    undef $buff;
+    undef $$dataPt;
     return $err ? -1 : 1;
 }
 
@@ -685,14 +1361,18 @@ This module is used by Image::ExifTool
 This module contains definitions required by Image::ExifTool to read and
 write VRD Recipe Data information as written by the Canon Digital Photo
 Professional software.  This information is written to VRD files, and as a
-trailer in JPEG, CRW and CR2 images.
+trailer in JPEG, CRW, CR2 and TIFF images.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
+
+=head1 ACKNOWLEDGEMENTS
+
+Thanks to Bogdan and Gert Kello for decoding some tags.
 
 =head1 SEE ALSO
 

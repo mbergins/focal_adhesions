@@ -15,7 +15,7 @@ use Image::ExifTool::Exif;
 use Image::ExifTool::IPTC;
 use Image::ExifTool::XMP;
 
-$VERSION = '1.00';
+$VERSION = '1.02';
 
 sub ProcessPhotoMechanic($$);
 
@@ -49,7 +49,7 @@ my %colorClasses = (
     },
 );
 
-# rawCrop coordinate conversions
+# raw/preview crop coordinate conversions
 my %rawCropConv = (
     ValueConv => '$val / 655.36',
     ValueConvInv => 'int($val * 655.36 + 0.5)',
@@ -64,22 +64,10 @@ my %rawCropConv = (
     CHECK_PROC => \&Image::ExifTool::IPTC::CheckIPTC,
     WRITABLE => 1,
     FORMAT => 'int32s',
-    209 => {
-        Name => 'RawCropLeft',
-        %rawCropConv,
-    },
-    210 => {
-        Name => 'RawCropTop',
-        %rawCropConv,
-    },
-    211 => {
-        Name => 'RawCropRight',
-        %rawCropConv,
-    },
-    212 => {
-        Name => 'RawCropBottom',
-        %rawCropConv,
-    },
+    209 => { Name => 'RawCropLeft',   %rawCropConv },
+    210 => { Name => 'RawCropTop',    %rawCropConv },
+    211 => { Name => 'RawCropRight',  %rawCropConv },
+    212 => { Name => 'RawCropBottom', %rawCropConv },
     213 => 'ConstrainedCropWidth',
     214 => 'ConstrainedCropHeight',
     215 => 'FrameNum',
@@ -105,6 +93,10 @@ my %rawCropConv = (
         PrintConv => \%colorClasses,
     },
     223 => 'Rating',
+    236 => { Name => 'PreviewCropLeft',   %rawCropConv },
+    237 => { Name => 'PreviewCropTop',    %rawCropConv },
+    238 => { Name => 'PreviewCropRight',  %rawCropConv },
+    239 => { Name => 'PreviewCropBottom', %rawCropConv },
 );
 
 # PhotoMechanic XMP properties
@@ -121,6 +113,7 @@ my %rawCropConv = (
     CountryCode => { Avoid => 1, Groups => { 2 => 'Location' } },
     EditStatus  => { },
     Prefs       => {
+        Notes => 'format is "Tagged:0, ColorClass:1, Rating:2, FrameNum:3"',
         PrintConv => q{
             $val =~ s[\s*(\d+):\s*(\d+):\s*(\d+):\s*(\S*)]
                      [Tagged:$1, ColorClass:$2, Rating:$3, FrameNum:$4];
@@ -163,7 +156,7 @@ sub ProcessPhotoMechanic($$)
         last unless $raf->Seek(-12-$offset, 2) and $raf->Read($footer, 12) == 12;
         last unless $footer =~ /cbipcbbl$/;
         my $size = unpack('N', $footer);
-    
+
         if ($size & 0x80000000 or not $raf->Seek(-$size-12, 1)) {
             $exifTool->Warn('Bad PhotoMechanic trailer');
             last;
@@ -177,7 +170,7 @@ sub ProcessPhotoMechanic($$)
         # set variables returned in dirInfo hash
         $$dirInfo{DataPos} = $raf->Tell() - $size;
         $$dirInfo{DirLen} = $size + 12;
-    
+
         my %dirInfo = (
             DataPt => \$buff,
             DataPos => $$dirInfo{DataPos},
@@ -237,7 +230,7 @@ write information written by the Camera Bits Photo Mechanic software.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

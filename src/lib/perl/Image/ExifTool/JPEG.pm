@@ -9,8 +9,12 @@
 package Image::ExifTool::JPEG;
 use strict;
 use vars qw($VERSION);
+use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.07';
+$VERSION = '1.14';
+
+sub ProcessScalado($$$);
+sub ProcessOcad($$$);
 
 # (this main JPEG table is for documentation purposes only)
 %Image::ExifTool::JPEG::Main = (
@@ -27,15 +31,31 @@ $VERSION = '1.07';
         Name => 'CIFF',
         Condition => '$$valPt =~ /^(II|MM).{4}HEAPJPGM/s',
         SubDirectory => { TagTable => 'Image::ExifTool::CanonRaw::Main' },
+      }, {
+        Name => 'AVI1',
+        Condition => '$$valPt =~ /^AVI1/',
+        SubDirectory => { TagTable => 'Image::ExifTool::JPEG::AVI1' },
+      }, {
+        Name => 'Ocad',
+        Condition => '$$valPt =~ /^Ocad/',
+        SubDirectory => { TagTable => 'Image::ExifTool::JPEG::Ocad' },
     }],
     APP1 => [{
         Name => 'EXIF',
         Condition => '$$valPt =~ /^Exif\0/',
         SubDirectory => { TagTable => 'Image::ExifTool::Exif::Main' },
       }, {
+        Name => 'ExtendedXMP',
+        Condition => '$$valPt =~ m{^http://ns.adobe.com/xmp/extension/\0}',
+        SubDirectory => { TagTable => 'Image::ExifTool::XMP::Main' },
+      }, {
         Name => 'XMP',
         Condition => '$$valPt =~ /^http/ or $$valPt =~ /<exif:/',
         SubDirectory => { TagTable => 'Image::ExifTool::XMP::Main' },
+      }, {
+        Name => 'QVCI',
+        Condition => '$$valPt =~ /^QVCI\0/',
+        SubDirectory => { TagTable => 'Image::ExifTool::Casio::QVCI' },
     }],
     APP2 => [{
         Name => 'ICC_Profile',
@@ -45,22 +65,58 @@ $VERSION = '1.07';
         Name => 'FPXR',
         Condition => '$$valPt =~ /^FPXR\0/',
         SubDirectory => { TagTable => 'Image::ExifTool::FlashPix::Main' },
+      }, {
+        Name => 'MPF',
+        Condition => '$$valPt =~ /^MPF\0/',
+        SubDirectory => { TagTable => 'Image::ExifTool::MPF::Main' },
+      }, {
+        Name => 'PreviewImage',
+        Condition => '$$valPt =~ /^\xff\xd8\xff\xdb/',
+        Notes => 'Samsung large preview',
     }],
-    APP3 => {
+    APP3 => [{
         Name => 'Meta',
         Condition => '$$valPt =~ /^(Meta|META|Exif)\0\0/',
         SubDirectory => { TagTable => 'Image::ExifTool::Kodak::Meta' },
-    },
+      }, {
+        Name => 'Stim',
+        Condition => '$$valPt =~ /^Stim\0/',
+        SubDirectory => { TagTable => 'Image::ExifTool::Stim::Main' },
+      }, {
+        Name => 'PreviewImage', # (written by HP R837 and Samsung S1060)
+        Condition => '$$valPt =~ /^\xff\xd8\xff\xdb/',
+        Notes => 'Hewlett-Packard or Samsung preview image',
+    }],
+    APP4 => [{
+        Name => 'Scalado',
+        Condition => '$$valPt =~ /^SCALADO\0/',
+        SubDirectory => { TagTable => 'Image::ExifTool::JPEG::Scalado' },
+      }, {
+        Name => 'FPXR', # (non-standard location written by some HP models)
+        Condition => '$$valPt =~ /^FPXR\0/',
+        SubDirectory => { TagTable => 'Image::ExifTool::FlashPix::Main' },
+      }, {
+        Name => 'PreviewImage', # (written by S1060)
+        Notes => 'Continued Samsung preview from APP3',
+    }],
     APP5 => {
         Name => 'RMETA',
         Condition => '$$valPt =~ /^RMETA\0/',
         SubDirectory => { TagTable => 'Image::ExifTool::Ricoh::RMETA' },
     },
-    APP6 => {
+    APP6 => [{
         Name => 'EPPIM',
         Condition => '$$valPt =~ /^EPPIM\0/',
         SubDirectory => { TagTable => 'Image::ExifTool::JPEG::EPPIM' },
-    },
+      }, {
+        Name => 'NITF',
+        Condition => '$$valPt =~ /^NTIF\0/',
+        SubDirectory => { TagTable => 'Image::ExifTool::JPEG::NITF' },
+      }, {
+        Name => 'HP_TDHD', # (written by R837)
+        Condition => '$$valPt =~ /^TDHD\x01\0\0\0/',
+        SubDirectory => { TagTable => 'Image::ExifTool::HP::TDHD' },
+    }],
     APP8 => {
         Name => 'SPIFF',
         Condition => '$$valPt =~ /^SPIFF\0/',
@@ -103,11 +159,15 @@ $VERSION = '1.07';
         Name => 'Comment',
         # note: flag as writable for documentation, but it won't show up
         # in the TagLookup as writable because there is no WRITE_PROC
-        Writable => '1',
+        Writable => 1,
     },
     SOF => {
         Name => 'StartOfFrame',
         SubDirectory => { TagTable => 'Image::ExifTool::JPEG::SOF' },
+    },
+    DQT => {
+        Name => 'DefineQuantizationTable',
+        Notes => 'used to calculate the Extra:JPEGDigest tag value',
     },
     Trailer => [{
         Name => 'AFCP',
@@ -166,7 +226,8 @@ $VERSION = '1.07';
     NOTES => q{
         This information is found in APP8 of SPIFF-style JPEG images (the "official"
         yet rarely used JPEG file format standard: Still Picture Interchange File
-        Format).
+        Format).  See L<http://www.jpeg.org/public/spiff.pdf> for the official
+        specification.
     },
     0 => {
         Name => 'SPIFFVersion',
@@ -293,6 +354,187 @@ $VERSION = '1.07';
     'Q' => 'Quality',
 );
 
+# AVI1 APP0 segment (ref http://www.schnarff.com/file-formats/bmp/BMPDIB.TXT)
+%Image::ExifTool::JPEG::AVI1 = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 0 => 'APP0', 1 => 'AVI1', 2 => 'Image' },
+    NOTES => 'This information may be found in APP0 of JPEG image data from AVI videos.',
+    FIRST_ENTRY => 0,
+    0 => {
+        Name => 'InterleavedField',
+        PrintConv => {
+            0 => 'Not Interleaved',
+            1 => 'Odd',
+            2 => 'Even',
+        },
+    },    
+);
+
+# Ocad APP0 segment (ref PH)
+%Image::ExifTool::JPEG::Ocad = (
+    PROCESS_PROC => \&ProcessOcad,
+    GROUPS => { 0 => 'APP0', 1 => 'Ocad', 2 => 'Image' },
+    FIRST_ENTRY => 0,
+    NOTES => q{
+        Tags extracted from the JPEG APP0 "Ocad" segment (found in Photobucket
+        images).
+    },
+    Rev => {
+        Name => 'OcadRevision',
+        Format => 'string[6]',
+    }
+);
+
+# NITF APP6 segment (National Imagery Transmission Format)
+# ref http://www.gwg.nga.mil/ntb/baseline/docs/n010697/bwcguide25aug98.pdf
+%Image::ExifTool::JPEG::NITF = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 0 => 'APP6', 1 => 'NITF', 2 => 'Image' },
+    NOTES => q{
+        Information in APP6 used by the National Imagery Transmission Format.  See
+        L<http://www.gwg.nga.mil/ntb/baseline/docs/n010697/bwcguide25aug98.pdf> for
+        the official specification.
+    },
+    0 => {
+        Name => 'NITFVersion',
+        Format => 'int8u[2]',
+        ValueConv => 'sprintf("%d.%.2d", split(" ",$val))',
+    },
+    2 => {
+        Name => 'ImageFormat',
+        ValueConv => 'chr($val)',
+        PrintConv => { B => 'IMode B' },
+    },
+    3 => {
+        Name => 'BlocksPerRow',
+        Format => 'int16u',
+    },
+    5 => {
+        Name => 'BlocksPerColumn',
+        Format => 'int16u',
+    },
+    7 => {
+        Name => 'ImageColor',
+        PrintConv => { 0 => 'Monochrome' },
+    },
+    8 => 'BitDepth',
+    9 => {
+        Name => 'ImageClass',
+        PrintConv => {
+            0 => 'General Purpose',
+            4 => 'Tactical Imagery',
+        },
+    },
+    10 => {
+        Name => 'JPEGProcess',
+        PrintConv => {
+            1 => 'Baseline sequential DCT, Huffman coding, 8-bit samples',
+            4 => 'Extended sequential DCT, Huffman coding, 12-bit samples',
+        },
+    },
+    11 => 'Quality',
+    12 => {
+        Name => 'StreamColor',
+        PrintConv => { 0 => 'Monochrome' },
+    },
+    13 => 'StreamBitDepth',
+    14 => {
+        Name => 'Flags',
+        Format => 'int32u',
+        PrintConv => 'sprintf("0x%x", $val)',
+    },
+);
+
+# information written by Scalado software (PhotoFusion maybe?)
+%Image::ExifTool::JPEG::Scalado = (
+    GROUPS => { 0 => 'APP4', 1 => 'Scalado', 2 => 'Image' },
+    PROCESS_PROC => \&ProcessScalado,
+    TAG_PREFIX => 'Scalado',
+    FORMAT => 'int32s',
+    # I presume this was written by 
+    NOTES => q{
+        Tags extracted from the JPEG APP4 "SCALADO" segment (presumably written by
+        Scalado mobile software, L<http://www.scalado.com/>).
+    },
+    SPMO => {
+        Name => 'DataLength',
+        Unkown => 1,
+    },
+    WDTH => {
+        Name => 'PreviewImageWidth',
+        ValueConv => '$val ? abs($val) : undef',
+    },
+    HGHT => {
+        Name => 'PreviewImageHeight',
+        ValueConv => '$val ? abs($val) : undef',
+    },
+    QUAL => {
+        Name => 'PreviewQuality',
+        ValueConv => '$val ? abs($val) : undef',
+    },
+    # tags not yet decoded with observed values:
+    # CHKH: 0, -9010
+    # CHKL: -2664, -12852
+    # CLEN: -1024
+    # CSPC: -2232593
+    # DATA: (+ve data length)
+    # HDEC: 0
+    # MAIN: 0
+    # SCI0: (+ve data length)
+    # SCX1: (+ve data length)
+    # WDEC: 0
+);
+
+#------------------------------------------------------------------------------
+# Extract information from the JPEG APP0 Ocad segment
+# Inputs: 0) ExifTool object ref, 1) dirInfo ref, 2) tag table ref
+# Returns: 1 on success
+sub ProcessOcad($$$)
+{
+    my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    my $dataPt = $$dirInfo{DataPt};
+    $exifTool->VerboseDir('APP0 Ocad', undef, length $$dataPt);
+    for (;;) {
+        last unless $$dataPt =~ /\$(\w+):([^\0\$]+)/g;
+        my ($tag, $val) = ($1, $2);
+        $val =~ s/^\s+//; $val =~ s/\s+$//;     # remove leading/trailing spaces
+        unless ($$tagTablePtr{$tag}) {
+            Image::ExifTool::AddTagToTable($tagTablePtr, $tag, { Name => "Ocad_$tag" });
+        }
+        $exifTool->HandleTag($tagTablePtr, $tag, $val);
+    }
+    return 1;
+}
+
+#------------------------------------------------------------------------------
+# Extract information from the JPEG APP4 SCALADO segment
+# Inputs: 0) ExifTool object ref, 1) dirInfo ref, 2) tag table ref
+# Returns: 1 on success
+sub ProcessScalado($$$)
+{
+    my ($exifTool, $dirInfo, $tagTablePtr) = @_;
+    my $dataPt = $$dirInfo{DataPt};
+    my $pos = 0;
+    my $end = length $$dataPt;
+    SetByteOrder('MM');
+    $exifTool->VerboseDir('APP4 SCALADO', undef, $end);
+    for (;;) {
+        last if $pos + 12 > $end;
+        my $tag = substr($$dataPt, $pos, 4);
+        my $unk = Get32u($dataPt, $pos + 4); # (what is this?)
+        $exifTool->HandleTag($tagTablePtr, $tag, undef,
+            DataPt  => $dataPt,
+            Start   => $pos + 8,
+            Size    => 4,
+            Extra   => ", unk $unk",
+        );
+        # shorten directory size by length of SPMO
+        $end -= Get32u($dataPt, $pos + 8) if $tag eq 'SPMO';
+        $pos += 12;
+    }
+    return 1;
+}
+
 1;  # end
 
 __END__
@@ -313,7 +555,7 @@ segments are included in the Image::ExifTool module itself.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

@@ -14,7 +14,7 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.03';
+$VERSION = '1.04';
 
 sub ProcessAFCP($$);
 
@@ -27,7 +27,7 @@ an auxiliary technique to store IPTC information in images, but is
 incompatible with some file formats.
 
 ExifTool will read and write (but not create) AFCP IPTC information in JPEG
-images, but not other image formats.
+and TIFF images.
     },
     IPTC => { SubDirectory => { TagTable => 'Image::ExifTool::IPTC::Main' } },
     TEXT => 'Text',
@@ -258,7 +258,7 @@ scanning for AFCP information.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

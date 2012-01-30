@@ -15,6 +15,9 @@
 #               8) http://graphics.cs.uni-sb.de/NMM/dist-0.9.1/Docs/Doxygen/html/mmreg_8h-source.html
 #               9) http://developers.videolan.org/vlc/vlc/doc/doxygen/html/codecs_8h-source.html
 #              10) http://wiki.multimedia.cx/index.php?title=TwoCC
+#              11) Andreas Winter (SCLive) private communication
+#              12) http://abcavi.kibi.ru/infotags.htm
+#              13) http://tech.ebu.ch/docs/tech/tech3285.pdf
 #------------------------------------------------------------------------------
 
 package Image::ExifTool::RIFF;
@@ -23,7 +26,9 @@ use strict;
 use vars qw($VERSION);
 use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.12';
+$VERSION = '1.32';
+
+sub ConvertTimecode($);
 
 # type of current stream
 $Image::ExifTool::RIFF::streamType = '';
@@ -279,16 +284,25 @@ $Image::ExifTool::RIFF::streamType = '';
 %Image::ExifTool::RIFF::Main = (
     PROCESS_PROC => \&Image::ExifTool::RIFF::ProcessChunks,
     NOTES => q{
-        Windows WAV and AVI files are RIFF format files.  According to the EXIF
-        specification, Meta information is embedded in two types of RIFF C<LIST>
-        chunks: C<INFO> and C<exif>, and information about the audio content is
-        stored in the C<fmt > chunk.  As well as this information, some video
-        information and proprietary manufacturer-specific information is also
-        extracted.
+        The RIFF container format is used various types of fines including WAV, AVI
+        and WEBP.  According to the EXIF specification, Meta information is embedded
+        in two types of RIFF C<LIST> chunks: C<INFO> and C<exif>, and information
+        about the audio content is stored in the C<fmt > chunk.  As well as this
+        information, some video information and proprietary manufacturer-specific
+        information is also extracted.
+        
+        Large AVI videos may be a concatenation of two or more RIFF chunks.
+        For these files, information is extracted from subsequent RIFF
+        chunks as sub-documents, but the Duration is calculated for the full
+        video.
     },
    'fmt ' => {
         Name => 'AudioFormat',
         SubDirectory => { TagTable => 'Image::ExifTool::RIFF::AudioFormat' },
+    },
+   'bext' => {
+        Name => 'BroadcastExtension',
+        SubDirectory => { TagTable => 'Image::ExifTool::RIFF::BroadcastExt' },
     },
     LIST_INFO => {
         Name => 'Info',
@@ -302,13 +316,30 @@ $Image::ExifTool::RIFF::streamType = '';
         Name => 'Hdrl',
         SubDirectory => { TagTable => 'Image::ExifTool::RIFF::Hdrl' },
     },
+    LIST_Tdat => { #PH (Adobe CS3 Bridge)
+        Name => 'Tdat',
+        SubDirectory => { TagTable => 'Image::ExifTool::RIFF::Tdat' },
+    },
+    LIST_ncdt => { #PH (Nikon metadata)
+        Name => 'NikonData',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Nikon::AVI',
+            # define ProcessProc here so we don't need to load RIFF.pm from Nikon.pm
+            ProcessProc => \&Image::ExifTool::RIFF::ProcessChunks,
+        },
+    },
+    LIST_hydt => { #PH (Pentax metadata)
+        Name => 'PentaxData',
+        SubDirectory => {
+            TagTable => 'Image::ExifTool::Pentax::AVI',
+            ProcessProc => \&Image::ExifTool::RIFF::ProcessChunks,
+        },
+    },
     JUNK => [
         {
             Name => 'OlympusJunk',
             Condition => '$$valPt =~ /^OLYMDigital Camera/',
-            SubDirectory => {
-                TagTable => 'Image::ExifTool::Olympus::AVI',
-            },
+            SubDirectory => { TagTable => 'Image::ExifTool::Olympus::AVI' },
         },
         {
             Name => 'CasioJunk',
@@ -326,14 +357,40 @@ $Image::ExifTool::RIFF::streamType = '';
             Name => 'RicohJunk',
             # the Ricoh Caplio GX stores sub-chunks in here
             Condition => '$$valPt =~ /^ucmt/',
-            SubDirectory => { TagTable => 'Image::ExifTool::Ricoh::AVI' },
+            SubDirectory => {
+                TagTable => 'Image::ExifTool::Ricoh::AVI',
+                ProcessProc => \&Image::ExifTool::RIFF::ProcessChunks,
+            },
         },
         {
-            Name => 'UnknownJunk',
-            # try to interpret unknown junk as a string
-            RawConv => '$_=$val; s/\0.*//s; /^[^\0-\x1f\x7f-\xff]+$/ ? $_ : undef',
+            Name => 'PentaxJunk', # (Optio RS1000)
+            Condition => '$$valPt =~ /^IIII\x01\0/',
+            SubDirectory => { TagTable => 'Image::ExifTool::Pentax::Junk' },
+        },
+        {
+            Name => 'PentaxJunk2', # (Optio RZ18)
+            Condition => '$$valPt =~ /^PENTDigital Camera/',
+            SubDirectory => { TagTable => 'Image::ExifTool::Pentax::Junk2' },
+        },
+        {
+            Name => 'TextJunk',
+            # try to interpret unknown junk as an ASCII string
+            RawConv => '$val =~ /^([^\0-\x1f\x7f-\xff]+)\0*$/ ? $1 : undef',
         }
     ],
+    _PMX => { #PH (Adobe CS3 Bridge)
+        Name => 'XMP',
+        SubDirectory => { TagTable => 'Image::ExifTool::XMP::Main' },
+    },
+    JUNQ => { #PH (Adobe CS3 Bridge)
+        # old XMP is preserved when metadata is replaced in Bridge
+        Name => 'OldXMP',
+        Binary => 1,
+    },
+    olym => {
+        Name => 'Olym',
+        SubDirectory => { TagTable => 'Image::ExifTool::Olympus::WAV' },
+    },
 );
 
 # the maker notes used by some digital cameras
@@ -367,10 +424,62 @@ $Image::ExifTool::RIFF::streamType = '';
     7 => 'BitsPerSample',
 );
 
+# Broadcast Audio Extension 'bext' information (ref 13)
+%Image::ExifTool::RIFF::BroadcastExt = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 2 => 'Audio' },
+    NOTES => q{
+        Information found in the Broadcast Audio Extension chunk (see
+        L<http://tech.ebu.ch/docs/tech/tech3285.pdf>).
+    },
+    0 => {
+        Name => 'Description',
+        Format => 'string[256]',
+    },
+    256 => {
+        Name => 'Originator',
+        Format => 'string[32]',
+    },
+    288 => {
+        Name => 'OriginatorReference',
+        Format => 'string[32]',
+    },
+    320 => {
+        Name => 'DateTimeOriginal',
+        Description => 'Date/Time Original',
+        Groups => { 2 => 'Time' },
+        Format => 'string[18]',
+        ValueConv => '$_=$val; tr/-/:/; s/^(\d{4}:\d{2}:\d{2})/$1 /; $_',
+        PrintConv => '$self->ConvertDateTime($val)',
+    },
+    338 => {
+        Name => 'TimeReference',
+        Notes => 'first sample count since midnight',
+        Format => 'int32u[2]',
+        ValueConv => 'my @v=split(" ",$val); $v[0] + $v[1] * 4294967296',
+    },
+    346 => {
+        Name => 'BWFVersion',
+        Format => 'int16u',
+    },
+    # 348 - int8u[64] - SMPTE 330M UMID (Unique Material Identifier)
+    # 412 - int8u[190] - reserved
+    602 => {
+        Name => 'CodingHistory',
+        Format => 'string[$size-602]',
+    },
+);
+
 # Sub chunks of INFO LIST chunk
 %Image::ExifTool::RIFF::Info = (
     PROCESS_PROC => \&Image::ExifTool::RIFF::ProcessChunks,
     GROUPS => { 2 => 'Audio' },
+    NOTES => q{
+        RIFF INFO tags found in WAV audio and AVI video files.  Tags which are part
+        of the EXIF 2.3 specification have an underlined Tag Name in the HTML
+        version of this documentation.  Other tags are found in AVI files generated
+        by some software.
+    },
     IARL => 'ArchivalLocation',
     IART => { Name => 'Artist',    Groups => { 2 => 'Author' } },
     ICMS => 'Commissioned',
@@ -379,7 +488,7 @@ $Image::ExifTool::RIFF::streamType = '';
     ICRD => {
         Name => 'DateCreated',
         Groups => { 2 => 'Time' },
-        ValueConv => '$_=$val; s/-/:/g; s/\0.*//s; $_',
+        ValueConv => '$_=$val; s/-/:/g; $_',
     },
     ICRP => 'Cropped',
     IDIM => 'Dimensions',
@@ -395,18 +504,143 @@ $Image::ExifTool::RIFF::streamType = '';
     ISBJ => 'Subject',
     ISFT => {
         Name => 'Software',
-        ValueConv => '$val=~s/\0.*//s; $val', # truncate at null
+        # remove trailing nulls/spaces and split at first null
+        # (Casio writes "CASIO" in unicode after the first null)
+        ValueConv => '$_=$val; s/(\s*\0)+$//; s/(\s*\0)/, /; s/\0+//g; $_',
     },
     ISHP => 'Sharpness',
     ISRC => 'Source',
     ISRF => 'SourceForm',
     ITCH => 'Technician',
+#
+# 3rd party tags
+#
+    # internet movie database (ref 12)
+    ISGN => 'SecondaryGenre',
+    IWRI => 'WrittenBy',
+    IPRO => 'ProducedBy',
+    ICNM => 'Cinematographer',
+    IPDS => 'ProductionDesigner',
+    IEDT => 'EditedBy',
+    ICDS => 'CostumeDesigner',
+    IMUS => 'MusicBy',
+    ISTD => 'ProductionStudio',
+    IDST => 'DistributedBy',
+    ICNT => 'Country',
+    ILNG => 'Language',
+    IRTD => 'Rating',
+    ISTR => 'Starring',
+    # MovieID (ref12)
+    TITL => 'Title',
+    DIRC => 'Directory',
+    YEAR => 'Year',
+    GENR => 'Genre',
+    COMM => 'Comments',
+    LANG => 'Language',
+    AGES => 'Rated',
+    STAR => 'Starring',
+    CODE => 'EncodedBy',
+    PRT1 => 'Part',
+    PRT2 => 'NumberOfParts',
+    # Morgan Multimedia INFO tags (ref 12)
+    IAS1 => 'FirstLanguage',
+    IAS2 => 'SecondLanguage',
+    IAS3 => 'ThirdLanguage',
+    IAS4 => 'FourthLanguage',
+    IAS5 => 'FifthLanguage',
+    IAS6 => 'SixthLanguage',
+    IAS7 => 'SeventhLanguage',
+    IAS8 => 'EighthLanguage',
+    IAS9 => 'NinthLanguage',
+    ICAS => 'DefaultAudioStream',
+    IBSU => 'BaseURL',
+    ILGU => 'LogoURL',
+    ILIU => 'LogoIconURL',
+    IWMU => 'WatermarkURL',
+    IMIU => 'MoreInfoURL',
+    IMBI => 'MoreInfoBannerImage',
+    IMBU => 'MoreInfoBannerURL',
+    IMIT => 'MoreInfoText',
+    # GSpot INFO tags (ref 12)
+    IENC => 'EncodedBy',
+    IRIP => 'RippedBy',
+    # Sound Forge Pro tags
+    DISP => 'SoundSchemeTitle',
+    TLEN => { Name => 'Length', ValueConv => '$val/1000', PrintConv => '"$val s"' },
+    TRCK => 'TrackNumber',
+    TURL => 'URL',
+    TVER => 'Version',
+    LOCA => 'Location',
+    TORG => 'Organization',
+    # Sony Vegas AVI tags, also used by SCLive and Adobe Premier (ref 11)
+    TAPE => {
+        Name => 'TapeName',
+        Groups => { 2 => 'Video' },
+    },
+    TCOD => {
+        Name => 'StartTimecode',
+        # this is the tape time code for the start of the video
+        Groups => { 2 => 'Video' },
+        ValueConv => '$val * 1e-7',
+        PrintConv => \&ConvertTimecode,
+    },
+    TCDO => {
+        Name => 'EndTimecode',
+        Groups => { 2 => 'Video' },
+        ValueConv => '$val * 1e-7',
+        PrintConv => \&ConvertTimecode,
+    },
+    VMAJ => {
+        Name => 'VegasVersionMajor',
+        Groups => { 2 => 'Video' },
+    },
+    VMIN => {
+        Name => 'VegasVersionMinor',
+        Groups => { 2 => 'Video' },
+    },
+    CMNT => {
+        Name => 'Comment',
+        Groups => { 2 => 'Video' },
+    },
+    RATE => {
+        Name => 'Rate', #? (video? units?)
+        Groups => { 2 => 'Video' },
+    },
+    STAT => {
+        Name => 'Statistics',
+        Groups => { 2 => 'Video' },
+        # ("7318 0 3.430307 1", "0 0 3500.000000 1", "7 0 3.433228 1")
+        PrintConv => [
+            '"$val frames captured"',
+            '"$val dropped"',
+            '"Data rate $val"',
+            { 0 => 'Bad', 1 => 'OK' }, # capture OK?
+        ],
+    },
+    DTIM => {
+        Name => 'DateTimeOriginal',
+        Description => 'Date/Time Original',
+        Groups => { 2 => 'Time' },
+        ValueConv => q{
+            my @v = split ' ', $val;
+            return undef unless @v == 2;
+            # the Kodak EASYSHARE Sport stores this incorrectly as a string:
+            return $val if $val =~ /^\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}$/;
+            # get time in seconds
+            $val = 1e-7 * ($v[0] * 4294967296 + $v[1]);
+            # shift from Jan 1, 1601 to Jan 1, 1970
+            $val -= 134774 * 24 * 3600 if $val != 0;
+            return Image::ExifTool::ConvertUnixTime($val);
+        },
+        PrintConv => '$self->ConvertDateTime($val)',
+    },
 );
 
 # Sub chunks of EXIF LIST chunk
 %Image::ExifTool::RIFF::Exif = (
     PROCESS_PROC => \&Image::ExifTool::RIFF::ProcessChunks,
     GROUPS => { 2 => 'Audio' },
+    NOTES => 'These tags are part of the EXIF 2.3 specification for WAV audio files.',
     ever => 'ExifVersion',
     erel => 'RelatedImageFile',
     etim => { Name => 'TimeCreated', Groups => { 2 => 'Time' } },
@@ -434,11 +668,22 @@ $Image::ExifTool::RIFF::streamType = '';
         ValueConv => 'Image::ExifTool::RIFF::ConvertRIFFDate($val)',
         PrintConv => '$self->ConvertDateTime($val)',
     },
-    ISMP => 'TimeCode',
+    ISMP => 'Timecode',
     LIST_strl => {
         Name => 'Stream',
         SubDirectory => { TagTable => 'Image::ExifTool::RIFF::Stream' },
     },
+    LIST_odml => {
+        Name => 'OpenDML',
+        SubDirectory => { TagTable => 'Image::ExifTool::RIFF::OpenDML' },
+    },
+);
+
+# Sub chunks of Tdat LIST chunk (ref PH)
+%Image::ExifTool::RIFF::Tdat = (
+    PROCESS_PROC => \&Image::ExifTool::RIFF::ProcessChunks,
+    GROUPS => { 2 => 'Video' },
+    # (have seen tc_O, tc_A, rn_O and rn_A)
 );
 
 %Image::ExifTool::RIFF::AVIHeader = (
@@ -448,7 +693,8 @@ $Image::ExifTool::RIFF::streamType = '';
     FIRST_ENTRY => 0,
     0 => {
         Name => 'FrameRate',
-        ValueConv => '$val ? 1e6 / $val : undef',
+        # (must use RawConv because raw value used in Composite tag)
+        RawConv => '$val ? 1e6 / $val : undef',
         PrintConv => 'int($val * 1000 + 0.5) / 1000',
     },
     1 => {
@@ -491,11 +737,30 @@ $Image::ExifTool::RIFF::streamType = '';
     ],
 );
 
+# Open DML tags (ref http://www.morgan-multimedia.com/download/odmlff2.pdf)
+%Image::ExifTool::RIFF::OpenDML = (
+    PROCESS_PROC => \&Image::ExifTool::RIFF::ProcessChunks,
+    GROUPS => { 2 => 'Video' },
+    dmlh => {
+        Name => 'ExtendedAVIHeader',
+        SubDirectory => { TagTable => 'Image::ExifTool::RIFF::ExtAVIHdr' },
+    },
+);
+
+# Extended AVI Header tags (ref http://www.morgan-multimedia.com/download/odmlff2.pdf)
+%Image::ExifTool::RIFF::ExtAVIHdr = (
+    PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
+    GROUPS => { 2 => 'Video' },
+    FORMAT => 'int32u',
+    0 => 'TotalFrameCount',
+);
+
 %Image::ExifTool::RIFF::StreamHeader = (
     PROCESS_PROC => \&Image::ExifTool::ProcessBinaryData,
     GROUPS => { 2 => 'Video' },
     FORMAT => 'int32u',
     FIRST_ENTRY => 0,
+    PRIORITY => 0,  # so we get values from the first stream
     0 => {
         Name => 'StreamType',
         Format => 'string[4]',
@@ -507,20 +772,68 @@ $Image::ExifTool::RIFF::streamType = '';
             vids => 'Video',
         },
     },
-    1 => {
-        Name => 'Codec',
-        Format => 'string[4]',
-    },
+    1 => [
+        {
+            Name => 'AudioCodec',
+            Condition => '$Image::ExifTool::RIFF::streamType eq "auds"',
+            Format => 'string[4]',
+        },
+        {
+            Name => 'VideoCodec',
+            Condition => '$Image::ExifTool::RIFF::streamType eq "vids"',
+            Format => 'string[4]',
+        },
+        {
+            Name => 'Codec',
+            Format => 'string[4]',
+        },
+    ],
   # 2 => 'StreamFlags',
   # 3 => 'StreamPriority',
   # 3.5 => 'Language',
   # 4 => 'InitialFrames',
-  # 5 => 'Scale',
-  # 6 => 'Rate',
+    5 => [
+        {
+            Name => 'AudioSampleRate',
+            Condition => '$Image::ExifTool::RIFF::streamType eq "auds"',
+            Format => 'rational64u',
+            ValueConv => '$val ? 1/$val : 0',
+            PrintConv => 'int($val * 100 + 0.5) / 100',
+        },
+        {
+            Name => 'VideoFrameRate',
+            Condition => '$Image::ExifTool::RIFF::streamType eq "vids"',
+            Format => 'rational64u',
+            # (must use RawConv because raw value used in Composite tag)
+            RawConv => '$val ? 1/$val : undef',
+            PrintConv => 'int($val * 1000 + 0.5) / 1000',
+        },
+        {
+            Name => 'StreamSampleRate',
+            Format => 'rational64u',
+            ValueConv => '$val ? 1/$val : 0',
+            PrintConv => 'int($val * 1000 + 0.5) / 1000',
+        },
+    ],
   # 7 => 'Start',
-  # 8 => 'Length',
+    8 => [
+        {
+            Name => 'AudioSampleCount',
+            Condition => '$Image::ExifTool::RIFF::streamType eq "auds"',
+        },
+        {
+            Name => 'VideoFrameCount',
+            Condition => '$Image::ExifTool::RIFF::streamType eq "vids"',
+        },
+        {
+            Name => 'StreamSampleCount',
+        },
+    ],
   # 9 => 'SuggestedBufferSize',
-    10 => 'Quality',
+    10 => {
+        Name => 'Quality',
+        PrintConv => '$val eq 0xffffffff ? "Default" : $val',
+    },
     11 => {
         Name => 'SampleSize',
         PrintConv => '$val ? "$val byte" . ($val==1 ? "" : "s") : "Variable"',
@@ -531,7 +844,10 @@ $Image::ExifTool::RIFF::streamType = '';
 %Image::ExifTool::RIFF::StreamData = ( #PH
     PROCESS_PROC => \&Image::ExifTool::RIFF::ProcessStreamData,
     GROUPS => { 2 => 'Video' },
-    NOTES => 'This chunk contains EXIF information in FujiFilm AVI videos.',
+    NOTES => q{
+        This chunk is used to store proprietary information in AVI videos from some
+        cameras.  The first 4 characters of the data are used as the Tag ID below.
+    },
     AVIF => {
         Name => 'AVIF',
         SubDirectory => {
@@ -545,10 +861,11 @@ $Image::ExifTool::RIFF::streamType = '';
         Name => 'CasioData',
         SubDirectory => { TagTable => 'Image::ExifTool::Casio::AVI' },
     },
+    Zora => 'VendorName',   # (Samsung PL90 AVI files)
     unknown => {
         Name => 'UnknownData',
         # try to interpret unknown stream data as a string
-        RawConv => '$_=$val; s/\0.*//s; /^[^\0-\x1f\x7f-\xff]+$/ ? $_ : undef',
+        RawConv => '$_=$val; /^[^\0-\x1f\x7f-\xff]+$/ ? $_ : undef',
     },
 );
 
@@ -556,10 +873,29 @@ $Image::ExifTool::RIFF::streamType = '';
 %Image::ExifTool::RIFF::Composite = (
     Duration => {
         Require => {
-            0 => 'FrameRate',
-            1 => 'FrameCount',
+            0 => 'RIFF:FrameRate',
+            1 => 'RIFF:FrameCount',
         },
-        ValueConv => '$val[0] ? $val[1] / $val[0] : undef',
+        Desire => {
+            2 => 'VideoFrameRate',
+            3 => 'VideoFrameCount',
+        },
+        RawConv => 'Image::ExifTool::RIFF::CalcDuration($self, @val)',
+        PrintConv => 'ConvertDuration($val)',
+    },
+    Duration2 => {
+        Name => 'Duration',
+        Require => {
+            0 => 'RIFF:AvgBytesPerSec',
+            1 => 'FileSize',
+        },
+        Desire => {
+            # check FrameCount because this calculation only applies
+            # to audio-only files (ie. WAV)
+            2 => 'FrameCount',
+            3 => 'VideoFrameCount',
+        },
+        RawConv => '($val[0] and not ($val[2] or $val[3])) ? $val[1] / $val[0] : undef',
         PrintConv => 'ConvertDuration($val)',
     },
 );
@@ -589,6 +925,73 @@ sub ConvertRIFFDate($)
         $val = sprintf("%.4d:%.2d:%.2d %.2d:%.2d:00",$1,$2,$3,$4+($6?12:0),$5);
     }
     return $val;
+}
+
+#------------------------------------------------------------------------------
+# Print time
+# Inputs: 0) time in seconds
+# Returns: time string
+sub ConvertTimecode($)
+{
+    my $val = shift;
+    my $hr = int($val / 3600);
+    $val -= $hr * 3600;
+    my $min = int($val / 60);
+    $val -= $min * 60;
+    return sprintf("%d:%.2d:%05.2f", $hr, $min, $val);
+}
+
+#------------------------------------------------------------------------------
+# Calculate duration of RIFF
+# Inputs: 0) ExifTool ref, 1/2) RIFF:FrameRate/Count, 2/3) VideoFrameRate/Count
+# Returns: Duration in seconds or undef
+# Notes: Sums duration of all sub-documents (concatenated AVI files)
+sub CalcDuration($@)
+{
+    my ($exifTool, @val) = @_;
+    my $totalDuration = 0;
+    my $subDoc = 0;
+    my @keyList;
+    for (;;) {
+        # this is annoying.  Apparently (although I couldn't verify this), FrameCount
+        # in the RIFF header includes multiple video tracks if they exist (ie. with the
+        # FujiFilm REAL 3D AVI's), but the video stream information isn't reliable for
+        # some cameras (ie. Olympus FE models), so use the video stream information
+        # only if the RIFF header duration is 2 to 3 times longer
+        my $dur1 = $val[1] / $val[0] if $val[0];
+        if ($val[2] and $val[3]) {
+            my $dur2 = $val[3] / $val[2];
+            my $rat = $dur1 / $dur2;
+            $dur1 = $dur2 if $rat > 1.9 and $rat < 3.1;
+        }
+        $totalDuration += $dur1 if defined $dur1;
+        last unless $subDoc++ < $$exifTool{DOC_COUNT};
+        # get tag values for next sub-document
+        my @tags = qw(FrameRate FrameCount VideoFrameRate VideoFrameCount);
+        my $rawValue = $$exifTool{VALUE};
+        my ($i, $j, $key, $keys);
+        for ($i=0; $i<@tags; ++$i) {
+            if ($subDoc == 1) {
+                # generate list of available keys for each tag
+                $keys = $keyList[$i] = [ ];
+                for ($j=0; ; ++$j) {
+                    $key = $tags[$i];
+                    $key .= " ($j)" if $j;
+                    last unless defined $$rawValue{$key};
+                    push @$keys, $key;
+                }
+            } else {
+                $keys = $keyList[$i];
+            }
+            # find key for tag in this sub-document
+            my $grp = "Doc$subDoc";
+            $grp .= ":RIFF" if $i < 2; # (tags 0 and 1 also in RIFF group)
+            $key = $exifTool->GroupMatches($grp, $keys);
+            $val[$i] = $key ? $$rawValue{$key} : undef;
+        }
+        last unless defined $val[0] and defined $val[1]; # (Require'd tags)
+    }
+    return $totalDuration;
 }
 
 #------------------------------------------------------------------------------
@@ -658,6 +1061,7 @@ sub ProcessChunks($$$)
     my $start = $$dirInfo{DirStart};
     my $size = $$dirInfo{DirLen};
     my $end = $start + $size;
+    my $base = $$dirInfo{Base};
 
     if ($exifTool->Options('Verbose')) {
         $exifTool->VerboseDir($$dirInfo{DirName}, 0, $size);
@@ -677,17 +1081,31 @@ sub ProcessChunks($$$)
         }
         my $tagInfo = $exifTool->GetTagInfo($tagTablePtr, $tag);
         my $baseShift = 0;
-        if ($tagInfo and $$tagInfo{SubDirectory}) {
-            # adjust base if necessary (needed for Ricoh maker notes)
-            my $newBase = $tagInfo->{SubDirectory}->{Base};
-            $baseShift = $newBase - $$dirInfo{Base} if defined $newBase;
+        my $val;
+        if ($tagInfo) {
+            if ($$tagInfo{SubDirectory}) {
+                # adjust base if necessary (needed for Ricoh maker notes)
+                my $newBase = $tagInfo->{SubDirectory}{Base};
+                if (defined $newBase) {
+                    # different than your average Base eval...
+                    # here we use an absolute $start address
+                    $start += $base;
+                    #### eval Base ($start)
+                    $newBase = eval $newBase;
+                    $baseShift = $newBase - $base;
+                    $start -= $base;
+                }
+            } elsif (not $$tagInfo{Binary}) {
+                $val = substr($$dataPt, $start, $len);
+                $val =~ s/\0+$//;   # remove trailing nulls from strings
+            }
         }
-        $exifTool->HandleTag($tagTablePtr, $tag, undef,
+        $exifTool->HandleTag($tagTablePtr, $tag, $val,
             DataPt  => $dataPt,
             DataPos => $$dirInfo{DataPos} - $baseShift,
             Start   => $start,
             Size    => $len,
-            Base    => $$dirInfo{Base} + $baseShift,
+            Base    => $base + $baseShift,
         );
         ++$len if $len & 0x01;  # must account for padding if odd number of bytes
         $start += $len;
@@ -704,22 +1122,26 @@ sub ProcessRIFF($$)
     my ($exifTool, $dirInfo) = @_;
     my $raf = $$dirInfo{RAF};
     my ($buff, $err);
-    my %types = ( 'WAVE' => 'WAV', 'AVI ' => 'AVI' );
+    my %types = ( 'WAVE' => 'WAV', 'AVI ' => 'AVI', 'WEBP' => 'WEBP' );
     my $verbose = $exifTool->Options('Verbose');
 
     # verify this is a valid RIFF file
     return 0 unless $raf->Read($buff, 12) == 12;
     return 0 unless $buff =~ /^RIFF....(.{4})/s;
-    $exifTool->SetFileType($types{$1}); # set type to 'WAV', 'AVI' or 'RIFF'
+    $exifTool->SetFileType($types{$1}); # set type to 'WAV', 'AVI', 'WEBP' or 'RIFF'
     $Image::ExifTool::RIFF::streamType = '';    # initialize stream type
     SetByteOrder('II');
     my $tagTablePtr = GetTagTable('Image::ExifTool::RIFF::Main');
     my $pos = 12;
 #
-# Read chunks in RIFF image until we get to the 'data' chunk
+# Read chunks in RIFF image
 #
     for (;;) {
-        $raf->Read($buff, 8) == 8 or $err=1, last;
+        my $num = $raf->Read($buff, 8);
+        if ($num < 8) {
+            $err = 1 if $num;
+            last;
+        }
         $pos += 8;
         my ($tag, $len) = unpack('a4V', $buff);
         # special case: construct new tag name from specific LIST type
@@ -730,14 +1152,29 @@ sub ProcessRIFF($$)
             $len -= 4;  # already read 4 bytes (the LIST type)
         }
         $exifTool->VPrint(0, "RIFF '$tag' chunk ($len bytes of data):\n");
+        if ($len <= 0) {
+            if ($len < 0) {
+                $exifTool->Warn('Invalid chunk length');
+            } elsif ($tag eq "\0\0\0\0") {
+                # avoid reading through corupted files filled with nulls because it takes forever
+                $exifTool->Warn('Encountered empty null chunk. Processing aborted');
+            } else {
+                next;
+            }
+            last;
+        }
         # stop when we hit the audio data or AVI index or AVI movie data
-        if ($tag eq 'data' or $tag eq 'idx1' or $tag eq 'LIST_movi') {
+        # --> no more because Adobe Bridge stores XMP after this!!
+        # (so now we only do this on the FastScan option)
+        if (($tag eq 'data' or $tag eq 'idx1' or $tag eq 'LIST_movi') and
+            $exifTool->Options('FastScan'))
+        {
             $exifTool->VPrint(0, "(end of parsing)\n");
             last;
         }
         # RIFF chunks are padded to an even number of bytes
         my $len2 = $len + ($len & 0x01);
-        if ($$tagTablePtr{$tag}) {
+        if ($$tagTablePtr{$tag} or ($verbose and $tag !~ /^(data|idx1|LIST_movi|RIFF)$/)) {
             $raf->Read($buff, $len2) == $len2 or $err=1, last;
             $exifTool->HandleTag($tagTablePtr, $tag, $buff,
                 DataPt  => \$buff,
@@ -746,11 +1183,17 @@ sub ProcessRIFF($$)
                 Size    => $len2,
                 Base    => $pos,
             );
+        } elsif ($tag eq 'RIFF') {
+            # don't read into RIFF chunk (ie. concatenated video file)
+            $raf->Read($buff, 4) == 4 or $err=1, last;
+            # extract information from remaining file as an embedded file
+            $$exifTool{DOC_NUM} = ++$$exifTool{DOC_COUNT}
         } else {
             $raf->Seek($len2, 1) or $err=1, last;
         }
         $pos += $len2;
     }
+    delete $$exifTool{DOC_NUM};
     $err and $exifTool->Warn('Error reading RIFF file (corrupted?)');
     return 1;
 }
@@ -775,7 +1218,7 @@ including Windows WAV audio and AVI video files.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

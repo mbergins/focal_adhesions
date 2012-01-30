@@ -6,7 +6,6 @@
 # Revisions:    11/25/2003 - P. Harvey Created
 #               12/02/2003 - P. Harvey Completely reworked and figured out many
 #                            more tags
-#               01/19/2004 - P. Harvey Added CleanRaw()
 #
 # References:   1) http://www.cybercom.net/~dcoffin/dcraw/
 #               2) http://www.wonderland.org/crw/
@@ -18,11 +17,11 @@ package Image::ExifTool::CanonRaw;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD %crwTagFormat);
-use Image::ExifTool qw(:DataAccess);
+use Image::ExifTool qw(:DataAccess :Utils);
 use Image::ExifTool::Exif;
 use Image::ExifTool::Canon;
 
-$VERSION = '1.48';
+$VERSION = '1.54';
 
 sub WriteCRW($$);
 sub ProcessCanonRaw($$$);
@@ -269,7 +268,6 @@ sub BuildMakerNotes($$$$$$);
         {
             # D30
             Name => 'SerialNumber',
-            Description => 'Camera Body No.',
             Condition => '$$self{Model} =~ /EOS D30\b/',
             Writable => 'int32u',
             PrintConv => 'sprintf("%x-%.5d",$val>>16,$val&0xffff)',
@@ -278,7 +276,6 @@ sub BuildMakerNotes($$$$$$);
         {
             # all EOS models (D30, 10D, 300D)
             Name => 'SerialNumber',
-            Description => 'Camera Body No.',
             Condition => '$$self{Model} =~ /EOS/',
             Writable => 'int32u',
             PrintConv => 'sprintf("%.10d",$val)',
@@ -314,10 +311,13 @@ sub BuildMakerNotes($$$$$$);
     0x1814 => { #3
         Name => 'MeasuredEV',
         Notes => q{
-            this the Canon name for what could better be called MeasuredLV, and is
-            offset by about -5 EV from the calculated LV for most models
+            this is the Canon name for what could better be called MeasuredLV, and
+            should be close to the calculated LightValue for a proper exposure with most
+            models
         },
         Format => 'float',
+        ValueConv => '$val + 5',
+        ValueConvInv => '$val - 5',
     },
     0x1817 => {
         Name => 'FileNumber',
@@ -328,6 +328,7 @@ sub BuildMakerNotes($$$$$$);
     },
     0x1818 => { #3
         Name => 'ExposureInfo',
+        Groups => { 1 => 'CIFF' }, # (only so CIFF shows up in group lists)
         Writable => 0,
         SubDirectory => {
             TagTable => 'Image::ExifTool::CanonRaw::ExposureInfo',
@@ -548,8 +549,20 @@ sub BuildMakerNotes($$$$$$);
     FIRST_ENTRY => 0,
     GROUPS => { 0 => 'MakerNotes', 2 => 'Image' },
     0 => 'ExposureCompensation',
-    1 => 'TvValue',
-    2 => 'AvValue',
+    1 => {
+        Name => 'ShutterSpeedValue',
+        ValueConv => 'abs($val)<100 ? 1/(2**$val) : 0',
+        ValueConvInv => '$val>0 ? -log($val)/log(2) : -100',
+        PrintConv => 'Image::ExifTool::Exif::PrintExposureTime($val)',
+        PrintConvInv => 'Image::ExifTool::Exif::ConvertFraction($val)',
+    },
+    2 => {
+        Name => 'ApertureValue',
+        ValueConv => '2 ** ($val / 2)',
+        ValueConvInv => '$val>0 ? 2*log($val)/log(2) : 0',
+        PrintConv => 'sprintf("%.1f",$val)',
+        PrintConvInv => '$val',
+    },
 );
 
 %Image::ExifTool::CanonRaw::ImageInfo = (
@@ -639,7 +652,7 @@ sub ProcessCanonRaw($$$)
     # read the directory (10 bytes per entry)
     $raf->Read($buff, 10 * $entries) == 10 * $entries or return 0;
 
-    $verbose and $exifTool->VerboseDir('Raw', $entries);
+    $verbose and $exifTool->VerboseDir('CIFF', $entries);
     my $index;
     for ($index=0; $index<$entries; ++$index) {
         my $pt = 10 * $index;
@@ -712,7 +725,7 @@ sub ProcessCanonRaw($$$)
             } else {
                 $value = "Binary data $size bytes";
                 if ($tagInfo) {
-                    if ($exifTool->Options('Binary')) {
+                    if ($exifTool->Options('Binary') or $verbose) {
                         # read the value anyway
                         unless ($raf->Seek($ptr, 0) and $raf->Read($value, $size) == $size) {
                             $exifTool->Warn(sprintf("Error reading %d bytes from 0x%x",$size,$ptr));
@@ -758,7 +771,7 @@ sub ProcessCanonRaw($$$)
             my $name = $$tagInfo{Name};
             my $newTagTable;
             if ($$subdir{TagTable}) {
-                $newTagTable = Image::ExifTool::GetTagTable($$subdir{TagTable});
+                $newTagTable = GetTagTable($$subdir{TagTable});
                 unless ($newTagTable) {
                     warn "Unknown tag table $$subdir{TagTable}\n";
                     next;
@@ -824,7 +837,7 @@ sub ProcessCRW($$)
     $buildMakerNotes and InitMakerNotes($exifTool);
 
     # set the FileType tag unless already done (ie. APP0 CIFF record in JPEG image)
-    $exifTool->SetFileType() unless $exifTool->GetValue('FileType');
+    $exifTool->SetFileType();
 
     # build directory information for main raw directory
     my %dirInfo = (
@@ -837,7 +850,7 @@ sub ProcessCRW($$)
     );
 
     # process the raw directory
-    my $rawTagTable = Image::ExifTool::GetTagTable('Image::ExifTool::CanonRaw::Main');
+    my $rawTagTable = GetTagTable('Image::ExifTool::CanonRaw::Main');
     unless ($exifTool->ProcessDirectory(\%dirInfo, $rawTagTable)) {
         $exifTool->Warn('CRW file format error');
     }
@@ -881,7 +894,7 @@ tags.)
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

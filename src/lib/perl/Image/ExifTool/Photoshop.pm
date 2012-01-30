@@ -3,29 +3,31 @@
 #
 # Description:  Read/write Photoshop IRB meta information
 #
-# Revisions:    02/06/04 - P. Harvey Created
-#               02/25/04 - P. Harvey Added hack for problem with old photoshops
-#               10/04/04 - P. Harvey Added a bunch of tags (ref Image::MetaData::JPEG)
-#                          but left most of them commented out until I have enough
-#                          information to write PrintConv routines for them to
-#                          display something useful
-#               07/08/05 - P. Harvey Added support for reading PSD files
-#               01/07/06 - P. Harvey Added PSD write support
-#               11/04/06 - P. Harvey Added handling of resource name
+# Revisions:    02/06/2004 - P. Harvey Created
+#               02/25/2004 - P. Harvey Added hack for problem with old photoshops
+#               10/04/2004 - P. Harvey Added a bunch of tags (ref Image::MetaData::JPEG)
+#                            but left most of them commented out until I have enough
+#                            information to write PrintConv routines for them to
+#                            display something useful
+#               07/08/2005 - P. Harvey Added support for reading PSD files
+#               01/07/2006 - P. Harvey Added PSD write support
+#               11/04/2006 - P. Harvey Added handling of resource name
 #
 # References:   1) http://www.fine-view.com/jp/lab/doc/ps6ffspecsv2.pdf
 #               2) http://www.ozhiker.com/electronics/pjmt/jpeg_info/irb_jpeg_qual.html
 #               3) Matt Mueller private communication (tests with PS CS2)
 #               4) http://www.fileformat.info/format/psd/egff.htm
+#               5) http://www.telegraphics.com.au/svn/psdparse/trunk/resources.c
+#               6) http://libpsd.graphest.com/files/Photoshop%20File%20Formats.pdf
 #------------------------------------------------------------------------------
 
 package Image::ExifTool::Photoshop;
 
 use strict;
-use vars qw($VERSION $AUTOLOAD);
-use Image::ExifTool qw(:DataAccess);
+use vars qw($VERSION $AUTOLOAD $iptcDigestInfo);
+use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.33';
+$VERSION = '1.41';
 
 sub ProcessPhotoshop($$$);
 sub WritePhotoshop($$$);
@@ -65,7 +67,7 @@ my %psdMap = (
     },
     0x03ee => {
         Name => 'AlphaChannelsNames',
-        PrintConv => 'Image::ExifTool::Photoshop::ConvertPascalString($val)',
+        ValueConv => 'Image::ExifTool::Photoshop::ConvertPascalString($self,$val)',
     },
     0x03ef => { Unknown => 1, Name => 'DisplayInfo' },
     0x03f0 => { Unknown => 1, Name => 'PStringCaption' },
@@ -145,7 +147,7 @@ my %psdMap = (
     0x0411 => { Unknown => 1, Name => 'ICC_Untagged' },
     0x0412 => { Unknown => 1, Name => 'EffectsVisible' },
     0x0413 => { Unknown => 1, Name => 'SpotHalftone' },
-    0x0414 => { Unknown => 1, Name => 'IDsBaseValue', Description => "ID's Base Value" },
+    0x0414 => { Unknown => 1, Name => 'IDsBaseValue', Description => 'IDs Base Value' },
     0x0415 => { Unknown => 1, Name => 'UnicodeAlphaNames' },
     0x0416 => { Unknown => 1, Name => 'IndexedColourTableCount' },
     0x0417 => { Unknown => 1, Name => 'TransparentIndex' },
@@ -169,14 +171,53 @@ my %psdMap = (
             WriteProc => \&Image::ExifTool::WriteTIFF,
         },
     },
+    0x0423 => { Unknown => 1, Name => 'ExifInfo2', Binary => 1 }, #5
     0x0424 => {
         Name => 'XMP',
         SubDirectory => {
             TagTable => 'Image::ExifTool::XMP::Main',
         },
     },
+    0x0425 => {
+        Name => 'IPTCDigest',
+        Writable => 'string',
+        Protected => 1,
+        Notes => q{
+            when writing, special values of "new" and "old" represent the digests of the
+            IPTC from the edited and original files respectively, and are undefined if
+            the IPTC does not exist in the respective file
+        },
+        # also note the 'new' feature requires that the IPTC comes before this tag is written
+        ValueConv => 'unpack("H*", $val)',
+        ValueConvInv => q{
+            if (lc($val) eq 'new' or lc($val) eq 'old') {
+                {
+                    local $SIG{'__WARN__'} = sub { };
+                    return lc($val) if eval 'require Digest::MD5';
+                }
+                warn "Digest::MD5 must be installed\n";
+                return undef;
+            }
+            return pack('H*', $val) if $val =~ /^[0-9a-f]{32}$/i;
+            warn "Value must be 'new', 'old' or 32 hexadecimal digits\n";
+            return undef;
+        }
+    },
+    0x0426 => { Unknown => 1, Name => 'PrintScale' }, #5
+    0x0428 => { Unknown => 1, Name => 'PixelAspectRatio' }, #5
+    0x0429 => { Unknown => 1, Name => 'LayerComps' }, #5
+    0x042a => { Unknown => 1, Name => 'AlternateDuotoneColors' }, #5
+    0x042b => { Unknown => 1, Name => 'AlternateSpotColors' }, #5
     # 0x07d0-0x0bb6 Path information
-    0x0bb7 => { Unknown => 1, Name => 'ClippingPathName' },
+    0x0bb7 => {
+        Name => 'ClippingPathName',
+        # convert from a Pascal string (ignoring 6 bytes of unknown data after string)
+        ValueConv => q{
+            my $len = ord($val);
+            $val = substr($val, 0, $len+1) if $len < length($val);
+            return Image::ExifTool::Photoshop::ConvertPascalString($self,$val);
+        },
+    },
     0x2710 => { Unknown => 1, Name => 'PrintFlagsInfo' },
 );
 
@@ -266,6 +307,7 @@ my %psdMap = (
     11 => 'BitDepth',
     12 => {
         Name => 'ColorMode',
+        PrintConvColumns => 2,
         PrintConv => {
             0 => 'Bitmap',
             1 => 'Grayscale',
@@ -284,6 +326,10 @@ my %psdMap = (
     GROUPS => { 2 => 'Unknown' },
 );
 
+# define reference to IPTCDigest tagInfo hash for convenience
+$iptcDigestInfo = $Image::ExifTool::Photoshop::Main{0x0425};
+
+
 #------------------------------------------------------------------------------
 # AutoLoad our writer routines when necessary
 #
@@ -296,9 +342,9 @@ sub AUTOLOAD
 # Convert pascal string(s) to something we can use
 # Inputs: 1) Pascal string data
 # Returns: Strings, concatenated with ', '
-sub ConvertPascalString($)
+sub ConvertPascalString($$)
 {
-    my $inStr = shift;
+    my ($exifTool, $inStr) = @_;
     my $outStr = '';
     my $len = length($inStr);
     my $i=0;
@@ -309,7 +355,8 @@ sub ConvertPascalString($)
         $outStr .= substr($inStr, $i+1, $n);
         $i += $n + 1;
     }
-    return $outStr;
+    my $charset = $exifTool->Options('CharsetPhotoshop') || 'Latin';
+    return $exifTool->Decode($outStr, $charset);
 }
 
 #------------------------------------------------------------------------------
@@ -341,7 +388,7 @@ sub ProcessPhotoshop($$$)
         if ($type eq '8BIM') {
             $ttPtr = $tagTablePtr;
         } elsif ($type =~ /^(PHUT|DCSR|AgHg)$/) {
-            $ttPtr = Image::ExifTool::GetTagTable('Image::ExifTool::Photoshop::Unknown');
+            $ttPtr = GetTagTable('Image::ExifTool::Photoshop::Unknown');
         } else {
             $type =~ s/([^\w])/sprintf("\\x%.2x",ord($1))/ge;
             $exifTool->Warn(qq{Bad Photoshop IRB resource "$type"});
@@ -405,13 +452,13 @@ sub ProcessPSD($$)
     my ($data, $err, $tagTablePtr);
 
     $raf->Read($data, 30) == 30 or return 0;
-    $data =~ /^8BPS\0\x01/ or return 0;
+    $data =~ /^8BPS\0([\x01\x02])/ or return 0;
     SetByteOrder('MM');
-    $exifTool->SetFileType();    # set the FileType tag
+    $exifTool->SetFileType($1 eq "\x01" ? 'PSD' : 'PSB'); # set the FileType tag
     my %dirInfo = (
         DataPt => \$data,
         DirStart => 0,
-        DirName => 'PSD',
+        DirName => 'Photoshop',
     );
     my $len = Get32u(\$data, 26);
     if ($outfile) {
@@ -422,7 +469,7 @@ sub ProcessPSD($$)
         $exifTool->InitWriteDirs(\%psdMap);
     } else {
         # process the header
-        $tagTablePtr = Image::ExifTool::GetTagTable('Image::ExifTool::Photoshop::Header');
+        $tagTablePtr = GetTagTable('Image::ExifTool::Photoshop::Header');
         $dirInfo{DirLen} = 30;
         $exifTool->ProcessDirectory(\%dirInfo, $tagTablePtr);
         $raf->Seek($len, 1) or $err = 1;    # skip over color mode data
@@ -430,7 +477,7 @@ sub ProcessPSD($$)
     $raf->Read($data, 4) == 4 or $err = 1;
     $len = Get32u(\$data, 0);
     $raf->Read($data, $len) == $len or $err = 1;
-    $tagTablePtr = Image::ExifTool::GetTagTable('Image::ExifTool::Photoshop::Main');
+    $tagTablePtr = GetTagTable('Image::ExifTool::Photoshop::Main');
     $dirInfo{DirLen} = $len;
     my $rtnVal = 1;
     if ($outfile) {
@@ -519,7 +566,7 @@ be preserved when copying Photoshop information via user-defined tags.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
@@ -533,6 +580,8 @@ under the same terms as Perl itself.
 =item L<http://www.ozhiker.com/electronics/pjmt/jpeg_info/irb_jpeg_qual.html>
 
 =item L<http://www.fileformat.info/format/psd/egff.htm>
+
+=item L<http://libpsd.graphest.com/files/Photoshop%20File%20Formats.pdf>
 
 =back
 

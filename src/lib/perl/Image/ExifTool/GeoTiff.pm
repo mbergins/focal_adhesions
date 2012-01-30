@@ -3,9 +3,9 @@
 #
 # Description:  Read GeoTiff meta information
 #
-# Revisions:    02/23/04 - P. Harvey Created
-#               02/25/04 - P. Harvey Added new codes from libgeotiff-1.2.1
-#               02/01/07 - P. Harvey Added new codes from libgeotiff-1.2.3
+# Revisions:    02/23/2004 - P. Harvey Created
+#               02/25/2004 - P. Harvey Added new codes from libgeotiff-1.2.1
+#               02/01/2007 - P. Harvey Added new codes from libgeotiff-1.2.3
 #
 # Reference:    ftp://ftp.remotesensing.org/geotiff/libgeotiff/libgeotiff-1.1.4.tar.gz
 #------------------------------------------------------------------------------
@@ -14,9 +14,9 @@ package Image::ExifTool::GeoTiff;
 
 use strict;
 use vars qw($VERSION);
-use Image::ExifTool qw(:DataAccess);
+use Image::ExifTool qw(:DataAccess :Utils);
 
-$VERSION = '1.06';
+$VERSION = '1.07';
 
 # format codes for geoTiff directory entries
 my %geoTiffFormat = (
@@ -2064,20 +2064,17 @@ my %epsg_units = (
 );
 
 #------------------------------------------------------------------------------
-# Inputs: 0) ExifTool object reference
-#         1) tag table reference
+# Inputs: 0) ExifTool object ref
+# Notes: byte order must be set before calling this routine
 sub ProcessGeoTiff($)
 {
-    my ($exifTool) = @_;
+    my $exifTool = shift;
     my $dirData = $exifTool->GetValue('GeoTiffDirectory', 'ValueConv') or return;
     my $doubleData = $exifTool->GetValue('GeoTiffDoubleParams', 'ValueConv');
     my $asciiData = $exifTool->GetValue('GeoTiffAsciiParams', 'ValueConv');
     my $verbose = $exifTool->Options('Verbose');
-    my @double;
 
     # restore or original EXIF byte order setting
-    my $byteOrder = $exifTool->{EXIF_BYTE_ORDER};
-    $byteOrder and SetByteOrder($byteOrder);
     if (length($$dirData) >= 8 and
         length($$dirData) >= 8 * (Get16u($dirData,6) + 1))
     {
@@ -2085,16 +2082,16 @@ sub ProcessGeoTiff($)
         my $revision   = Get16u($dirData,2);
         my $minorRev   = Get16u($dirData,4);
         my $numEntries = Get16u($dirData,6);
-    
+
         if ($verbose) {
             $exifTool->{INDENT} .= '| ';
             $exifTool->VerboseDir('GeoTiff',$numEntries);
         }
         # generate version number tag (not a real GeoTiff tag)
-        my $tagTable = Image::ExifTool::GetTagTable("Image::ExifTool::GeoTiff::Main");
+        my $tagTable = GetTagTable("Image::ExifTool::GeoTiff::Main");
         my $tagInfo = $exifTool->GetTagInfo($tagTable, 1);
         $tagInfo and $exifTool->FoundTag($tagInfo,"$version.$revision.$minorRev");
-    
+
         my $i;
         for ($i=0; $i<$numEntries; ++$i) {
             my $pt = 8 * ($i + 1);
@@ -2169,7 +2166,7 @@ coordinates.
 
 =head1 AUTHOR
 
-Copyright 2003-2008, Phil Harvey (phil at owl.phy.queensu.ca)
+Copyright 2003-2012, Phil Harvey (phil at owl.phy.queensu.ca)
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
