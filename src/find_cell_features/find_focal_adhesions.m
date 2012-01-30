@@ -58,6 +58,8 @@ focal_image  = double(imread(I_file));
 image_set_min_max = csvread(fullfile(fileparts(I_file),filenames.focal_image_min_max));
 focal_normed = (focal_image - image_set_min_max(1))/(range(image_set_min_max));
 
+output_dir = fileparts(I_file);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -183,8 +185,6 @@ if(i_p.Results.status_messages), disp('Done building adhesion perimeters'); end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Write the output files
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-output_dir = fileparts(I_file);
 
 imwrite(double(ad_zamir)/2^16,fullfile(output_dir, filenames.adhesions),'bitdepth',16);
 imwrite(double(ad_zamir_perim)/2^16,fullfile(output_dir, filenames.adhesions_perim),'bitdepth',16);
