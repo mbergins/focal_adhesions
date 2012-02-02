@@ -20,6 +20,7 @@ function find_adhesion_properties(focal_file,adhesions_file,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 i_p = inputParser;
+i_p.StructExpand = true;
 i_p.FunctionName = 'FIND_ADHESION_PROPERTIES';
 
 i_p.addRequired('focal_file',@(x)exist(x,'file') == 2);

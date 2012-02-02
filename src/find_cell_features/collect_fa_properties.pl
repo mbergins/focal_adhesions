@@ -52,7 +52,8 @@ if ($opt{debug}) {
     }
 }
 
-my @matlab_code = &create_all_matlab_commands;
+# my @matlab_code = &create_all_matlab_commands;
+my @matlab_code = &create_single_matlab_command;
 
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'FA_props');
 $opt{error_file} = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'FA_props', 'error.txt');
@@ -98,6 +99,14 @@ sub create_all_matlab_commands {
 
         $matlab_code[0] .= $this_command;
     }
+
+    return @matlab_code;
+}
+
+sub create_single_matlab_command {
+    my @matlab_code;
+	
+	$matlab_code[0] = "find_focal_adhesions_full_exp('$cfg{exp_results_folder}')\n";
 
     return @matlab_code;
 }
