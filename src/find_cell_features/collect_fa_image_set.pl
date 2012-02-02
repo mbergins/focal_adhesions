@@ -36,10 +36,10 @@ my %cfg     = $ad_conf->get_cfg_hash;
 # Main Program
 ################################################################################
 
-my @image_folders = <$cfg{individual_results_folder}/*>;
-my @image_files   = <$cfg{individual_results_folder}/*/$cfg{adhesion_image_file}>;
-die "Expected to find the same number of image files as folders in the results directory ($cfg{individual_results_folder})."
-  if (scalar(@image_files) != scalar(@image_folders));
+# my @image_folders = <$cfg{individual_results_folder}/*>;
+# my @image_files   = <$cfg{individual_results_folder}/*/$cfg{adhesion_image_file}>;
+# die "Expected to find the same number of image files as folders in the results directory ($cfg{individual_results_folder})."
+#   if (scalar(@image_files) != scalar(@image_folders));
 
 
 if ($opt{debug}) {
@@ -95,6 +95,35 @@ sub create_all_matlab_commands {
 
 		$matlab_code[0] .= "find_focal_adhesions('$file_name'$extra_opt)\n";
     }
+
+    return @matlab_code;
+}
+
+sub create_single_matlab_command {
+    my @matlab_code;
+
+	my $extra_opt = "";
+	if (defined $cfg{stdev_thresh}) {
+		my @split_stdev_vals = split(/\s+/,$cfg{stdev_thresh});
+		$extra_opt .= ",'stdev_thresh',[" . join(",",@split_stdev_vals) . "]";
+	}
+	if (defined $cfg{no_ad_splitting}) {
+		$extra_opt .= ",'no_ad_splitting',$cfg{no_ad_splitting}";
+	}
+	if (defined $cfg{min_adhesion_size}) {
+		$extra_opt .= ",'min_adhesion_size',$cfg{min_adhesion_size}";
+	}
+	if (defined $cfg{min_independent_size}) {
+		$extra_opt .= ",'min_independent_size',$cfg{min_independent_size}";
+	}
+	if (defined $cfg{max_adhesion_count}) {
+		$extra_opt .= ",'max_adhesion_count',$cfg{max_adhesion_count}";
+	}
+	if (defined $cfg{proximity_filter}) {
+		$extra_opt .= ",'proximity_filter',$cfg{proximity_filter}";
+	}
+
+	$matlab_code[0] .= "find_focal_adhesions_full_exp('$cfg{exp_results_folder}'$extra_opt)\n";
 
     return @matlab_code;
 }
