@@ -50,6 +50,18 @@ $opt{root_mwd} = File::Spec->rel2abs($opt{script_dir});
 # Main Program
 ################################################################################
 
+###########################################################
+# Run Decisions
+###########################################################
+if ($opt{script} =~ /apply_bleaching_correction/) {
+	#using this to check decide whether or not to run the photo bleach
+	#correction, if undefined or not true, exit from the program without
+	#running any matlab jobs
+	if (! (defined $cfg{photo_bleach_correction} && $cfg{photo_bleach_correction})) {
+		exit;
+	} 	
+}
+
 my $extra = &build_extra_command_line_opts;
 
 my @matlab_code = ("$opt{script}('$cfg{exp_results_folder}'$extra)\n");
@@ -70,16 +82,5 @@ if (defined $cfg{job_group}) {
 sub build_extra_command_line_opts {
 	my $extra = '';
 	
-	if ($opt{script} =~ /apply_adhesion_bleaching_correction/) {
-		#using this to check decide whether or not to run the photo bleach
-		#correction, if undefined or not true, exit from the program without
-		#running any matlab jobs
-		if (defined $cfg{photo_bleach_correction} && $cfg{photo_bleach_correction}) {
-			
-		} else {
-			exit;
-		}
-	}
-
 	return $extra;
 }
