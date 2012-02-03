@@ -106,7 +106,7 @@ sub create_all_matlab_commands {
 sub create_single_matlab_command {
     my @matlab_code;
 	
-	$matlab_code[0] = "find_focal_adhesions_full_exp('$cfg{exp_results_folder}')\n";
+	$matlab_code[0] = "find_adhesion_properties_full_exp('$cfg{exp_results_folder}')\n";
 
     return @matlab_code;
 }
