@@ -30,8 +30,12 @@ if ($opt{server} eq "NOSERVER" || $opt{debug}) {
     print "$command\n";
 } else {
     while($opt{repeat} != 0) {
-        system "$command";
-        print "Done with sync $opt{repeat}\n\n";
+        my $return = system "$command";
+        print "Done with sync $opt{repeat} Return code: $return\n\n";
+		if ($return) {
+			print "Caught exit code.";
+			last;
+		}
         $opt{repeat}--;
         sleep $opt{delay}*60;
     }
