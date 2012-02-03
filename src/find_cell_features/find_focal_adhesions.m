@@ -71,6 +71,8 @@ I_filt = fspecial('disk',i_p.Results.filter_size);
 blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
 high_passed_image = focal_image - blurred_image;
 
+filter_thresh = [mean(high_passed_image(:)) + std(high_passed_image(:))*i_p.Results.stdev_thresh];
+
 threshed_image = find_threshed_image(high_passed_image,filter_thresh,i_p.Results.proximity_filter);
 
 %identify and remove adhesions on the immediate edge of the image
