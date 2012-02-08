@@ -35,7 +35,7 @@ all_high_passed = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 for i_num = 1:size(image_dirs,1)
-    puncta_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));            
+    puncta_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
     
     I_filt = fspecial('disk',11);
     blurred_image = imfilter(puncta_image,I_filt,'same',mean(puncta_image(:)));
@@ -67,14 +67,6 @@ high_pass_std = std(all_high_passed(:));
 csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),...
     [high_pass_mean,high_pass_std]);
 
-per_image_threshold = zeros(size(image_dirs,1),2);
-for i_num = 1:size(image_dirs,1)
-    temp = all_high_passed(:,:,i_num);
-    temp = trim_data_set(temp(:),5E-6);
-
-    per_image_threshold(i_num,:) = [mean(temp(:)), std(temp(:))];
-end
-
 %diagnostic diagram
 hist(all_high_passed(:),100);
 xlabel('High Pass Filtered Intensity','FontSize',16,'FontName','Helvetica');
@@ -83,13 +75,30 @@ y_limits = ylim();
 
 for i=1:4
     this_thresh = high_pass_mean+high_pass_std*i;
-    line([this_thresh,this_thresh],[0,y_limits(2)],'Color','red', ... 
+    line([this_thresh,this_thresh],[0,y_limits(2)],'Color','red', ...
         'LineStyle','--','LineWidth',3);
 end
-
 set(gca, 'FontName','Helvetica','FontSize',16,'Box','off');
 set(gcf, 'PaperPositionMode', 'auto');
 print('-depsc2', fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold_plot));
+close;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Determine per image thresholds
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+per_image_threshold = zeros(size(image_dirs,1),2);
+for i_num = 1:size(image_dirs,1)
+    temp = all_high_passed(:,:,i_num);
+    per_image_threshold(i_num,:) = [mean(temp(:)), std(temp(:))];
+end
+
+plot((per_image_threshold(:,1)+2*per_image_threshold(:,2))/max(per_image_threshold(:,1)+2*per_image_threshold(:,2)))
+xlabel('Image Number')
+ylabel('Threshold Percent of Maximum')
+set(gca, 'FontName','Helvetica','FontSize',16,'Box','off');
+set(gcf, 'PaperPositionMode', 'auto');
+print('-depsc2', fullfile(base_dir,image_dirs(1).name,filenames.per_image_threshold_plot));
 close;
 
 toc;

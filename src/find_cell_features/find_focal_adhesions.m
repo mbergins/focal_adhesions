@@ -93,7 +93,8 @@ end
 if (sum(sum(threshed_image)) == 0)
     no_ad_found_file = fullfile(output_dir, 'no_ads_found.txt');
     system(['touch ', no_ad_found_file]);
-    error('Didn''t find any adhesions');
+    warning('FA:noadsfound','Didn''t find any adhesions');
+    return;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
