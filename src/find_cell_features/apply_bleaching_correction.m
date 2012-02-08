@@ -60,8 +60,11 @@ for i=1:length(single_image_folders)
     imwrite(cor_image, base_image_file,'Bitdepth',16);
 end
 
+if (not(exist(fullfile(exp_dir,'adhesion_props'),'dir')))
+    mkdir(fullfile(exp_dir,'adhesion_props'));
+end
+
 csvwrite(fullfile(exp_dir,'adhesion_props','mean_levels.csv'),expression_levels)
-csvwrite(fullfile(exp_dir,'adhesion_props','after_p_correction.csv'),expression_levels)
 csvwrite(fullfile(exp_dir,'adhesion_props','integrated_levels.csv'),sum_expression_levels)
 
 toc;
