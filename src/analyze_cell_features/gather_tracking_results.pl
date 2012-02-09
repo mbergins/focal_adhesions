@@ -101,7 +101,7 @@ sub convert_data_to_units {
     for my $time (sort keys %data_sets) {
         for my $data_type (keys %{ $data_sets{$time} }) {
             if (grep $data_type eq $_, qw(Centroid_dist_from_edge Centroid_dist_from_center MajorAxisLength 
-                                          MinorAxisLength)) {
+                                          MinorAxisLength Dist_to_FA_cent)) {
                 @{ $data_sets{$time}{$data_type} } = map $lin_conv_factor * $_, @{ $data_sets{$time}{$data_type} };
             } elsif (grep $data_type eq $_, qw(Area Cell_size)) {
                 @{ $data_sets{$time}{$data_type} } = map $sq_conv_factor * $_, @{ $data_sets{$time}{$data_type} };
@@ -257,9 +257,7 @@ sub gather_and_output_lineage_properties {
     }
 
     #Time Series Props
-	my @ts_props = qw(Angle_to_center Orientation Max_adhesion_signal
-		Background_corrected_signal Shrunk_corrected_signal MajorAxisLength
-		MinorAxisLength CB_corrected_signal Photo_cor_ad_signal);
+	my @ts_props = qw(Angle_to_center Orientation MajorAxisLength MinorAxisLength Dist_to_FA_cent);
     foreach my $data_type (@ts_props) {
         next if (not(grep $data_type eq $_, @available_data_types));
 

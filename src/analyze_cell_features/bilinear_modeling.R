@@ -131,7 +131,7 @@ fit_all_possible_log_models <- function(time.series,min.phase.length=10) {
         data_summary$adj.r.squared = c(data_summary$adj.r.squared, model_summary$adj.r.squared);
         data_summary$p.value = c(data_summary$p.value, model_summary$coefficients[2,4]);
         data_summary$slope = c(data_summary$slope, coef(this_model)[2]);
-        data_summary$length = c(data_summary$length, i);
+        data_summary$length = c(data_summary$length, time.series$time[i]);
     }
 
     data_summary = as.data.frame(data_summary);

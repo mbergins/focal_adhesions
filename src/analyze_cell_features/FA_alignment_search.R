@@ -104,6 +104,7 @@ read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
     data_set$lineage_data = read.table(file.path(time_series_dir,'../single_lin.csv'),sep=',',header=T);
     data_set$mat$orientation = read.csv(file.path(time_series_dir,'Orientation.csv'),header=F);
     data_set$mat$area = read.csv(file.path(time_series_dir,'Area.csv'),header=F);
+    data_set$mat$area = read.csv(file.path(time_series_dir,'Dist_to_FA_cent.csv'),header=F);
     major_axis = read.csv(file.path(time_series_dir,'MajorAxisLength.csv'),header=F);
     minor_axis = read.csv(file.path(time_series_dir,'MinorAxisLength.csv'),header=F);
     
@@ -117,7 +118,8 @@ read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
     data_set$high_ratio = subset(unlist_data_set, !is.nan(unlist_data_set$ratio) & 
         unlist_data_set$ratio >= min.ratio);
     
-    #Area seperations/binning
+    #Area seperations/binning - hard thresholds set based on distributions of
+    #NS and 2xKD cells 100ug/ml
     area_thresholds = c(0.53,1.26);
 
     data_set$area_sets$small = subset(data_set$high_ratio, 
@@ -187,7 +189,6 @@ find_best_alignment_angle <- function(test_angle_set) {
     # to select the best angle, find the angles with the maximum FAAI, from
     # those angles select the angle with the lowest absolute value of the mean
     # angle
-    
     max_FAAI = max(test_angle_set$angle_FAAI)*0.9999
     #the max FAAI value is reduced by 0.01% due to some strange numeric
     #accuracy issues that elimnated some angles from the max FAAI index set
@@ -211,6 +212,14 @@ apply_new_orientation <- function(orientation_data,angle) {
     orientation_data[less_neg_ninety] = orientation_data[less_neg_ninety] + 180;
 
     return(orientation_data)
+}
+
+find_best_FAAI <- function(orientations) {
+    test_angles = test_dom_angles(orientations);
+    best_angle = find_best_alignment_angle(test_angles);
+    cor_orientation = apply_new_orientation(orientations,best_angle);
+    best_FAAI = find_FAAI_from_orientation(cor_orientation);
+    return(best_FAAI)
 }
 
 ###########################################################
@@ -536,7 +545,7 @@ load_all_areas <- function(alignment_models) {
     for (align_file in alignment_models) {
         data_set = get(load(align_file));
         areas = c(areas, data_set$high_ratio$area);
-        print(paste('Done loading:', align_file))
+        print(paste('Done loading:', align_file));
     }
     return(areas)
 }
@@ -563,11 +572,42 @@ load_alignment_props <- function(alignment_models) {
         align_props$large_FAAI = c(align_props$large_FAAI, data_set$area_results$large$FAAI)
 
         align_props$align_file = c(align_props$align_file, align_file);
+
+        angles = (data_set$high_ratio$orientation+90)*(pi/180)
+        area = data_set$high_ratio$area
+        align_props$FAO = c(align_props$FAO, find_FAO(angles, area))
+        align_props$noW_FAO = c(align_props$noW_FAO, find_FAO(angles))
         # browser()
         print(paste('Done loading:', align_file))
     }
     align_props = as.data.frame(align_props);
     return(align_props)
+}
+
+load_elongation_matrices <- function(alignment_models) {
+    if (length(alignment_models) == 0) {
+        print('Problem, no alignment models submitted.');
+    }
+
+    data_mats = list()
+    index = 1
+    for (align_file in alignment_models) {
+        data_set = get(load(align_file));
+        
+        data_mats[[index]] = data_set
+        index = index + 1
+        print(paste('Done loading:', align_file))
+    }
+    return(data_mats)
+}
+
+find_FAO <- function(angles,areas=NA) {
+    if (!is.na(areas)) {
+        FAO = (weighted.mean(cos(2*angles),areas)^2+weighted.mean(sin(2*angles),areas)^2)^(1/2)
+    } else {
+        FAO = (mean(cos(2*angles))^2+mean(sin(2*angles))^2)^(1/2)
+    }
+    return(FAO)
 }
 
 ################################################################################
