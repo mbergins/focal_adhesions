@@ -488,6 +488,28 @@ plot_dual_hist <- function(data_set_1,data_set_2,
     hist(data_set_2,col=colors[2],add=T,breaks=these_breaks,freq=F,axes=F);
 }
 
+plot_with_shading <- function(x,y,upper_conf,lower_conf,col,...) {
+    col_light = c();
+    for (i in 1:dim(y)[1]) {
+        col_light = c(col_light,rgb(t(col2rgb(col[i]))/255,alpha=0.5));
+    }
+    
+    for (i in 1:dim(y)[1]) {
+        if (i == 1) {
+            plot(x,y[i,],col=col[i],...);
+        } else {
+            lines(x,y[i,],col=col[i],...);
+        }
+        polygon(c(x,rev(x)), c(lower_conf[i,],rev(upper_conf[i,])),col=col_light[i],border=NA)
+    }
+    
+    #re-draw each of the primary lines so that they stand out against the
+    #transparency
+    for (i in 1:dim(y)[1]) {
+        lines(x,y[i,],col=col[i],...);
+    }
+}
+
 ###########################################################
 #Data Summary functions
 ###########################################################
@@ -909,40 +931,6 @@ count_deaths_per_point <- function(exp_data) {
     return(counts)
 }
 
-count_roll_mean_birth_death <- function(exp_data,split.time,rolling.mean.length=20,exp.norm=F) {
-    library(zoo)
-    birth_count = count_births_per_point(exp_data)
-    death_count = count_deaths_per_point(exp_data)
-    
-    birth_count_before = birth_count[1:split.time]
-    birth_count_after = birth_count[-1:-split.time]
-    
-    death_count_before = death_count[1:split.time]
-    death_count_after = death_count[-1:-split.time]
-    
-    birth_count_before = rollmean(birth_count_before,rolling.mean.length,na.pad=T,align='right')
-    birth_count_after = rollmean(birth_count_after,rolling.mean.length,na.pad=T,align='left')
-    death_count_before = rollmean(death_count_before,rolling.mean.length,na.pad=T,align='right')
-    death_count_after = rollmean(death_count_after,rolling.mean.length,na.pad=T,align='left')
-
-    if (exp.norm) {
-        birth_before_mean = mean(birth_count_before,na.rm=T)
-        birth_count_before = birth_count_before/birth_before_mean
-        birth_count_after = birth_count_after/birth_before_mean
-    
-        death_before_mean = mean(death_count_before,na.rm=T)
-        death_count_before = death_count_before/death_before_mean
-        death_count_after = death_count_after/death_before_mean
-    }
-
-    counts = list()
-    counts$birth = c(birth_count_before,birth_count_after)
-    counts$death = c(death_count_before,death_count_after)
-    counts$diff = c(birth_count_before,birth_count_after) - c(death_count_before,death_count_after)
-
-    return(counts)
-}
-
 matrix_from_list <- function(this_list,lineup='start') {
     max_length = max(unlist(lapply(this_list,length)))
 
@@ -975,7 +963,10 @@ colConfUpper <- function(this_mat) {
         if (all(is.na(this_mat[,i]))) {
             upper = c(upper,NA);
         } else {
-            temp = t.test(this_mat[,i],conf.level=0.95)
+            #remove any data values that aren't finite, NA, NaN or Inf typically
+            data_col = this_mat[,i];
+            data_col = data_col[is.finite(data_col)]
+            temp = t.test(data_col,conf.level=0.95)
             if (is.nan(temp$conf.int[2])) {
                 upper = c(upper,0)
             } else {
@@ -992,7 +983,10 @@ colConfLower <- function(this_mat) {
         if (all(is.na(this_mat[,i]))) {
             lower = c(lower,NA);
         } else {
-            temp = t.test(this_mat[,i],conf.level=0.95)
+            #remove any data values that aren't finite, NA, NaN or Inf typically
+            data_col = this_mat[,i];
+            data_col = data_col[is.finite(data_col)]
+            temp = t.test(data_col,conf.level=0.95)
             if (is.nan(temp$conf.int[1])) {
                 lower = c(lower,0)
             } else {
@@ -1003,43 +997,68 @@ colConfLower <- function(this_mat) {
     return(lower)
 }
 
+colSD <- function(this_mat) {
+    st_devs = c()
+    for (i in 1:dim(this_mat)[2]) {
+        if (all(is.na(this_mat[,i]))) {
+            st_devs = c(st_devs,NA);
+        } else {
+            st_devs = c(st_devs,sd(this_mat[,i],na.rm=T))
+        }
+    }
+    return(st_devs)
+}
+
 #######################################
 # Split Property Measurements
 #######################################
-count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T) {
+count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.change=T,min.lifetime=NA) {
     library(zoo)
     
+    if (! is.na(min.lifetime)) {
+       lifetimes = rowSums(!is.na(exp_data))
+       before_size = dim(exp_data)[1]
+       exp_data = exp_data[lifetimes >= min.lifetime,];
+       # print(dim(exp_data)[1]/before_size)
+    }
+
     #dim returns null if the exp_data variable is a single dimension, in that
     #case we want to just use the provided variable as is without taking the
     #column mean
     if (!is.null(dim(exp_data))) {
-        average_elong = colMeans(exp_data,na.rm=T);
+        average_val = colMeans(exp_data,na.rm=T);
     } else {
-        average_elong = exp_data;
+        average_val = exp_data;
     }
 
-    average_elong_before = average_elong[1:split.time]
-    average_elong_after = average_elong[-1:-split.time]
+    average_val_before = average_val[1:split.time]
+    average_val_after = average_val[-1:-split.time]
 
-    average_elong_before = rollmean(average_elong_before,20,na.pad=T,align='right')
-    average_elong_after = rollmean(average_elong_after,20,na.pad=T,align='left')
+    average_val_before = rollmean(average_val_before,20,na.pad=T,align='right')
+    average_val_after = rollmean(average_val_after,20,na.pad=T,align='left')
     
     if (exp.norm) {
-        mean_before = mean(average_elong_before,na.rm=T)
-        # mean_before = tail(average_elong_before,1)
-        average_elong_before = average_elong_before-mean_before
-        average_elong_after = average_elong_after-mean_before
+        mean_before = mean(average_val_before,na.rm=T)
+        # mean_before = tail(average_val_before,1)
+        if (fold.change) {
+            average_val_before = average_val_before/mean_before
+            average_val_after = average_val_after/mean_before
+        } else {
+            average_val_before = average_val_before-mean_before
+            average_val_after = average_val_after-mean_before
+        }
     }
 
     averages = list()
-    averages$before = average_elong_before
-    averages$after = average_elong_after
+    averages$before = average_val_before
+    averages$after = average_val_after
+    # averages$
+
 
     return(averages)
 }
 
-summarize_split_matrix <- function(exp_data) {
-
+summarize_split_matrix <- function(exp_data,debug=F) {
     before_temp = matrix_from_list(exp_data$before,lineup='end')
     before_temp = t(tail(t(before_temp),20))
     
@@ -1059,7 +1078,12 @@ summarize_split_matrix <- function(exp_data) {
     
     results$lower_conf$before = colConfLower(before_temp)
     results$lower_conf$after = colConfLower(after_temp)
+
+    results$upper_sd$before = colSD(before_temp) + results$mean$before
+    results$upper_sd$after = colSD(after_temp) + results$mean$after
     
+    results$lower_sd$before = colSD(before_temp) + results$mean$before
+    results$lower_sd$after = colSD(after_temp) + results$mean$after
     return(results);
 }
 
