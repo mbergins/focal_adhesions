@@ -139,12 +139,17 @@ centroid_y = centroid_data(2:2:length(adhesion_props)*2);
 
 ad_centroid = [mean(centroid_x),mean(centroid_y)];
 adhesion_props(1).Adhesion_centroid = ad_centroid;
+dist_to_centroid = sqrt((centroid_x - ad_centroid(1)).^2 ...
+    + (centroid_y - ad_centroid(2)).^2);
+
 
 for i=1:max(labeled_adhesions(:))
     adhesion_props(i).Average_adhesion_signal = mean(orig_I(labeled_adhesions == i));
     adhesion_props(i).Variance_adhesion_signal = var(orig_I(labeled_adhesions == i));
     adhesion_props(i).Max_adhesion_signal = max(orig_I(labeled_adhesions == i));
     adhesion_props(i).Min_adhesion_signal = min(orig_I(labeled_adhesions == i));
+    
+    adhesion_props(i).Dist_to_FA_cent = dist_to_centroid(i);
     
     this_ad = labeled_adhesions;
     this_ad(labeled_adhesions ~= i) = 0;
