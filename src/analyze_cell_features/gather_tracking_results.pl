@@ -255,9 +255,10 @@ sub gather_and_output_lineage_properties {
         &output_mat_csv($edge_data{post_death}, catfile($base_dir, "post_death.csv"));
         &output_mat_csv($edge_data{null_data}, catfile($base_dir, "null.csv"));
     }
-
-    #Time Series Props
-	my @ts_props = qw(Angle_to_center Orientation MajorAxisLength MinorAxisLength Dist_to_FA_cent);
+    
+	#Time Series Props
+	my @ts_props = qw(Angle_to_center Orientation MajorAxisLength
+		MinorAxisLength Dist_to_FA_cent);
     foreach my $data_type (@ts_props) {
         next if (not(grep $data_type eq $_, @available_data_types));
 
@@ -295,6 +296,9 @@ sub gather_and_output_lineage_properties {
     $props{end_y} = &gather_last_entry($props{Centroid_y});
     &output_prop_time_series($props{Centroid_y}, "Centroid_y");
     undef $props{Centroid_y};
+	
+	$props{Dist_to_FA_cent} = &gather_prop_seq("Dist_to_FA_cent");
+	$props{Mean_FA_cent_dist} = &gather_average_value($props{Dist_to_FA_cent});
 
     ($props{speeds}{All}, $props{velocity}) = &gather_adhesion_speeds;
     &output_prop_time_series($props{speeds}{All}, "All_speeds");
@@ -823,7 +827,7 @@ sub gather_lineage_summary_data {
 	ending_center_dist merge_count split_count death_status split_birth_status
 	average_speeds max_speeds ad_sig birth_i_num start_x start_y death_i_num
 	end_x end_y mean_axial_ratio mean_major_axis mean_minor_axis
-	drug_addition_time); 
+	drug_addition_time Mean_FA_cent_dist); 
 	
     my @lin_summary_data;
     for (@possible_props) {
