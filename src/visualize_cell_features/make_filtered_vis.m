@@ -1,4 +1,4 @@
-function make_eccen_filtered_vis(exp_dir,varargin)
+function make_ratio_filtered_vis(exp_dir,varargin)
 
 tic;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -7,7 +7,8 @@ tic;
 i_p = inputParser;
 
 i_p.addRequired('exp_dir',@(x)exist(x,'dir') == 7);
-
+i_p.addParamValue('type','ratio',@ischar);
+i_p.addParamValue('min_value',1,@isnumeric);
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
 i_p.parse(exp_dir,varargin{:});
@@ -27,43 +28,68 @@ image_dirs = dir(base_dir);
 assert(strcmp(image_dirs(1).name, '.'), 'Error: expected "." to be first string in the dir command')
 assert(strcmp(image_dirs(2).name, '..'), 'Error: expected ".." to be second string in the dir command')
 assert(str2num(image_dirs(3).name) == 1, 'Error: expected the third string to be image set one') %#ok<ST2NM>
-
 image_dirs = image_dirs(3:end);
-
-major_axis = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','MajorAxisLength.csv'));
-minor_axis = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','MinorAxisLength.csv'));
-
-axis_ratio = major_axis ./ minor_axis;
 
 tracking_mat = csvread(fullfile(exp_dir,'tracking_matrices','tracking_seq.csv')) + 1;
 
-output_dir = fullfile(exp_dir,'visualizations','axis_ratio_highlight');
+if (strcmp(i_p.Results.type,'ratio'))
+    major_axis = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','MajorAxisLength.csv'));
+    minor_axis = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','MinorAxisLength.csv'));
+    
+    axis_ratio = major_axis ./ minor_axis;
+    
+    highlight_decision = axis_ratio >= 3;
+    
+    output_dir = fullfile(exp_dir,'visualizations','axis_ratio_highlight');
+elseif (strcmp(i_p.Results.type,'lifetime'))
+    area = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','Area.csv'));
+    lifetime = sum(not(isnan(area)),2);
+    
+    highlight_decision = zeros(size(area));
+    highlight_decision(not(isnan(area))) = 1;
+    highlight_decision(lifetime < i_p.Results.min_value,:) = 0;
+    
+    output_dir = fullfile(exp_dir,'visualizations',['lifetime_',num2str(i_p.Results.min_value)]);
+elseif (strcmp(i_p.Results.type,'FA_dist'))
+    FA_dist = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','Dist_to_FA_cent.csv'));
+    FA_dist_mean = nanmean(FA_dist,2);
+    
+    p_tile = 0.40;
+    min_val = quantile(FA_dist_mean,p_tile);
+    
+    highlight_decision = zeros(size(FA_dist));
+    highlight_decision(not(isnan(FA_dist))) = 1;
+    highlight_decision(FA_dist_mean < min_val,:) = 0;
+   
+    output_dir = fullfile(exp_dir,'visualizations',['FA_dist_',num2str(p_tile)]);
+end
+
 if (not(exist(output_dir,'dir')))
     mkdir(output_dir);
 end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Build the Eccen Vis
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i_num = 1:size(image_dirs)
     this_data = read_in_file_set(fullfile(base_dir,image_dirs(i_num).name),filenames);
-    this_ratio = axis_ratio(:,i_num);
+    this_decision = highlight_decision(:,i_num);
     this_tracking = tracking_mat(:,i_num);
     
     ad_rows = this_tracking > 0;
-    high_eccen_rows = this_ratio >= 3;
     
-    high_eccen_rows = ad_rows & high_eccen_rows;
-    low_eccen_rows = ad_rows & not(high_eccen_rows);
+    above_rows = ad_rows & this_decision;
+    below_rows = ad_rows & not(this_decision);
     
-    high_eccen_ads = this_tracking(high_eccen_rows);
-    low_eccen_ads = this_tracking(low_eccen_rows);
+    above_ads = this_tracking(above_rows);
+    below_ads = this_tracking(below_rows);
     
-    high_eccen_filled = ismember(this_data.adhesions,high_eccen_ads);
-    low_eccen_filled = ismember(this_data.adhesions,low_eccen_ads);
+    above_filled = ismember(this_data.adhesions,above_ads);
+    low_filled = ismember(this_data.adhesions,below_ads);
     
-    highlight = create_highlighted_image(this_data.focal_norm,high_eccen_filled,'color_map',[0,1,0],'mix_percent',1);
-    highlight = create_highlighted_image(highlight,low_eccen_filled,'color_map',[1,0,0],'mix_percent',1);
+    highlight = create_highlighted_image(this_data.focal_norm,above_filled,'color_map',[0,1,0],'mix_percent',1);
+    highlight = create_highlighted_image(highlight,low_filled,'color_map',[1,0,0],'mix_percent',1);
     if (any(strcmp('adhesion_centroid',fieldnames(this_data))))
         highlight = add_centroid_mark(highlight,this_data.adhesion_centroid,[0,0,1]);
     end
