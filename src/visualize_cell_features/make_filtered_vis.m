@@ -1,4 +1,4 @@
-function make_ratio_filtered_vis(exp_dir,varargin)
+function make_filtered_vis(exp_dir,varargin)
 
 tic;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
