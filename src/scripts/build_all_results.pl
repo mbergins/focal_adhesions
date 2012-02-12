@@ -67,7 +67,7 @@ my @overall_command_seq = (
 #some of the scripts only need to be run once for each experiment, this will
 #rely on being able to find an experiment with one of the following values in
 #it's name
-my @run_only_once = qw(find_signif_models);
+my @run_only_once = qw();
 
 my @skip_check = qw(find_exp_thresholds track_adhesions gather_tracking_results
 	build_R_models build_alignment_models collect_visualizations
@@ -90,11 +90,6 @@ my @run_once_configs = $config_files[0];
 # Program Running
 #######################################
 our @running_jobs;
-
-if (not($opt{debug}) && $opt{lsf}) {
-	my $job_queue_thread = threads->create('shift_idle_jobs','');
-	$job_queue_thread->detach;
-}
 
 my $starting_dir = getcwd;
 for (@overall_command_seq) {
@@ -250,85 +245,10 @@ sub running_LSF_jobs {
 
     my @lines = `$bjobs_command`;
     
-    #find and add the job ids onto the running job list
-    my @job_ids;
-    for (@lines) {
-        if (/^(\d+) /) {
-            push @job_ids,$1;
-        }
-    }
-    @job_ids = sort @job_ids;
-    
-    push @running_jobs, \@job_ids;
-    &kill_long_running_jobs();
-
     if (scalar(@lines) <= 1) {
         return 0;
     } else {
         return 1;
-    }
-}
-
-sub kill_long_running_jobs {
-	#we only need to worry about killing jobs that have run for at least 6
-	#hours, we check for running jobs every 10 seconds, so...
-    if (scalar(@running_jobs) > (6*60*10)) {
-        my @long_running_jobs = @{$running_jobs[$#running_jobs]};
-        my @last_hour = @running_jobs[($#running_jobs - 59) .. $#running_jobs];
-        foreach my $jobs_ref (@last_hour) {
-            #check to make sure the length of the jobs ref is the same as the
-            #long running jobs set, if it isn't, break out of the function
-            if (scalar(@$jobs_ref) != scalar(@long_running_jobs)) {
-                return 0;
-            }
-            
-            #scan through this entry in the jobs list, if an entry is present
-            #the current list of jobs, but not in the long_running_jobs list,
-            #break away from the function
-            for my $this_job (@$jobs_ref) {
-                if (not grep $this_job == $_, @long_running_jobs) {
-                    return 0;
-                }
-            }
-        }
-
-        #if we made is this far in the function, the entries in
-        #long_running_jobs should have each been running for at least an hour
-        #beyond the last other jobs in the queue, so we kill them
-
-        for (@long_running_jobs) {
-            print "Killing job $_\n";
-            system("bkill $_");
-        }
-    }
-}
-
-sub shift_idle_jobs {
-    my $bjobs_command = "bjobs";
-    if (defined $cfg{job_group}) {
-        $bjobs_command .= " -g $cfg{job_group}";
-    }
-    
-    my @lines = `$bjobs_command 2>/dev/null`;
-    my @running_lines = `$bjobs_command -r 2>/dev/null`;
-    
-    if (scalar(@lines) > 1) {
-        #dealing with the strange case where all the idle jobs refuse to be
-        #shifted into a running queue position, so we slowly shift all the
-        #pending jobs into the week queue, where they will certainly get a
-        #running jobs spot
-        if (scalar(@lines) > scalar(@running_lines)) {
-            &move_job_to_week_queue($lines[-1]);
-        }
-    }
-    sleep(60);
-    &shift_idle_jobs();
-}
-
-sub move_job_to_week_queue {
-    my $line = pop @_;
-    if ($line =~ /^(\d+)/) {
-       system("bmod -q week $1 > /dev/null 2>/dev/null");
     }
 }
 
