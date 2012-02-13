@@ -82,5 +82,9 @@ if (defined $cfg{job_group}) {
 sub build_extra_command_line_opts {
 	my $extra = '';
 	
+	if ($opt{script} eq "make_filtered_vis") {
+		$extra = ",'type','FA_dist'";
+	}
+
 	return $extra;
 }
