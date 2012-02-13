@@ -68,7 +68,6 @@ if (not(exist(output_dir,'dir')))
     mkdir(output_dir);
 end
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Build the Eccen Vis
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -110,8 +109,8 @@ function image = add_centroid_mark(image,centroid,color)
 
 dilation_element = strel('square',5);
 
-x_pos = round(centroid(1));
-y_pos = round(centroid(2));
+x_pos = round(centroid(2));
+y_pos = round(centroid(1));
 
 binary = zeros(size(image));
 binary(x_pos,y_pos) = 1;
