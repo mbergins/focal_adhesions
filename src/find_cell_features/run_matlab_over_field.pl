@@ -27,7 +27,8 @@ $| = 1;
 
 my %opt;
 $opt{debug} = 0;
-GetOptions(\%opt, "cfg|c=s", "script=s", "debug|d", "lsf|l", "queue=s", "resource|R=s") or die;
+GetOptions(\%opt, "cfg|c=s", "script=s", "debug|d", "lsf|l", "queue=s",
+	"extra|e=s") or die;
 
 die "Can't find cfg file specified on the command line" if not exists $opt{cfg};
 die "Can't find script specified on the command line" if not exists $opt{script};
@@ -83,7 +84,11 @@ sub build_extra_command_line_opts {
 	my $extra = '';
 	
 	if ($opt{script} eq "make_filtered_vis") {
-		$extra = ",'type','FA_dist'";
+		if ($opt{extra} eq "lifetime") {
+			$extra = ",'type','lifetime','min_value',10";
+		} else {
+			$extra = ",'type','FA_dist'";
+		}
 	}
 
 	return $extra;
