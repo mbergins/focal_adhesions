@@ -108,6 +108,8 @@ read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
     major_axis = read.csv(file.path(time_series_dir,'MajorAxisLength.csv'),header=F);
     minor_axis = read.csv(file.path(time_series_dir,'MinorAxisLength.csv'),header=F);
     
+    data_set$mat$major_axis = major_axis;
+    data_set$mat$minor_axis = minor_axis;
     data_set$mat$ratio = major_axis/minor_axis;
 
     unlist_data_set = list()
