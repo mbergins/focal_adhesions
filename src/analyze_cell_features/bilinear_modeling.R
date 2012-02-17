@@ -185,7 +185,7 @@ find_optimum_model_indexes <- function(assembly=NULL,disassembly=NULL) {
 }
 
 produce_rate_filters <- function(single.exp.data, model_count, min.r.sq=-Inf, 
-    max.p.val=0.05, pos.slope=TRUE, old.names=F) {
+    max.p.val=0.05, pos.slope=TRUE, old.names=F, min.cent.dist=NA) {
     
     filter_sets = list()
     
@@ -216,6 +216,12 @@ produce_rate_filters <- function(single.exp.data, model_count, min.r.sq=-Inf,
             filter_sets[[var]]$pos.slope = ! is.na(single.exp.data[[var]]$slope) & 
                 single.exp.data[[var]]$slope > 0; 
         }
+
+        if (! is.na(min.cent.dist)) {
+            thresh = quantile(single.exp.data$exp_props$Mean_FA_cent_dist,c(min.cent.dist))
+            filter_sets[[var]]$cent_dist = ! is.na(single.exp.data$exp_props$Mean_FA_cent_dist) & 
+                single.exp.data$exp_props$Mean_FA_cent_dist > thresh; 
+        }
     }
     
     # There are two variables that are unique to assembly and disassembly
@@ -234,6 +240,9 @@ produce_rate_filters <- function(single.exp.data, model_count, min.r.sq=-Inf,
     for (var in vars_to_filter) {
         final_filters[[var]] = (filter_sets[[var]]$good.r.sq & 
             filter_sets[[var]]$low.p.val & filter_sets[[var]]$extra);
+        if (any(names(filter_sets[[var]]) == "cent_dist")) {
+            final_filters[[var]] = (final_filters[[var]] & filter_sets[[var]]$cent_dist);
+        }
     }
 
     if (pos.slope) {
@@ -241,7 +250,7 @@ produce_rate_filters <- function(single.exp.data, model_count, min.r.sq=-Inf,
             final_filters[[var]] = (final_filters[[var]] & filter_sets[[var]]$pos.slope);
         }
     }
-
+    
     final_filters$joint = final_filters$assembly & final_filters$disassembly
     
     for (filter_type in names(final_filters)) {

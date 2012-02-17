@@ -640,7 +640,7 @@ bootstrap_overlap <- function(boot_one,boot_two,p_val, type="bca") {
 # Filtering
 #######################################
 filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 0.05, debug = FALSE,
-        pos.slope = TRUE,old.names=F) {
+        pos.slope = TRUE,old.names=F,min.cent.dist=NA) {
 
     ad_data = list();
     
@@ -651,14 +651,14 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         res = results[[i]];
         
         filter_sets = produce_rate_filters(res, model_count, min.r.sq = min.r.sq, max.p.val = max.p.val, 
-            pos.slope = pos.slope,old.names=old.names)
+            pos.slope = pos.slope,old.names=old.names,min.cent.dist=min.cent.dist)
         
         assembly_filt = filter_sets$assembly;
         disassembly_filt = filter_sets$disassembly;
         joint_filt = filter_sets$joint;
         
         prop_set = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num',
-            'death_i_num','mean_area','longevity')
+            'death_i_num','mean_area','longevity','Mean_FA_cent_dist')
         if (any(names(res$exp_props) == 'drug_addition_time')) {
             prop_set = c(prop_set, 'drug_addition_time');
         }
@@ -703,7 +703,6 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         i_num_joint_longev = res$exp_props$death_i_num[joint_filt] - res$exp_props$birth_i_num[joint_filt] + 1;
         ad_data$joint$stability_length = c(ad_data$joint$stability_length, 
             i_num_joint_longev - res$assem$length[joint_filt] - res$dis$length[joint_filt]);
-
     }
     
     ad_data$assembly$exp_num = as.factor(ad_data$assembly$exp_num);
@@ -1012,13 +1011,21 @@ colSD <- function(this_mat) {
 #######################################
 # Split Property Measurements
 #######################################
-count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.change=T,min.lifetime=NA) {
+count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.change=T,
+    min.lifetime=NA,dist.measurements = NA, min.dist.ptile = 0.4) {
     library(zoo)
     
     if (! is.na(min.lifetime)) {
        lifetimes = rowSums(!is.na(exp_data))
        before_size = dim(exp_data)[1]
        exp_data = exp_data[lifetimes >= min.lifetime,];
+       # print(dim(exp_data)[1]/before_size)
+    }
+
+    if (! is.na(dist.measurements[1])) {
+       before_size = dim(exp_data)[1]
+       min.dist = quantile(dist.measurements, c(min.dist.ptile));
+       exp_data = exp_data[dist.measurements >= min.dist,]
        # print(dim(exp_data)[1]/before_size)
     }
 
