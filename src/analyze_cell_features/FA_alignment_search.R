@@ -104,7 +104,6 @@ read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
     data_set$lineage_data = read.table(file.path(time_series_dir,'../single_lin.csv'),sep=',',header=T);
     data_set$mat$orientation = read.csv(file.path(time_series_dir,'Orientation.csv'),header=F);
     data_set$mat$area = read.csv(file.path(time_series_dir,'Area.csv'),header=F);
-    data_set$mat$area = read.csv(file.path(time_series_dir,'Dist_to_FA_cent.csv'),header=F);
     major_axis = read.csv(file.path(time_series_dir,'MajorAxisLength.csv'),header=F);
     minor_axis = read.csv(file.path(time_series_dir,'MinorAxisLength.csv'),header=F);
     
