@@ -104,10 +104,14 @@ close;
 toc;
 end
 
-function trimmed_set = trim_data_set(data,percentage)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function trimmed_set = trim_data_set(data,fraction)
 
 trimmed_set = sort(data);
-remove_limit = round(length(trimmed_set)*percentage);
+remove_limit = round(length(trimmed_set)*fraction);
 
 trimmed_set = trimmed_set(remove_limit:(end - remove_limit));
 

@@ -151,24 +151,6 @@ for i=1:max(labeled_adhesions(:))
     
     adhesion_props(i).Dist_to_FA_cent = dist_to_centroid(i);
     
-    this_ad = labeled_adhesions;
-    this_ad(labeled_adhesions ~= i) = 0;
-    this_ad = logical(this_ad);
-    background_region = logical(imdilate(this_ad,strel('disk',i_p.Results.background_border_size,0)));
-    background_region = and(background_region,not(labeled_adhesions));
-    if (exist('cell_mask','var'))
-        background_region = and(background_region,cell_mask);
-    end
-    adhesion_props(i).Background_adhesion_signal = mean(orig_I(background_region));
-    adhesion_props(i).Background_area = sum(background_region(:));
-    adhesion_props(i).Background_corrected_signal = adhesion_props(i).Average_adhesion_signal - adhesion_props(i).Background_adhesion_signal;
-    
-    shrunk_region = logical(imerode(this_ad,strel('disk',1,0)));
-    if (sum(shrunk_region(:)) == 0), shrunk_region = this_ad; end
-    adhesion_props(i).Shrunk_area = sum(shrunk_region(:));
-    adhesion_props(i).Shrunk_adhesion_signal = mean(orig_I(shrunk_region));
-    adhesion_props(i).Shrunk_corrected_signal = adhesion_props(i).Shrunk_adhesion_signal - adhesion_props(i).Background_adhesion_signal;
-    
     if (mod(i,10) == 0 && i_p.Results.debug), disp(['Finished Ad: ',num2str(i), '/', num2str(max(labeled_adhesions(:)))]); end
 end
 
