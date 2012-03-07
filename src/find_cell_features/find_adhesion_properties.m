@@ -26,12 +26,9 @@ i_p.FunctionName = 'FIND_ADHESION_PROPERTIES';
 i_p.addRequired('focal_file',@(x)exist(x,'file') == 2);
 i_p.addRequired('adhesions_file',@(x)exist(x,'file') == 2);
 
-i_p.parse(focal_file, adhesions_file);
-
 i_p.addParamValue('output_dir', fileparts(focal_file), @(x)exist(x,'dir')==7);
-i_p.addOptional('cell_mask',0,@(x)exist(x,'file') == 2);
-i_p.addOptional('protrusion_file',0,@(x)exist(x,'file') == 2);
-i_p.addOptional('debug',0,@(x)x == 1 || x == 0);
+i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
+i_p.addParamValue('cell_mask',0,@(x)exist(x,'file') == 2);
 
 i_p.parse(focal_file, adhesions_file, varargin{:});
 
@@ -46,27 +43,16 @@ focal_image = double(imread(focal_file));
 %read in the labeled adhesions
 adhesions = imread(adhesions_file);
 
-%check if protrusion_file is specified, read it in if specified
-if (isempty(strmatch('protrusion_file',i_p.UsingDefaults)))
-    load(i_p.Results.protrusion_file);
-end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if (exist('cell_mask','var'))
-    if (exist('protrusion','var'))
-        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,'cell_mask',cell_mask,'protrusion_data',protrusion,'debug',i_p.Results.debug);
-    else
-        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,'cell_mask',cell_mask,'debug',i_p.Results.debug);
-    end
+    adhesion_properties = collect_adhesion_properties(focal_image,adhesions, ...
+        'cell_mask',cell_mask,'debug',i_p.Results.debug);
 else
-    if (exist('protrusion_matrix','var'))
-        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,'protrusion_data',protrusion,'debug',i_p.Results.debug);
-    else
-        adhesion_properties = collect_adhesion_properties(focal_image,adhesions,'debug',i_p.Results.debug);
-    end
+    adhesion_properties = collect_adhesion_properties(focal_image,adhesions, ...
+        'debug',i_p.Results.debug);
 end
 if (i_p.Results.debug), disp('Done with gathering properties'); end
 
@@ -106,8 +92,6 @@ i_p.addRequired('orig_I',@isnumeric);
 i_p.addRequired('labeled_adhesions',@(x)isnumeric(x));
 
 i_p.addParamValue('cell_mask',0,@(x)isnumeric(x) || islogical(x));
-i_p.addParamValue('background_border_size',5,@(x)isnumeric(x));
-i_p.addParamValue('protrusion_data',0,@(x)iscell(x));
 i_p.addOptional('debug',0,@(x)x == 1 || x == 0);
 
 i_p.parse(labeled_adhesions,orig_I,varargin{:});
@@ -117,12 +101,8 @@ if (isempty(strmatch('cell_mask',i_p.UsingDefaults)))
     cell_mask = i_p.Results.cell_mask;
 end
 
-if (isempty(strmatch('protrusion_data',i_p.UsingDefaults)))
-    protrusion_data = i_p.Results.protrusion_data;
-end
-
-adhesion_props = regionprops(labeled_adhesions,'Area','Centroid', ... 
-    'Eccentricity','MajorAxisLength','MinorAxisLength','Orientation', ... 
+adhesion_props = regionprops(labeled_adhesions,'Area','Centroid', ...
+    'Eccentricity','MajorAxisLength','MinorAxisLength','Orientation', ...
     'PixelIdxList','Solidity');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -142,6 +122,10 @@ adhesion_props(1).Adhesion_centroid = ad_centroid;
 dist_to_centroid = sqrt((centroid_x - ad_centroid(1)).^2 ...
     + (centroid_y - ad_centroid(2)).^2);
 
+x_dist_to_cent = centroid_x - ad_centroid(1);
+y_dist_to_cent = ad_centroid(2) - centroid_y;
+
+angle_to_ad_cent = atan2(y_dist_to_cent,x_dist_to_cent)*(180/pi);
 
 for i=1:max(labeled_adhesions(:))
     adhesion_props(i).Average_adhesion_signal = mean(orig_I(labeled_adhesions == i));
@@ -150,58 +134,27 @@ for i=1:max(labeled_adhesions(:))
     adhesion_props(i).Min_adhesion_signal = min(orig_I(labeled_adhesions == i));
     
     adhesion_props(i).Dist_to_FA_cent = dist_to_centroid(i);
+    adhesion_props(i).Angle_to_FA_cent = angle_to_ad_cent(i);
     
-    if (mod(i,10) == 0 && i_p.Results.debug), disp(['Finished Ad: ',num2str(i), '/', num2str(max(labeled_adhesions(:)))]); end
+    if (mod(i,10) == 0 && i_p.Results.debug)
+        temp = zeros(size(labeled_adhesions));
+        temp(labeled_adhesions == i) = 1;
+        temp(labeled_adhesions ~= i) = 2;
+        temp(not(labeled_adhesions)) = 0;
+        temp(round(ad_centroid(2))-3:round(ad_centroid(2))+3,round(ad_centroid(1))-3:round(ad_centroid(1))+3) = 3;
+        
+        disp(['Finished Ad: ',num2str(i), '/', num2str(max(labeled_adhesions(:)))]);
+    end
 end
 
 adhesion_mask = im2bw(labeled_adhesions,0);
 adhesion_props(1).Adhesion_mean_intensity = sum(sum(orig_I(adhesion_mask)))/sum(sum(adhesion_mask));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%Properites Extracted If Protrusion Data Available
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-if (exist('protrusion_data','var'))
-    all_data = [];
-    for i=1:size(protrusion_data,2)
-        all_data = [all_data, sqrt(protrusion_data{i}(:,3).^2 + protrusion_data{i}(:,4).^2)']; %#ok<AGROW>
-    end
-    median_velo = median(all_data); %#ok<NASGU>
-    
-    for i=1:size(protrusion_data,2)
-        protrusion_matrix = protrusion_data{i};
-        for j=1:max(labeled_adhesions(:))
-            dists = sqrt((protrusion_matrix(:,1) - adhesion_props(j).Centroid(1)).^2 + (protrusion_matrix(:,2) - adhesion_props(j).Centroid(2)).^2);
-            sorted_dists = sort(dists);
-            best_line_nums = find(dists <= sorted_dists(5), 5,'first');
-            
-            edge_projection = [];
-            edge_speed = [];
-            for k=1:length(best_line_nums)
-                this_line_num = best_line_nums(k);
-                
-                adhesion_to_edge = [protrusion_matrix(this_line_num,1) - adhesion_props(j).Centroid(1), protrusion_matrix(this_line_num,2) - adhesion_props(j).Centroid(2)];
-                adhesion_to_edge = adhesion_to_edge / sqrt(adhesion_to_edge(1)^2 + adhesion_to_edge(2)^2);
-                edge_vector = protrusion_matrix(this_line_num,3:4);
-                if (sqrt(edge_vector(1)^2 + edge_vector(2)^2) > 10) 
-                    edge_vector = (edge_vector / sqrt(edge_vector(1)^2 + edge_vector(2)^2))  * 10;
-                end
-                
-                edge_projection(k) = sqrt(sum(edge_vector.^2))*(dot(edge_vector,adhesion_to_edge)/(sqrt(sum(edge_vector.^2)) * sqrt(sum(adhesion_to_edge.^2)))); %#ok<AGROW>
-                edge_speed(k) = sqrt(sum(edge_vector.^2)); %#ok<AGROW>
-            end
-            adhesion_props(j).Edge_projection(i,1) = mean(edge_projection);
-            adhesion_props(j).Edge_speed(i,1) = mean(edge_speed);
-        end
-    end
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Properites Extracted If Cell Mask Available
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 if (exist('cell_mask','var'))
-    cell_centroid = regionprops(bwlabel(cell_mask),'centroid');
+    cell_centroid = regionprops(cell_mask,'centroid');
     cell_centroid = cell_centroid.Centroid;
     
     [border_row,border_col] = ind2sub(size(cell_mask),find(bwperim(cell_mask)));
@@ -225,7 +178,7 @@ if (exist('cell_mask','var'))
     %field of view. To be safe, we will set those
     %distance-to-nearest-cell-edge values to NaN.
     black_border_mask = cell_mask;
-    black_border_mask(1,:) = 0; black_border_mask(end,:) = 0; 
+    black_border_mask(1,:) = 0; black_border_mask(end,:) = 0;
     black_border_mask(:,1) = 0; black_border_mask(:,end) = 0;
     
     [bb_dists, bb_indexes] = bwdist(~black_border_mask);
@@ -314,7 +267,7 @@ for i = 1:size(field_names,1)
     format_string = '%f';
     if(strmatch(field_names(i),fieldnames(print_strings)))
         format_string = print_strings.(field_names{i});
-    end    
+    end
     
     file_out = fullfile(out_dir,[cell2mat(field_names(i)),'.csv']);
     
@@ -359,7 +312,7 @@ for i = 1:max(size(data))
             fprintf(file_handle,[i_p.Results.format,','],data{i}(j));
         else
             fprintf(file_handle,[i_p.Results.format,'\n'],data{i}(j));
-        end        
+        end
     end
 end
 fclose(file_handle);
