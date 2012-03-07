@@ -96,7 +96,7 @@ sub convert_data_to_units {
 	  Background_corrected_signal Angle_to_center Orientation
 	  Shrunk_corrected_signal Cell_mean_intensity Outside_mean_intensity
 	  Cell_not_ad_mean_intensity Adhesion_mean_intensity CB_corrected_signal 
-	  Photo_cor_ad_signal Angle_to_FA_cent);
+	  Photo_cor_ad_signal Angle_to_FA_cent Adhesion_centroid);
 
     for my $time (sort keys %data_sets) {
         for my $data_type (keys %{ $data_sets{$time} }) {
@@ -188,7 +188,7 @@ sub output_single_adhesion_props {
 #######################################
 sub gather_and_output_overall_cell_properties {
 	my @single_props = qw(Cell_size Cell_mean_intensity Outside_mean_intensity
-	Cell_not_ad_mean_intensity Adhesion_mean_intensity);
+		Cell_not_ad_mean_intensity Adhesion_mean_intensity);
 
 	foreach my $data_type (@single_props) {
         next if (not(grep $data_type eq $_, @available_data_types));
@@ -198,8 +198,14 @@ sub gather_and_output_overall_cell_properties {
         &output_mat_csv(\@prop_sequence, $output_file);
 	}
     
-    my @total_ad_size = &gather_total_adhesion_size_time_series;
-    my $output_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, "single_props", "Ad_size.csv");
+    my @ad_centroid = &gather_double_number_time_series("Adhesion_centroid");
+    my $output_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 
+		"single_props", "Adhesion_centroid.csv");
+    &output_mat_csv(\@ad_centroid, $output_file);
+    
+	my @total_ad_size = &gather_total_adhesion_size_time_series;
+    $output_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 
+		"single_props", "Ad_size.csv");
     &output_mat_csv(\@total_ad_size, $output_file);
 }
 
@@ -226,6 +232,17 @@ sub gather_total_adhesion_size_time_series {
         push @total_ad_size, $this_total_size;
     }
     return @total_ad_size;
+}
+
+sub gather_double_number_time_series {
+    my $prop = shift @_;
+
+    my @sequence;
+    for my $i_num (sort keys %data_sets) {
+        push @sequence, @{$data_sets{$i_num}{$prop}};
+        # die Dumper($data_sets{$i_num}{$prop});
+    }
+    return @sequence;
 }
 
 #######################################
