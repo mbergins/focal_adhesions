@@ -956,6 +956,15 @@ colMedians <- function(this_mat,na.rm=T) {
     return(medis)
 }
 
+colGeoMeans <- function(this_mat, na.rm=T) {
+    geoMeans = c()
+    for (i in 1:dim(this_mat)[2]) {
+        data = na.omit(this_mat[,i]);
+        geoMeans = c(geoMeans,exp(mean(log(data))))
+    }
+    return(geoMeans)
+}
+
 colConfUpper <- function(this_mat) {
     upper = c()
     for (i in 1:dim(this_mat)[2]) {
@@ -1012,10 +1021,15 @@ colSD <- function(this_mat) {
 # Split Property Measurements
 #######################################
 count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.change=T,
-    min.lifetime=NA,dist.measurements = NA, min.dist.ptile = 0.4) {
+    min.lifetime=NA,dist.measurements = NA, min.dist.ptile = 0.4,use.geo.mean=F) {
     library(zoo)
     
-    if (! is.na(min.lifetime)) {
+    #######################################################
+    # Filtering
+    #######################################################
+    #check to make sure min.lifetime has been set and that the dimensions of
+    #the data are available
+    if (! is.na(min.lifetime) & !is.null(dim(exp_data))) {
        lifetimes = rowSums(!is.na(exp_data))
        before_size = dim(exp_data)[1]
        exp_data = exp_data[lifetimes >= min.lifetime,];
@@ -1028,12 +1042,19 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.chang
        exp_data = exp_data[dist.measurements >= min.dist,]
        # print(dim(exp_data)[1]/before_size)
     }
-
+    
+    #######################################################
+    # Mean Calc/Splitting/Normalization
+    #######################################################
     #dim returns null if the exp_data variable is a single dimension, in that
     #case we want to just use the provided variable as is without taking the
     #column mean
     if (!is.null(dim(exp_data))) {
-        average_val = colMeans(exp_data,na.rm=T);
+        if (use.geo.mean) {
+            average_val = colGeoMeans(exp_data);
+        } else {
+            average_val = colMeans(exp_data,na.rm=T);
+        }
     } else {
         average_val = exp_data;
     }
@@ -1046,7 +1067,6 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.chang
     
     if (exp.norm) {
         mean_before = mean(average_val_before,na.rm=T)
-        # mean_before = tail(average_val_before,1)
         if (fold.change) {
             average_val_before = average_val_before/mean_before
             average_val_after = average_val_after/mean_before
@@ -1059,8 +1079,6 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.chang
     averages = list()
     averages$before = average_val_before
     averages$after = average_val_after
-    # averages$
-
 
     return(averages)
 }

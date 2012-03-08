@@ -57,16 +57,27 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     
     data_set$single_ad_deviances = gather_all_single_adhesion_deviances(data_set);
     print('Done analyzing single adhesions')
+    
+    ###########################################################################
+    # FA Centroid Calculations
+    ###########################################################################
+    data_set$FA_cent$direction = find_fa_cent_direction(data_set$FA_cent$per_image);
+    data_set$FA_cent$angle_recentered = recenter_fa_angles(data_set$mat$angle_to_FA_cent,
+        data_set$FA_cent$direction);
+    
+    write.table(data_set$FA_cent$angle_recentered,file=file.path(exp_dir,'FA_angle_recentered.csv'),
+        row.names=F,col.names=F,sep=',')
+    
 
     save(data_set,file=file.path(exp_dir,'..',output_file))
-    
-    if (! diagnostic.figure) {
-        return(data_set);
-    }
     
     ###########################################################################
     # Diagnostic Figure
     ###########################################################################
+    
+    if (! diagnostic.figure) {
+        return(data_set);
+    }
     pdf(file.path(exp_dir,'..','adhesion_orientation.pdf'))
     layout(rbind(c(1,2),c(3,4),c(5,5)))
     par(bty='n', mar=c(4,4.2,2,0),mgp=c(2,1,0))
@@ -102,11 +113,15 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
 read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
     data_set = list();
     data_set$lineage_data = read.table(file.path(time_series_dir,'../single_lin.csv'),sep=',',header=T);
+    data_set$FA_cent$per_image = read.table(file.path(time_series_dir,'../single_props/Adhesion_centroid.csv'),
+        sep=',',header=F);
+    
     data_set$mat$orientation = read.csv(file.path(time_series_dir,'Orientation.csv'),header=F);
     data_set$mat$area = read.csv(file.path(time_series_dir,'Area.csv'),header=F);
+    data_set$mat$angle_to_FA_cent = read.csv(file.path(time_series_dir,'Angle_to_FA_cent.csv'),header=F);
+    
     major_axis = read.csv(file.path(time_series_dir,'MajorAxisLength.csv'),header=F);
     minor_axis = read.csv(file.path(time_series_dir,'MinorAxisLength.csv'),header=F);
-    
     data_set$mat$major_axis = major_axis;
     data_set$mat$minor_axis = minor_axis;
     data_set$mat$ratio = major_axis/minor_axis;
@@ -536,6 +551,32 @@ split_angle_data <- function(rate_angle_data, angle=45) {
     split_data$out_longev = subset(rate_angle_data, abs(angle_dev) >= angle)
     
     return(split_data)
+}
+
+###########################################################
+# FA Centroid Functions
+###########################################################
+find_fa_cent_direction <- function(FA_cents) {
+    per_image_shifts <- c();
+    for (i in 2:dim(FA_cents)[1]) {
+        per_image_shifts = rbind(per_image_shifts,FA_cents[i-1,] - FA_cents[i,]); 
+    }
+    per_image_shifts[,1] = per_image_shifts[,1]*-1;
+
+    fa_cent_direction = atan2(mean(per_image_shifts[,2]), mean(per_image_shifts[,1]))*(180/pi);
+    return(fa_cent_direction);
+}
+
+recenter_fa_angles <- function(FA_angles,direction) {
+   FA_angles = FA_angles - direction;
+      
+   under_neg_180 = FA_angles < -180
+   FA_angles = FA_angles + under_neg_180*360
+    
+   over_180 = FA_angles > 180
+   FA_angles = FA_angles + over_180*360
+
+   return(FA_angles)
 }
 
 ###########################################################
