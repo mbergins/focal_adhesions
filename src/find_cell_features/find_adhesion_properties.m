@@ -33,7 +33,7 @@ i_p.addParamValue('cell_mask',0,@(x)exist(x,'file') == 2);
 i_p.parse(focal_file, adhesions_file, varargin{:});
 
 %read in the cell mask image if defined in parameter set
-if (isempty(strmatch('cell_mask',i_p.UsingDefaults)))
+if (not(any(strcmp('cell_mask',i_p.UsingDefaults))))
     cell_mask = imread(i_p.Results.cell_mask);
 end
 
@@ -127,6 +127,9 @@ y_dist_to_cent = ad_centroid(2) - centroid_y;
 
 angle_to_ad_cent = atan2(y_dist_to_cent,x_dist_to_cent)*(180/pi);
 
+convex_hull = bwconvhull(labeled_adhesions > 0);
+convex_dists = bwdist(~convex_hull);
+
 for i=1:max(labeled_adhesions(:))
     adhesion_props(i).Average_adhesion_signal = mean(orig_I(labeled_adhesions == i));
     adhesion_props(i).Variance_adhesion_signal = var(orig_I(labeled_adhesions == i));
@@ -135,6 +138,9 @@ for i=1:max(labeled_adhesions(:))
     
     adhesion_props(i).Dist_to_FA_cent = dist_to_centroid(i);
     adhesion_props(i).Angle_to_FA_cent = angle_to_ad_cent(i);
+    
+    centroid_rounded = round(adhesion_props(i).Centroid);
+    adhesion_props(i).CHull_dist = convex_dists(centroid_rounded(2),centroid_rounded(1));
     
     if (mod(i,10) == 0 && i_p.Results.debug)
         temp = zeros(size(labeled_adhesions));
@@ -149,6 +155,7 @@ end
 
 adhesion_mask = im2bw(labeled_adhesions,0);
 adhesion_props(1).Adhesion_mean_intensity = sum(sum(orig_I(adhesion_mask)))/sum(sum(adhesion_mask));
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Properites Extracted If Cell Mask Available
@@ -181,7 +188,7 @@ if (exist('cell_mask','var'))
     black_border_mask(1,:) = 0; black_border_mask(end,:) = 0;
     black_border_mask(:,1) = 0; black_border_mask(:,end) = 0;
     
-    [bb_dists, bb_indexes] = bwdist(~black_border_mask);
+    [bb_dists, ~] = bwdist(~black_border_mask);
     
     dists(bb_dists < dists) = NaN;
     for i=1:max(labeled_adhesions(:))
