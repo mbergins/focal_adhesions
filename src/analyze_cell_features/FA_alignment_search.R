@@ -58,17 +58,6 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     data_set$single_ad_deviances = gather_all_single_adhesion_deviances(data_set);
     print('Done analyzing single adhesions')
     
-    ###########################################################################
-    # FA Centroid Calculations
-    ###########################################################################
-    data_set$FA_cent$direction = find_fa_cent_direction(data_set$FA_cent$per_image);
-    data_set$FA_cent$angle_recentered = recenter_fa_angles(data_set$mat$angle_to_FA_cent,
-        data_set$FA_cent$direction);
-    
-    write.table(data_set$FA_cent$angle_recentered,file=file.path(exp_dir,'FA_angle_recentered.csv'),
-        row.names=F,col.names=F,sep=',')
-    
-
     save(data_set,file=file.path(exp_dir,'..',output_file))
     
     ###########################################################################
@@ -551,32 +540,6 @@ split_angle_data <- function(rate_angle_data, angle=45) {
     split_data$out_longev = subset(rate_angle_data, abs(angle_dev) >= angle)
     
     return(split_data)
-}
-
-###########################################################
-# FA Centroid Functions
-###########################################################
-find_fa_cent_direction <- function(FA_cents) {
-    per_image_shifts <- c();
-    for (i in 2:dim(FA_cents)[1]) {
-        per_image_shifts = rbind(per_image_shifts,FA_cents[i-1,] - FA_cents[i,]); 
-    }
-    per_image_shifts[,1] = per_image_shifts[,1]*-1;
-
-    fa_cent_direction = atan2(mean(per_image_shifts[,2]), mean(per_image_shifts[,1]))*(180/pi);
-    return(fa_cent_direction);
-}
-
-recenter_fa_angles <- function(FA_angles,direction) {
-   FA_angles = FA_angles - direction;
-      
-   under_neg_180 = FA_angles < -180
-   FA_angles = FA_angles + under_neg_180*360
-    
-   over_180 = FA_angles > 180
-   FA_angles = FA_angles - over_180*360
-
-   return(FA_angles)
 }
 
 ###########################################################
