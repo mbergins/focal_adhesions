@@ -97,13 +97,17 @@ sub convert_data_to_units {
 	  Shrunk_corrected_signal Cell_mean_intensity Outside_mean_intensity
 	  Cell_not_ad_mean_intensity Adhesion_mean_intensity CB_corrected_signal 
 	  Photo_cor_ad_signal Angle_to_FA_cent Adhesion_centroid);
+	
+	my @lin_conversion = qw(Centroid_dist_from_edge Centroid_dist_from_center
+		MajorAxisLength MinorAxisLength Dist_to_FA_cent CHull_dist);
+	
+	my @sq_conversion = qw(Area Cell_size);
 
     for my $time (sort keys %data_sets) {
         for my $data_type (keys %{ $data_sets{$time} }) {
-            if (grep $data_type eq $_, qw(Centroid_dist_from_edge Centroid_dist_from_center MajorAxisLength 
-                                          MinorAxisLength Dist_to_FA_cent)) {
+            if (grep $data_type eq $_, @lin_conversion) {
                 @{ $data_sets{$time}{$data_type} } = map $lin_conv_factor * $_, @{ $data_sets{$time}{$data_type} };
-            } elsif (grep $data_type eq $_, qw(Area Cell_size)) {
+            } elsif (grep $data_type eq $_, @sq_conversion) {
                 @{ $data_sets{$time}{$data_type} } = map $sq_conv_factor * $_, @{ $data_sets{$time}{$data_type} };
             } elsif ($data_type eq "Edge_speed" || $data_type eq "Edge_projection") {
                 foreach (0 .. $#{ $data_sets{$time}{$data_type} }) {
@@ -275,7 +279,7 @@ sub gather_and_output_lineage_properties {
     
 	#Time Series Props
 	my @ts_props = qw(Angle_to_center Orientation MajorAxisLength
-		MinorAxisLength Dist_to_FA_cent Angle_to_FA_cent);
+		MinorAxisLength Dist_to_FA_cent Angle_to_FA_cent CHull_dist);
     foreach my $data_type (@ts_props) {
         next if (not(grep $data_type eq $_, @available_data_types));
 
@@ -316,6 +320,9 @@ sub gather_and_output_lineage_properties {
 	
 	$props{Dist_to_FA_cent} = &gather_prop_seq("Dist_to_FA_cent");
 	$props{Mean_FA_cent_dist} = &gather_average_value($props{Dist_to_FA_cent});
+	
+	$props{Dist_to_CHull} = &gather_prop_seq("CHull_dist");
+	$props{Mean_FA_CHull_dist} = &gather_average_value($props{Dist_to_CHull});
 
     ($props{speeds}{All}, $props{velocity}) = &gather_adhesion_speeds;
     &output_prop_time_series($props{speeds}{All}, "All_speeds");
@@ -844,7 +851,7 @@ sub gather_lineage_summary_data {
 	ending_center_dist merge_count split_count death_status split_birth_status
 	average_speeds max_speeds ad_sig birth_i_num start_x start_y death_i_num
 	end_x end_y mean_axial_ratio mean_major_axis mean_minor_axis
-	drug_addition_time Mean_FA_cent_dist); 
+	drug_addition_time Mean_FA_cent_dist Mean_FA_CHull_dist); 
 	
     my @lin_summary_data;
     for (@possible_props) {
