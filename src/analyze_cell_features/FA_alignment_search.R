@@ -574,7 +574,7 @@ recenter_fa_angles <- function(FA_angles,direction) {
    FA_angles = FA_angles + under_neg_180*360
     
    over_180 = FA_angles > 180
-   FA_angles = FA_angles + over_180*360
+   FA_angles = FA_angles - over_180*360
 
    return(FA_angles)
 }
