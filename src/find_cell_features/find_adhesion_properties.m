@@ -31,6 +31,11 @@ i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
 i_p.parse(focal_file, adhesions_file, varargin{:});
 
+%Add the folder with all the scripts used in this master program
+addpath(genpath('matlab_scripts'));
+
+filenames = add_filenames_to_struct(struct());
+
 %read in the cell mask image if present
 if (exist(fullfile(fileparts(focal_file),filenames.cell_mask),'file'))
     cell_mask = imread(fullfile(fileparts(focal_file),filenames.cell_mask));
