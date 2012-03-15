@@ -46,8 +46,8 @@ addpath('../visualize_cell_features');
 filenames = add_filenames_to_struct(struct());
 
 %read in the cell mask image if defined in parameter set
-if (exist(fullfile(I_file,filenames.cell_mask),'file'))
-    cell_mask = imread(i_p.Results.cell_mask);
+if (exist(fullfile(fileparts(I_file),filenames.cell_mask),'file'))
+    cell_mask = imread(fullfile(fileparts(I_file),filenames.cell_mask));
 end
 
 filter_vals = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
