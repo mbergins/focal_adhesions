@@ -28,13 +28,12 @@ i_p.addRequired('adhesions_file',@(x)exist(x,'file') == 2);
 
 i_p.addParamValue('output_dir', fileparts(focal_file), @(x)exist(x,'dir')==7);
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
-i_p.addParamValue('cell_mask',0,@(x)exist(x,'file') == 2);
 
 i_p.parse(focal_file, adhesions_file, varargin{:});
 
-%read in the cell mask image if defined in parameter set
-if (not(any(strcmp('cell_mask',i_p.UsingDefaults))))
-    cell_mask = imread(i_p.Results.cell_mask);
+%read in the cell mask image if present
+if (exist(fullfile(fileparts(focal_file),filenames.cell_mask),'file'))
+    cell_mask = imread(fullfile(fileparts(focal_file),filenames.cell_mask));
 end
 
 %read in and normalize the input focal adhesion image
