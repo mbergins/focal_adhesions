@@ -78,8 +78,7 @@ sub create_all_matlab_commands {
 
     my @image_files   = <$cfg{individual_results_folder}/*/$cfg{raw_mask_file}>;
     foreach my $file_name (@image_files) {
-        my $out_file = catfile(dirname($file_name), $cfg{cell_mask_file});
-        $matlab_code[0] .= "find_cell_mask('$file_name','$out_file')\n";
+        $matlab_code[0] .= "find_cell_mask('$file_name')\n";
     }
 
     return @matlab_code;
