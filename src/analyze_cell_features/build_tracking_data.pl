@@ -55,7 +55,7 @@ if ($opt{lsf}) {
     }
     
     $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'tracking_data');
-    $opt{queue} = "week";
+    $opt{queue} = "day";
 	#mem specified in kb
     $opt{mem} = (1024**2)*4;
     if (defined $cfg{job_group}) {
