@@ -1,4 +1,4 @@
-function ad_zamir = find_ad_zamir(high_passed_image,binary_image,min_pixel_size,varargin)
+function ad_zamir = find_ad_zamir(high_passed_image,binary_image,min_ad_size,varargin)
 % FIND_AD_ZAMIR    Assigns adhesion pixels to specific adhesions using the
 %                  same algorithm as described in Zamir, 1999
 %
@@ -11,10 +11,10 @@ i_p.FunctionName = 'FIND_AD_ZAMIR';
 
 i_p.addRequired('high_passed_image',@isnumeric);
 i_p.addRequired('binary_image',@islogical);
-i_p.addRequired('min_pixel_size',@(x)x >= 1);
+i_p.addRequired('min_ad_size',@(x)x >= 1);
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
-i_p.parse(high_passed_image,binary_image,min_pixel_size,varargin{:});
+i_p.parse(high_passed_image,binary_image,min_ad_size,varargin{:});
 
 if (i_p.Results.debug == 1), profile on; end
 
@@ -40,7 +40,7 @@ for i = 1:length(sorted_pix_vals)
         end
     
         assert(ad_zamir(lin_ind(j)) == 0, 'Error: Adhesion already assigned in this position %d',lin_ind(j))
-        ad_zamir = add_single_pixel(ad_zamir,lin_ind(j),i_p.Results.min_pixel_size);
+        ad_zamir = add_single_pixel(ad_zamir,lin_ind(j),i_p.Results.min_ad_size);
         count = count + 1;
     end
 

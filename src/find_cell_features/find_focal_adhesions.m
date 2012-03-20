@@ -110,10 +110,10 @@ end
 if (i_p.Results.no_ad_splitting || any(strcmp('min_independent_size',i_p.UsingDefaults)))
     %if splitting is off, there is no need to use the fancy watershed based
     %segmentation methods, just identify the connected areas
-    ad_zamir = bwlabel(threshed_image,4);
+    ad_segment = bwlabel(threshed_image,4);
 else
-    min_pixel_size = i_p.Results.min_independent_size;
-    ad_zamir = find_ad_zamir(high_passed_image,threshed_image,min_pixel_size,'debug',i_p.Results.debug);
+    ad_segment = find_ad_zamir(high_passed_image,threshed_image,i_p.Results.min_independent_size, ... 
+        'debug',i_p.Results.debug);
 end
 
 if(i_p.Results.status_messages), disp('Done finding adhesion regions'); end
@@ -122,12 +122,12 @@ if(i_p.Results.status_messages), disp('Done finding adhesion regions'); end
 % Remove adhesions outside mask
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if (exist('cell_mask','var'))
-    for i = 1:max(ad_zamir(:))
-        assert(any(any(ad_zamir == i)), 'Error: can''t find ad number %d', i);
-        this_ad = zeros(size(ad_zamir));
-        this_ad(ad_zamir == i) = 1;
+    for i = 1:max(ad_segment(:))
+        assert(any(any(ad_segment == i)), 'Error: can''t find ad number %d', i);
+        this_ad = zeros(size(ad_segment));
+        this_ad(ad_segment == i) = 1;
         if (sum(sum(this_ad & cell_mask)) == 0)
-            ad_zamir(ad_zamir == i) = 0;
+            ad_segment(ad_segment == i) = 0;
         end
     end
     if(i_p.Results.status_messages), disp('Done removing adhesions outside the cell edge'); end
@@ -136,27 +136,27 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Check for too many adhesions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-ad_nums = unique(ad_zamir)';
+ad_nums = unique(ad_segment)';
 assert(ad_nums(1) == 0, 'Background pixels not found after building adhesion label matrix')
 if ((length(ad_nums) - 1) > i_p.Results.max_adhesion_count)
     system(['touch ', fullfile(output_dir, 'Found_too_many_adhesions')]);
-    error(['Found more (',num2str(max(ad_zamir(:))),') adhesions than', ...
+    error(['Found more (',num2str(max(ad_segment(:))),') adhesions than', ...
         ' max adhesion count (',num2str(i_p.Results.max_adhesion_count),').']);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Find and fill holes in single adhesions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-props = regionprops(ad_zamir,'Area');
+props = regionprops(ad_segment,'Area');
 large_ad_nums = find([props.Area] >= 4);
 for this_num = large_ad_nums
     %first make a binary image of the current adhesion and then run imfill
     %to fill any holes present
-    this_ad = zeros(size(ad_zamir));
-    this_ad(ad_zamir == this_num) = 1;
+    this_ad = zeros(size(ad_segment));
+    this_ad(ad_segment == this_num) = 1;
     filled_ad = imfill(this_ad,'holes');
     
-    ad_zamir(logical(filled_ad)) = this_num;
+    ad_segment(logical(filled_ad)) = this_num;
     if (i_p.Results.debug && mod(this_num,50)==0)
         disp(['Done filling holes in ',num2str(this_num), '/', num2str(length(ad_nums))]);
     end
@@ -166,22 +166,22 @@ if(i_p.Results.status_messages), disp('Done filling adhesion holes'); end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Renumber adhesions to be sequential
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-ad_nums = unique(ad_zamir);
+ad_nums = unique(ad_segment);
 assert(ad_nums(1) == 0, 'Background pixels not found after building adhesion label matrix')
 for i = 2:length(ad_nums)
-    ad_zamir(ad_zamir == ad_nums(i)) = i - 1;
+    ad_segment(ad_segment == ad_nums(i)) = i - 1;
 end
 if(i_p.Results.status_messages), disp('Done renumbering adhesion regions'); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Build adhesion perimeters image
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-ad_zamir_perim = zeros(size(ad_zamir));
-for i = 1:max(ad_zamir(:))
-    assert(any(any(ad_zamir == i)), 'Error: can''t find ad number %d', i);
-    this_ad = zeros(size(ad_zamir));
-    this_ad(ad_zamir == i) = 1;
-    ad_zamir_perim(bwperim(this_ad)) = i;
+ad_segment_perim = zeros(size(ad_segment));
+for i = 1:max(ad_segment(:))
+    assert(any(any(ad_segment == i)), 'Error: can''t find ad number %d', i);
+    this_ad = zeros(size(ad_segment));
+    this_ad(ad_segment == i) = 1;
+    ad_segment_perim(bwperim(this_ad)) = i;
 end
 if(i_p.Results.status_messages), disp('Done building adhesion perimeters'); end
 
@@ -189,21 +189,21 @@ if(i_p.Results.status_messages), disp('Done building adhesion perimeters'); end
 % Write the output files
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-imwrite(double(ad_zamir)/2^16,fullfile(output_dir, filenames.adhesions),'bitdepth',16);
-imwrite(double(ad_zamir_perim)/2^16,fullfile(output_dir, filenames.adhesions_perim),'bitdepth',16);
-imwrite(im2bw(ad_zamir,0),fullfile(output_dir, filenames.adhesions_binary));
+imwrite(double(ad_segment)/2^16,fullfile(output_dir, filenames.adhesions),'bitdepth',16);
+imwrite(double(ad_segment_perim)/2^16,fullfile(output_dir, filenames.adhesions_perim),'bitdepth',16);
+imwrite(im2bw(ad_segment,0),fullfile(output_dir, filenames.adhesions_binary));
 
-highlighted_image = create_highlighted_image(focal_normed, im2bw(ad_zamir_perim,0), 'color_map',[1,1,0]);
+highlighted_image = create_highlighted_image(focal_normed, im2bw(ad_segment_perim,0), 'color_map',[1,1,0]);
 if (exist('cell_mask','var'))
     highlighted_image = create_highlighted_image(highlighted_image, bwperim(cell_mask),'color_map',[1,0,0]);
 end
 imwrite(highlighted_image,fullfile(output_dir, 'highlights.png'));
 
 if (i_p.Results.paper_figures)
-    col_range = (find(sum(ad_zamir),1,'first')-5):(find(sum(ad_zamir),1,'last')+5);
-    col_range = col_range(col_range > 0 & col_range < size(ad_zamir,2));
-    row_range = (find(sum(ad_zamir,2),1,'first')-5):(find(sum(ad_zamir,2),1,'last')+5);
-    row_range = row_range(row_range > 0 & row_range < size(ad_zamir,1));
+    col_range = (find(sum(ad_segment),1,'first')-5):(find(sum(ad_segment),1,'last')+5);
+    col_range = col_range(col_range > 0 & col_range < size(ad_segment,2));
+    row_range = (find(sum(ad_segment,2),1,'first')-5):(find(sum(ad_segment,2),1,'last')+5);
+    row_range = row_range(row_range > 0 & row_range < size(ad_segment,1));
     
     normed_hp_image = (high_passed_image - min(high_passed_image(:)))/range(high_passed_image(:));
     normed_hp_image = normed_hp_image(row_range,col_range);
@@ -214,7 +214,7 @@ if (i_p.Results.paper_figures)
 end
 
 if (nargout > 0)
-    varargout{1} = struct('adhesions',im2bw(ad_zamir,0),'ad_zamir',ad_zamir);
+    varargout{1} = struct('adhesions',im2bw(ad_segment,0),'ad_segment',ad_segment);
 end
 toc;
 
