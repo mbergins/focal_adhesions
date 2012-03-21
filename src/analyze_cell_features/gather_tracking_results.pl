@@ -202,13 +202,15 @@ sub gather_and_output_overall_cell_properties {
         &output_mat_csv(\@prop_sequence, $output_file);
 	}
     
-    my @ad_centroid = &gather_double_number_time_series("Adhesion_centroid");
-    my $output_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 
-		"single_props", "Adhesion_centroid.csv");
-    &output_mat_csv(\@ad_centroid, $output_file);
-    
+	if (grep "Adhesion_centroid" eq $_, @available_data_types) {
+		my @ad_centroid = &gather_double_number_time_series("Adhesion_centroid");
+		my $output_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 
+			"single_props", "Adhesion_centroid.csv");
+		&output_mat_csv(\@ad_centroid, $output_file);
+	}
+
 	my @total_ad_size = &gather_total_adhesion_size_time_series;
-    $output_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 
+    my $output_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 
 		"single_props", "Ad_size.csv");
     &output_mat_csv(\@total_ad_size, $output_file);
 }
