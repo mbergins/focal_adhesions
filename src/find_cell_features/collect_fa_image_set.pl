@@ -71,28 +71,8 @@ sub create_all_matlab_commands {
     my @matlab_code;
 
     my @image_files = <$cfg{individual_results_folder}/*/$cfg{adhesion_image_file}>;
+	my $extra_opt = &build_extra_opts;
     foreach my $file_name (@image_files) {
-        my $extra_opt = "";
-        if (defined $cfg{stdev_thresh}) {
-			my @split_stdev_vals = split(/\s+/,$cfg{stdev_thresh});
-            $extra_opt .= ",'stdev_thresh',[" . join(",",@split_stdev_vals) . "]";
-        }
-        if (defined $cfg{no_ad_splitting}) {
-            $extra_opt .= ",'no_ad_splitting',$cfg{no_ad_splitting}";
-        }
-        if (defined $cfg{min_adhesion_size}) {
-            $extra_opt .= ",'min_adhesion_size',$cfg{min_adhesion_size}";
-        }
-        if (defined $cfg{min_independent_size}) {
-            $extra_opt .= ",'min_independent_size',$cfg{min_independent_size}";
-        }
-        if (defined $cfg{max_adhesion_count}) {
-            $extra_opt .= ",'max_adhesion_count',$cfg{max_adhesion_count}";
-        }
-        if (defined $cfg{proximity_filter}) {
-            $extra_opt .= ",'proximity_filter',$cfg{proximity_filter}";
-        }
-
 		$matlab_code[0] .= "find_focal_adhesions('$file_name'$extra_opt)\n";
     }
 
@@ -101,7 +81,16 @@ sub create_all_matlab_commands {
 
 sub create_single_matlab_command {
     my @matlab_code;
+	
+	my $extra_opt = &build_extra_opts;
 
+	$matlab_code[0] .= "find_focal_adhesions_full_exp('$cfg{exp_results_folder}'$extra_opt)\n";
+
+    return @matlab_code;
+}
+
+sub build_extra_opts {
+	
 	my $extra_opt = "";
 	if (defined $cfg{stdev_thresh}) {
 		my @split_stdev_vals = split(/\s+/,$cfg{stdev_thresh});
@@ -122,10 +111,11 @@ sub create_single_matlab_command {
 	if (defined $cfg{proximity_filter}) {
 		$extra_opt .= ",'proximity_filter',$cfg{proximity_filter}";
 	}
-
-	$matlab_code[0] .= "find_focal_adhesions_full_exp('$cfg{exp_results_folder}'$extra_opt)\n";
-
-    return @matlab_code;
+	if (defined $cfg{min_seed_size}) {
+		$extra_opt .= ",'min_seed_size',$cfg{min_seed_size}";
+	}
+	
+	return $extra_opt;
 }
 
 ################################################################################
