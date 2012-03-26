@@ -13,6 +13,7 @@ i_p.addRequired('high_passed_image',@isnumeric);
 i_p.addRequired('binary_image',@islogical);
 i_p.addRequired('min_ad_size',@(x)x >= 1);
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
+i_p.addParamValue('sequential',0,@(x)x == 1 || x == 0);
 
 i_p.parse(high_passed_image,binary_image,min_ad_size,varargin{:});
 
@@ -41,11 +42,18 @@ for i = 1:length(sorted_pix_vals)
     
         assert(ad_zamir(lin_ind(j)) == 0, 'Error: Adhesion already assigned in this position %d',lin_ind(j))
         ad_zamir = add_single_pixel(ad_zamir,lin_ind(j),i_p.Results.min_ad_size);
+        
+        if (i_p.Results.sequential)
+            if (not(exist('sequential','dir'))); mkdir('sequential'); end
+            imwrite(label2rgb(ad_zamir,'jet',[0.25,0.25,0.25]), ... 
+                fullfile('sequential',[sprintf('%04d',count),'.png']));
+        end
+        
         count = count + 1;
-    end
-
-    if (mod(count,100) == 0)
-        disp(['Watershed Assigned: ',num2str(count),'/',num2str(total_pixels)])
+        
+        if (mod(count,100) == 0)
+            disp(['Watershed Assigned: ',num2str(count),'/',num2str(total_pixels)])
+        end
     end
 end
 
