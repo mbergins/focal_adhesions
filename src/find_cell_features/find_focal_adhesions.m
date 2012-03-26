@@ -55,8 +55,7 @@ if (exist(fullfile(fileparts(I_file),filenames.cell_mask),'file'))
     cell_mask = imread(fullfile(fileparts(I_file),filenames.cell_mask));
 end
 
-% filter_vals = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
-% filter_thresh = filter_vals(1) + filter_vals(2)*i_p.Results.stdev_thresh;
+overall_filter_vals = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
 
 %read in and normalize the input focal adhesion image
 focal_image  = double(imread(I_file));
@@ -107,7 +106,8 @@ high_passed_image = focal_image - blurred_image;
 %     imwrite(highlighted_image,fullfile(output_dir,'thresh_vals', ['color_highlights_',seg_val,'.png']));
 % end
 
-filter_thresh = [mean(high_passed_image(:)) + std(high_passed_image(:))*i_p.Results.stdev_thresh];
+filter_thresh = overall_filter_vals(1) + overall_filter_vals(2)*i_p.Results.stdev_thresh;
+% filter_thresh = [mean(high_passed_image(:)) + std(high_passed_image(:))*i_p.Results.stdev_thresh];
 
 threshed_image = find_threshed_image(high_passed_image,filter_thresh, ...
     i_p.Results.proximity_filter,i_p.Results.min_seed_size);

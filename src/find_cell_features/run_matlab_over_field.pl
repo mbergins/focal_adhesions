@@ -86,6 +86,8 @@ sub build_extra_command_line_opts {
 	if ($opt{script} eq "make_filtered_vis") {
 		if ($opt{extra} eq "lifetime") {
 			$extra = ",'type','lifetime','min_value',10";
+		} elsif ($opt{extra} eq "ratio") {
+			$extra = ",'type','ratio'";
 		} else {
 			$extra = ",'type','FA_dist'";
 		}
