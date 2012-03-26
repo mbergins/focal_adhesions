@@ -90,7 +90,6 @@ sub create_single_matlab_command {
 }
 
 sub build_extra_opts {
-	
 	my $extra_opt = "";
 	if (defined $cfg{stdev_thresh}) {
 		my @split_stdev_vals = split(/\s+/,$cfg{stdev_thresh});
@@ -113,6 +112,9 @@ sub build_extra_opts {
 	}
 	if (defined $cfg{min_seed_size}) {
 		$extra_opt .= ",'min_seed_size',$cfg{min_seed_size}";
+	}
+	if (defined $cfg{per_image_thresh}) {
+		$extra_opt .= ",'per_image_thresh',$cfg{per_image_thresh}";
 	}
 	
 	return $extra_opt;
