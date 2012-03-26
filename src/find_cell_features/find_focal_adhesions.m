@@ -75,39 +75,7 @@ I_filt = fspecial('disk',i_p.Results.filter_size);
 blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
 high_passed_image = focal_image - blurred_image;
 
-% for i = 1:0.5:15
-%     filter_thresh = [mean(high_passed_image(:)) + std(high_passed_image(:))*i];
-%     
-%     threshed_image = find_threshed_image(high_passed_image,filter_thresh,i_p.Results.proximity_filter);
-%     
-%     %identify and remove adhesions on the immediate edge of the image
-%     threshed_image = remove_edge_adhesions(threshed_image);
-%     
-%     %filter out small adhesions if requested
-%     if (i_p.Results.min_adhesion_size > 1)
-%         labeled_thresh = bwlabel(threshed_image,4);
-%         
-%         props = regionprops(labeled_thresh,'Area'); %#ok<MRPBW>
-%         labeled_thresh = ismember(labeled_thresh, find([props.Area] >= i_p.Results.min_adhesion_size));
-%         
-%         threshed_image = labeled_thresh > 0;
-%     end
-%     ad_segment = bwlabel(threshed_image,4);
-%     ad_segment_perim = bwperim(ad_segment > 0).*ad_segment;
-%     
-%     c_map = jet(max(ad_segment_perim(:)));
-%     c_map = c_map(randsample(size(c_map,1),size(c_map,1)),:);
-%     
-%     highlighted_image = create_highlighted_image(focal_normed, ad_segment_perim,'color_map',c_map);
-%     seg_val = sprintf('%0.1f',i);
-%     if (not(exist(fullfile(output_dir,'thresh_vals'),'dir')))
-%         mkdir(fullfile(output_dir,'thresh_vals'));
-%     end
-%     imwrite(highlighted_image,fullfile(output_dir,'thresh_vals', ['color_highlights_',seg_val,'.png']));
-% end
-
 filter_thresh = overall_filter_vals(1) + overall_filter_vals(2)*i_p.Results.stdev_thresh;
-% filter_thresh = [mean(high_passed_image(:)) + std(high_passed_image(:))*i_p.Results.stdev_thresh];
 
 threshed_image = find_threshed_image(high_passed_image,filter_thresh, ...
     i_p.Results.proximity_filter,i_p.Results.min_seed_size);
