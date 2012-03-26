@@ -234,8 +234,10 @@ imwrite(double(ad_segment)/2^16,fullfile(output_dir, filenames.adhesions),'bitde
 imwrite(double(ad_segment_perim)/2^16,fullfile(output_dir, filenames.adhesions_perim),'bitdepth',16);
 imwrite(im2bw(ad_segment,0),fullfile(output_dir, filenames.adhesions_binary));
 
-highlighted_image = create_highlighted_image(focal_normed, bwperim(high_passed_image > filter_thresh(2)),'color_map',[0,1,1]);
-imwrite(highlighted_image,fullfile(output_dir, 'high_seed.png'));
+if (length(filter_thresh) > 1)
+    highlighted_image = create_highlighted_image(focal_normed, bwperim(high_passed_image > filter_thresh(2)),'color_map',[0,1,1]);
+    imwrite(highlighted_image,fullfile(output_dir, 'high_seed.png'));
+end
 
 highlighted_image = create_highlighted_image(focal_normed, im2bw(ad_segment_perim,0), 'color_map',[1,1,0]);
 if (exist('cell_mask','var'))
