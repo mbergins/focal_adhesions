@@ -90,8 +90,8 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
     models$disassembly = as.data.frame(models$disassembly);
     models$exp_data = data;
     
-    print(paste('Built ', length(which(!is.na(models$assembly$length))), 
-        ' assembly models, built ', length(which(!is.na(models$disassembly$length))), 
+    print(paste('Built ', length(which(!is.na(models$assembly$slope))), 
+        ' assembly models, built ', length(which(!is.na(models$disassembly$slope))), 
         ' disassembly models',sep=''))
 
     return(models)
@@ -106,7 +106,7 @@ draw_diagnostic_traces <- function(models,file.name) {
 
     pdf(file.name)
     for (i in ad_nums) {
-        phase_lengths = c(models$assembly$length[i],models$disassembly$length[i])
+        phase_lengths = c(models$assembly$image_count[i],models$disassembly$image_count[i])
         R_sq = c(models$assembly$adj.r.squared[i],models$disassembly$adj.r.squared[i])
         slopes = c(models$assembly$slope[i],models$disassembly$slope[i])
         plot_ad_intensity(models,i,phase_lengths,R_sq,y_limits,slopes);
@@ -131,7 +131,8 @@ fit_all_possible_log_models <- function(time.series,min.phase.length=10) {
         data_summary$adj.r.squared = c(data_summary$adj.r.squared, model_summary$adj.r.squared);
         data_summary$p.value = c(data_summary$p.value, model_summary$coefficients[2,4]);
         data_summary$slope = c(data_summary$slope, coef(this_model)[2]);
-        data_summary$length = c(data_summary$length, time.series$time[i]);
+        data_summary$time_length = c(data_summary$time_length, time.series$time[i]);
+        data_summary$image_count = c(data_summary$image_count, i);
     }
 
     data_summary = as.data.frame(data_summary);
@@ -151,17 +152,17 @@ find_optimum_model_indexes <- function(assembly=NULL,disassembly=NULL) {
         best_index = min(which(disassembly$adj.r.squared == max(disassembly$adj.r.squared)));
         best_fit_indexes[2] = best_index
     } else {
-        r_sums = matrix(NA,length(assembly$length), length(disassembly$length));
+        r_sums = matrix(NA,length(assembly$slope), length(disassembly$slope));
         
         best_indexes = c();
         
-        max_total_length = max(assembly$length);
+        max_total_length = max(assembly$time_length);
 
         for (as_index in 1:dim(r_sums)[1]) {
             for (dis_index in 1:dim(r_sums)[2]) {
                 #skip calculating R sum if the total length of the combination
                 #is greater than the length of the time series set
-                total_length = assembly$length[as_index] + disassembly$length[dis_index];
+                total_length = assembly$time_length[as_index] + disassembly$time_length[dis_index];
                 if (total_length > max_total_length) {
                     next;
                 }
@@ -173,9 +174,9 @@ find_optimum_model_indexes <- function(assembly=NULL,disassembly=NULL) {
         best_fit_indexes = which(max(r_sums,na.rm=T) == r_sums, arr.ind=T);
         
         #dealing with the unlikely case that there is more than one hit on the
-        #highest summed R-squared value, fortunately, "which" returns the set of
-        #indexes closest to the upper right corner first, which is the shortest
-        #model set and also the one we want
+        #highest summed R-squared value, fortunately, "which" returns the set
+        #of indexes closest to the upper right corner first, that happens to be
+        #the shortest model set and also the one we want
         if (dim(best_fit_indexes)[1] > 1) {
             best_fit_indexes = best_fit_indexes[1,];
         }
@@ -278,15 +279,15 @@ write_assembly_disassembly_periods <- function(result, dir) {
 	
     rate_filters = produce_rate_filters(result);
 
-	ad_nums = which(rate_filters$assembly)
+	ad_nums = which(! is.na(result$assembly$image_count))
 	if (! is.null(ad_nums)) {
-		rows_and_length = cbind(ad_nums, result$assembly$length[ad_nums]);
+		rows_and_length = cbind(ad_nums, result$assembly$image_count[ad_nums]);
 		write.table(rows_and_length,file=file.path(dir,'assembly_rows_lengths.csv'), sep=',', row.names=FALSE, col.names=FALSE)
 	}
 	
-	ad_nums = which(! is.na(result$disassembly$length))
+	ad_nums = which(! is.na(result$disassembly$image_count))
 	if (! is.null(ad_nums)) {
-		rows_and_length = cbind(ad_nums, result$disassembly$length[ad_nums]);
+		rows_and_length = cbind(ad_nums, result$disassembly$image_count[ad_nums]);
 		write.table(rows_and_length,file=file.path(dir,'disassembly_rows_lengths.csv'), sep=',', row.names=FALSE, col.names=FALSE)
 	}
 }
@@ -333,9 +334,9 @@ if (length(args) != 0) {
         }
         
         if (file.exists(file.path(data_dir,'lin_time_series','FA_angle_recentered.csv'))) {
-            data_set = as.matrix(read.csv(file.path(data_dir,'lin_time_series','FA_angle_recentered.csv'),header=F));
-            data_set = abs(data_set);
-            exp_props$Mean_FA_recentered_angle = rowMeans(data_set,na.rm=T);
+            angle_recenter = as.matrix(read.csv(file.path(data_dir,'lin_time_series','FA_angle_recentered.csv'),header=F));
+            angle_recenter = abs(angle_recenter);
+            exp_props$Mean_FA_recentered_angle = rowMeans(angle_recenter,na.rm=T);
         } else {
             print(paste('Could not find FA_angle_recentered.csv'))
         }

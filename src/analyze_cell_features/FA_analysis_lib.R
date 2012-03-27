@@ -76,8 +76,9 @@ plot_ad_seq <- function (results,index,type='assembly',log.trans = TRUE, time.sp
 }
 
 plot_ad_intensity <- function (results,index,phase_lengths,R_sq,y_limits,slope,time.spacing=1, ...) {
-    int_min_max = c(min(results$exp_data,na.rm=T), max(results$exp_data,na.rm=T))
     
+    #pull out the intensity signal of interest and build the time vector for
+    #plotting
 	ad_seq = as.vector(results$exp_data[index,])
     time_points = which(!is.nan(ad_seq))*time.spacing - time.spacing
     ad_seq = na.omit(ad_seq)
@@ -85,6 +86,8 @@ plot_ad_intensity <- function (results,index,phase_lengths,R_sq,y_limits,slope,t
     plot(time_points, ad_seq, xlab='Time (minutes)', ylab='Average Intensity',type="o", 
         main=index,ylim=y_limits);
     
+    #add bars at the first point of the movie and the last, to indicate why a
+    #slope value wasn't calculated
     plot_limits = par("usr")
     segments(0,par("usr")[3],0,par("usr")[4])
     segments((length(results$exp_data[index,])-1)*time.spacing,par("usr")[3],
@@ -517,7 +520,6 @@ plot_with_shading <- function(x,y,upper_conf,lower_conf,col,...) {
 #######################################
 # Bootstraping
 #######################################
-
 determine_mean_conf_int <- function(data, bootstrap.rep = 10000) {
 	require(boot);
 	
@@ -842,7 +844,8 @@ gather_global_exp_summary <- function(data_set) {
     return(adhesion_count_data);
 }
 
-gather_general_dynamic_props <- function(results, min.longevity=NA, debug=FALSE) {
+gather_general_dynamic_props <- function(results, min.longevity=NA, max.longevity=NA, 
+    max.FA.angle=NA,min.FA.angle=NA, max.CHull.percentile = NA, debug=FALSE) {
 	points = list()
 	for (i in 1:length(results)) {
 		res = results[[i]]
@@ -855,6 +858,23 @@ gather_general_dynamic_props <- function(results, min.longevity=NA, debug=FALSE)
         
         if (! is.na(min.longevity)) {
             filt = filt & !is.na(res$exp_props$longevity) & res$exp_props$longevity >= min.longevity;
+        }
+        if (! is.na(max.longevity)) {
+            filt = filt & !is.na(res$exp_props$longevity) & res$exp_props$longevity <= max.longevity;
+        }
+
+        if (! is.na(min.FA.angle)) {
+            filt = filt & res$exp_props$Mean_FA_recentered_angle > min.FA.angle;
+        }
+        if (! is.na(max.FA.angle)) {
+            filt = filt & res$exp_props$Mean_FA_recentered_angle <= max.FA.angle;
+        }
+
+        if (! is.na(max.CHull.percentile)) {
+            CHull_dists = res$exp_props$Mean_FA_CHull_dist;
+            max_dist = quantile(CHull_dists,max.CHull.percentile)
+
+            filt = filt & CHull_dists <= max_dist;
         }
 
 		points$longevity = c(points$longevity, res$exp_props$longevity[filt])
@@ -928,6 +948,12 @@ count_deaths_per_point <- function(exp_data) {
         counts = c(counts, length(death_rows))
     }
     return(counts)
+}
+
+count_live_adhesions_per_point <- function(exp_data) {
+    live_adhesions = !is.na(exp_data)
+
+    return(colSums(live_adhesions))
 }
 
 matrix_from_list <- function(this_list,lineup='start') {
@@ -1058,12 +1084,14 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.chang
     } else {
         average_val = exp_data;
     }
+    
+    average_val = rollmean(average_val,20,na.pad=T);
 
     average_val_before = average_val[1:split.time]
     average_val_after = average_val[-1:-split.time]
 
-    average_val_before = rollmean(average_val_before,20,na.pad=T,align='right')
-    average_val_after = rollmean(average_val_after,20,na.pad=T,align='left')
+    # average_val_before = rollmean(average_val_before,20,na.pad=T,align='right')
+    # average_val_after = rollmean(average_val_after,20,na.pad=T,align='left')
     
     if (exp.norm) {
         mean_before = mean(average_val_before,na.rm=T)

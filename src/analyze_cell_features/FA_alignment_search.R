@@ -607,7 +607,7 @@ load_elongation_matrices <- function(alignment_models) {
 }
 
 find_FAO <- function(angles,areas=NA) {
-    if (!is.na(areas)) {
+    if (!is.na(areas[1])) {
         FAO = (weighted.mean(cos(2*angles),areas)^2+weighted.mean(sin(2*angles),areas)^2)^(1/2)
     } else {
         FAO = (mean(cos(2*angles))^2+mean(sin(2*angles))^2)^(1/2)
