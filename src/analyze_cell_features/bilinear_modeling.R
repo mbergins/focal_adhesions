@@ -277,15 +277,15 @@ write_assembly_disassembly_periods <- function(result, dir) {
 		dir.create(dir,recursive=TRUE)
 	}
 	
-    rate_filters = produce_rate_filters(result);
-
-	ad_nums = which(! is.na(result$assembly$image_count))
+    rate_filters = produce_rate_filters(result,NA);
+    
+	ad_nums = which(rate_filters$assembly)
 	if (! is.null(ad_nums)) {
 		rows_and_length = cbind(ad_nums, result$assembly$image_count[ad_nums]);
 		write.table(rows_and_length,file=file.path(dir,'assembly_rows_lengths.csv'), sep=',', row.names=FALSE, col.names=FALSE)
 	}
 	
-	ad_nums = which(! is.na(result$disassembly$image_count))
+	ad_nums = which(rate_filters$disassembly)
 	if (! is.null(ad_nums)) {
 		rows_and_length = cbind(ad_nums, result$disassembly$image_count[ad_nums]);
 		write.table(rows_and_length,file=file.path(dir,'disassembly_rows_lengths.csv'), sep=',', row.names=FALSE, col.names=FALSE)
@@ -361,7 +361,8 @@ if (length(args) != 0) {
         output_file = file.path(output_folder,diagnostic_diagrams_file);
         source('FA_analysis_lib.R')
         draw_diagnostic_traces(model,output_file);
-
+        
+        #Write out simple CSV file with assembly/disassembly data
         disassembly_models = model$disassembly;
         disassembly_models$ad_num = seq(1,dim(disassembly_models)[1]);
         disassembly_models$class = rep('Disassembly',dim(disassembly_models)[1]);
@@ -378,5 +379,7 @@ if (length(args) != 0) {
     
         write.csv(rbind(assembly_adhesions,disassembly_adhesions),
             file=file.path(data_dir,'ad_kinetics.csv'),row.names=F)
+        
+        write_assembly_disassembly_periods(model,data_dir);
     }
 }

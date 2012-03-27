@@ -695,16 +695,16 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         #######################################################################
         ad_data$joint$exp_num = c(ad_data$joint$exp_num, rep(i,length(which(joint_filt))));
         ad_data$joint$lin_num = c(ad_data$joint$lin_num, which(joint_filt));
-        ad_data$joint$assembly_length = c(ad_data$joint$assembly_length, res$assem$length[joint_filt]);
+        ad_data$joint$assembly_length = c(ad_data$joint$assembly_length, res$assem$image_count[joint_filt]);
         ad_data$joint$assembly_slope = c(ad_data$joint$assembly_slope, res$assem$slope[joint_filt]);
-        ad_data$joint$disassembly_length = c(ad_data$joint$disassembly_length, res$dis$length[joint_filt]);
+        ad_data$joint$disassembly_length = c(ad_data$joint$disassembly_length, res$dis$image_count[joint_filt]);
         ad_data$joint$disassembly_slope = c(ad_data$joint$disassembly_slope, res$dis$slope[joint_filt]);
         ad_data$joint$longevity = c(ad_data$joint$longevity, res$exp_props$longevity[joint_filt]);
 
         #the assembly/disassembly lengths are saved as number of images, not number of minutes, so to find the stability length we need the number of 
         i_num_joint_longev = res$exp_props$death_i_num[joint_filt] - res$exp_props$birth_i_num[joint_filt] + 1;
         ad_data$joint$stability_length = c(ad_data$joint$stability_length, 
-            i_num_joint_longev - res$assem$length[joint_filt] - res$dis$length[joint_filt]);
+            i_num_joint_longev - res$assem$image_count[joint_filt] - res$dis$image_count[joint_filt]);
     }
     
     ad_data$assembly$exp_num = as.factor(ad_data$assembly$exp_num);
