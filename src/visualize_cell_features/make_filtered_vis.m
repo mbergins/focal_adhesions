@@ -81,7 +81,7 @@ switch i_p.Results.type
         FA_dist_mean = nanmean(FA_dist,2);
         
         if(any(strcmp('min_value',i_p.UsingDefaults)))
-            p_tile = 0.60;
+            p_tile = 0.40;
         else
             p_tile = i_p.Results.min_value;
         end
@@ -95,12 +95,24 @@ switch i_p.Results.type
         FA_angle = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','FA_angle_recentered.csv'));
         FA_angle_mean = nanmean(abs(FA_angle),2);
         
-        max_val = 90;
+        max_val = 60;
         
         %remove adhesions above the maximum angle
         highlight_decision(FA_angle_mean > max_val,:) = 0;
         
         output_dir = fullfile(exp_dir,'visualizations',['FA_angle_',num2str(max_val)]);
+    case 'FA_angle_outside'
+        FA_angle = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','FA_angle_recentered.csv'));
+        FA_angle_mean = nanmean(abs(FA_angle),2);
+        
+        min_val = 60;
+        max_val = 120;
+        
+        %remove adhesions above the maximum angle
+        highlight_decision(FA_angle_mean <= min_val,:) = 0;
+        highlight_decision(FA_angle_mean > max_val,:) = 0;
+        
+        output_dir = fullfile(exp_dir,'visualizations',['FA_angle_outside_',num2str(60)]);
     otherwise
         disp(['Undefined visualization type requested: "',i_p.Results.type, '" exiting.']);
         return
