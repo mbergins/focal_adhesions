@@ -21,8 +21,8 @@ filenames.focal_image_threshold = '../../adhesion_props/focal_filter_results.csv
 filenames.focal_image_threshold_plot = '../../adhesion_props/focal_threshold.eps';
 filenames.per_image_threshold_plot = '../../adhesion_props/per_image_threshold.eps';
 
-filenames.assembly_rows = '../../adhesion_props/signif_assembly_rows_lengths.csv';
-filenames.disassembly_rows = '../../adhesion_props/signif_disassembly_rows_lengths.csv';
+filenames.assembly_rows = '../../adhesion_props/assembly_rows_lengths.csv';
+filenames.disassembly_rows = '../../adhesion_props/disassembly_rows_lengths.csv';
 
 filenames.centroid_x = '../../adhesion_props/lin_time_series/Centroid_x.csv';
 filenames.centroid_y = '../../adhesion_props/lin_time_series/Centroid_y.csv';
