@@ -45,6 +45,12 @@ end
 max_image_projection = double(max(all_images,[],3));
 image_set_min_max = csvread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image_min_max));
 max_image_projection = (max_image_projection - image_set_min_max(1))/range(image_set_min_max);
+orig_size = size(max_image_projection);
+
+%Resize the image, to ensure that the adhesion labels can be seen
+max_image_projection = imresize(max_image_projection, [1000, NaN]);
+new_size = size(max_image_projection);
+scale_factor = new_size(1)/orig_size(1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Gather the adhesion data
@@ -66,8 +72,8 @@ catch %#ok<CTCH>
 end
 
 ad_data_set = struct();
-ad_data_set.centroid_x = csvread(fullfile(base_dir,image_dirs(1).name,filenames.centroid_x));
-ad_data_set.centroid_y = csvread(fullfile(base_dir,image_dirs(1).name,filenames.centroid_y));
+ad_data_set.centroid_x = csvread(fullfile(base_dir,image_dirs(1).name,filenames.centroid_x))*scale_factor;
+ad_data_set.centroid_y = csvread(fullfile(base_dir,image_dirs(1).name,filenames.centroid_y))*scale_factor;
 
 both_rows = intersect(assembly_rows(:,1),disassembly_rows(:,1));
 only_assembly_rows = setdiff(assembly_rows(:,1),both_rows);
@@ -128,7 +134,7 @@ for i=1:length(row_nums)
     
     pos_str = [' +',num2str(y_pos),'+',num2str(x_pos)];
     label_str = [' "',num2str(ad_num),'" '];
-    command_str = ['convert ', image_file, ' -font VeraSe.ttf -fill ''rgba(255,255,255)'' -annotate', ...
+    command_str = ['convert ', image_file, ' -font VeraBd.ttf -fill ''rgba(0,0,0,0.75)'' -annotate', ...
         pos_str, label_str, ' ', image_file];
     
     system(command_str);

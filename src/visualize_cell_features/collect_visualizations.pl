@@ -196,7 +196,8 @@ sub build_single_ad_commands {
     my @commands;
 	
 	#command to produce small multiple figures for all adhesions
-	push @commands, "make_single_ad_frames('" . $single_ad_params{'config_file'} . "','min_longevity',10)";
+	my $longev_cutoff = $cfg{min_linear_model_length}*2;
+	push @commands, "make_single_ad_frames('" . $single_ad_params{'config_file'} . "','min_longevity',$longev_cutoff)";
     
 	my $assembly_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, 'signif_assembly_rows_lengths.csv');
     if (-e $assembly_file) {
