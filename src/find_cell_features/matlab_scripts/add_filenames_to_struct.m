@@ -12,6 +12,7 @@ filenames.adhesions = 'adhesions.png';
 filenames.adhesions_binary = 'adhesions_binary.png';
 filenames.adhesions_perim = 'adhesions_perim.png';
 
+filenames.raw_mask = 'raw_mask_file.png';
 filenames.cell_mask = 'cell_mask.png';
 
 filenames.photo_bleach_correction = 'photo_correct.txt';

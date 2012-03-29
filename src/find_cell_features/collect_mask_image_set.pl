@@ -58,7 +58,8 @@ if ($opt{debug}) {
     }
 }
 
-my @matlab_code = &create_all_matlab_commands;
+# my @matlab_code = &create_all_matlab_commands;
+my @matlab_code = &create_single_matlab_command;
 
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'mask_set');
 $opt{error_file} = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'mask_set', 'error.txt');
@@ -80,6 +81,14 @@ sub create_all_matlab_commands {
     foreach my $file_name (@image_files) {
         $matlab_code[0] .= "find_cell_mask('$file_name')\n";
     }
+
+    return @matlab_code;
+}
+
+sub create_single_matlab_command {
+    my @matlab_code;
+	
+	$matlab_code[0] = "find_cell_mask_full_exp('$cfg{exp_results_folder}')\n";
 
     return @matlab_code;
 }

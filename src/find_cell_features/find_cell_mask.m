@@ -9,7 +9,6 @@ function find_cell_mask(I_file)
 %%Setup variables and parse command line
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 i_p = inputParser;
-i_p.FunctionName = 'FIND_CELL_MASK';
 
 i_p.addRequired('I_file',@(x)exist(x,'file') == 2);
 
