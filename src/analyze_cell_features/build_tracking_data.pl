@@ -48,16 +48,14 @@ if ($opt{lsf}) {
     my @image_nums = &Image::Data::Collection::gather_sorted_image_numbers(\%cfg);
 
     my @commands;
-    foreach (@image_nums) {
-        #$0 - the name of the program currently running, used to protect against
-        #future file name changes
-        push @commands, "$0 -cfg $opt{cfg} -o $opt{output} -image_num $_";
-    }
+    # foreach (@image_nums) {
+    #     #$0 - the name of the program currently running, used to protect against
+    #     #future file name changes
+    #     push @commands, "$0 -cfg $opt{cfg} -o $opt{output} -image_num $_";
+    # }
+	push @commands, "$0 -cfg $opt{cfg} -o $opt{output}";
     
     $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'tracking_data');
-    $opt{queue} = "day";
-	#mem specified in kb
-    $opt{mem} = (1024**2)*4;
     if (defined $cfg{job_group}) {
         $opt{job_group} = $cfg{job_group};
     }
