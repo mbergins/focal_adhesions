@@ -63,6 +63,10 @@ if ($opt{script} =~ /apply_bleaching_correction/) {
 	} 	
 }
 
+###########################################################
+# Build and Execute
+###########################################################
+
 my $extra = &build_extra_command_line_opts;
 
 my @matlab_code = ("$opt{script}('$cfg{exp_results_folder}'$extra)\n");
@@ -88,8 +92,16 @@ sub build_extra_command_line_opts {
 			$extra = ",'type','lifetime','min_value',10";
 		} elsif ($opt{extra} eq "ratio") {
 			$extra = ",'type','ratio'";
+		} elsif ($opt{extra} eq "FA_angle") {
+			$extra = ",'type','FA_angle'";
 		} else {
 			$extra = ",'type','FA_dist'";
+		}
+	}
+	
+	if ($opt{script} eq "recenter_FA_angles") {
+		if (defined $cfg{by_hand_direction}) {
+			$extra = ",'by_hand_direction',$cfg{by_hand_direction}";
 		}
 	}
 

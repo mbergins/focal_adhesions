@@ -7,7 +7,9 @@ tic;
 i_p = inputParser;
 
 i_p.addRequired('exp_dir',@(x)exist(x,'dir') == 7);
+
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
+i_p.addOptional('by_hand_direction',NaN,@(x)isnumeric(x) && abs(x) <= 180 && abs(x) >= 0);
 
 i_p.parse(exp_dir,varargin{:});
 
@@ -34,6 +36,15 @@ end
 mean_cent_movement = mean(cent_pos_diffs);
 
 cent_direction = atan2(mean_cent_movement(2),mean_cent_movement(1))*(180/pi);
+
+%if the cell direction is specified in the parameter set, we will use that
+%for the recentering
+if (not(isnan(i_p.Results.by_hand_direction)))
+    csvwrite(fullfile(exp_dir,'adhesion_props','cell_direction.csv'), ...
+        [i_p.Results.by_hand_direction,cent_direction]);
+    
+    cent_direction = i_p.Results.by_hand_direction;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Recenter and Save Results
