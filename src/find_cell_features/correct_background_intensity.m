@@ -47,7 +47,7 @@ corner_sets = [upperleft,lowerleft,upperright,lowerright];
 
 min_std_entry = find(std(corner_sets) == min(std(corner_sets)),1,'first');
 
-background_mean = mean(corner_sets(:,min_std_entry));
+background_mean = round(mean(corner_sets(:,min_std_entry)));
 
 for i_num = 1:size(image_dirs,1)
     focal_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
@@ -55,7 +55,7 @@ for i_num = 1:size(image_dirs,1)
     corrected_focal_image = focal_image - background_mean;
     corrected_focal_image(corrected_focal_image < 0) = 0;
     
-    imwrite(corrected_focal_image,fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image));
+    imwrite(uint16(corrected_focal_image),fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image));    
 end
 
 toc;
