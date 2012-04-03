@@ -16,6 +16,7 @@ filenames.raw_mask = 'raw_mask_file.png';
 filenames.cell_mask = 'cell_mask.png';
 
 filenames.photo_bleach_correction = 'photo_correct.txt';
+filenames.background_intensity = '../../adhesion_props/background_intensity.txt';
 
 filenames.focal_image_min_max = '../../adhesion_props/focal_min_max.csv';
 filenames.focal_image_threshold = '../../adhesion_props/focal_filter_results.csv';

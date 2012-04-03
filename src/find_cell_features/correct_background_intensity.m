@@ -49,6 +49,13 @@ min_std_entry = find(std(corner_sets) == min(std(corner_sets)),1,'first');
 
 background_mean = round(mean(corner_sets(:,min_std_entry)));
 
+output_file = fullfile(base_dir,image_dirs(1).name,filenames.background_intensity);
+[output_folder,~,~] = fileparts(output_file);
+if (not(exist(output_folder,'dir')))
+    mkdir(output_folder);
+end
+csvwrite(output_file,background_mean);
+
 for i_num = 1:size(image_dirs,1)
     focal_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
     
