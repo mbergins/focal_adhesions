@@ -63,6 +63,12 @@ if ($opt{script} =~ /apply_bleaching_correction/) {
 	} 	
 }
 
+if ($opt{script} =~ /correct_background_intensity/) {
+	if (! (defined $cfg{background_correction} && $cfg{background_correction})) {
+		exit;
+	} 	
+}
+
 ###########################################################
 # Build and Execute
 ###########################################################
