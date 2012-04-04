@@ -56,13 +56,4 @@ if (not(exist(output_folder,'dir')))
 end
 csvwrite(output_file,background_mean);
 
-for i_num = 1:size(image_dirs,1)
-    focal_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
-    
-    corrected_focal_image = focal_image - background_mean;
-    corrected_focal_image(corrected_focal_image < 0) = 0;
-    
-    imwrite(uint16(corrected_focal_image),fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image));    
-end
-
 toc;

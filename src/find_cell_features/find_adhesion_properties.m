@@ -47,15 +47,23 @@ focal_image = double(imread(focal_file));
 %read in the labeled adhesions
 adhesions = imread(adhesions_file);
 
+%gather the background correction, if available
+background_correction = 0;
+
+cor_file = fullfile(fileparts(focal_file),filenames.background_intensity);
+if (exist(cor_file,'file'))
+   background_correction = csvread(cor_file); 
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if (exist('cell_mask','var'))
-    adhesion_properties = collect_adhesion_properties(focal_image,adhesions, ...
+    adhesion_properties = collect_adhesion_properties(focal_image,adhesions,background_correction, ...
         'cell_mask',cell_mask,'debug',i_p.Results.debug);
 else
-    adhesion_properties = collect_adhesion_properties(focal_image,adhesions, ...
+    adhesion_properties = collect_adhesion_properties(focal_image,adhesions,background_correction, ...
         'debug',i_p.Results.debug);
 end
 if (i_p.Results.debug), disp('Done with gathering properties'); end
@@ -68,7 +76,8 @@ write_adhesion_data(adhesion_properties,'out_dir',fullfile(i_p.Results.output_di
 % Functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function adhesion_props = collect_adhesion_properties(orig_I,labeled_adhesions,varargin)
+function adhesion_props = collect_adhesion_properties(orig_I,labeled_adhesions, ... 
+    background_correction,varargin)
 % COLLECT_ADHESION_PROPERTIES    using the identified adhesions, various
 %                                properties are collected concerning the
 %                                morphology and physical properties of the
@@ -94,11 +103,12 @@ i_p.FunctionName = 'COLLECT_ADHESION_PROPERTIES';
 
 i_p.addRequired('orig_I',@isnumeric);
 i_p.addRequired('labeled_adhesions',@(x)isnumeric(x));
+i_p.addRequired('background_correction',@(x)isnumeric(x));
 
 i_p.addParamValue('cell_mask',0,@(x)isnumeric(x) || islogical(x));
 i_p.addOptional('debug',0,@(x)x == 1 || x == 0);
 
-i_p.parse(labeled_adhesions,orig_I,varargin{:});
+i_p.parse(labeled_adhesions,orig_I,background_correction,varargin{:});
 
 %read in the cell mask image if defined in parameter set
 if (isempty(strmatch('cell_mask',i_p.UsingDefaults)))
@@ -135,10 +145,10 @@ convex_hull = bwconvhull(labeled_adhesions > 0);
 convex_dists = bwdist(~convex_hull);
 
 for i=1:max(labeled_adhesions(:))
-    adhesion_props(i).Average_adhesion_signal = mean(orig_I(labeled_adhesions == i));
+    adhesion_props(i).Average_adhesion_signal = mean(orig_I(labeled_adhesions == i)) - background_correction;
     adhesion_props(i).Variance_adhesion_signal = var(orig_I(labeled_adhesions == i));
-    adhesion_props(i).Max_adhesion_signal = max(orig_I(labeled_adhesions == i));
-    adhesion_props(i).Min_adhesion_signal = min(orig_I(labeled_adhesions == i));
+    adhesion_props(i).Max_adhesion_signal = max(orig_I(labeled_adhesions == i)) - background_correction;
+    adhesion_props(i).Min_adhesion_signal = min(orig_I(labeled_adhesions == i)) - background_correction;
     
     adhesion_props(i).Dist_to_FA_cent = dist_to_centroid(i);
     adhesion_props(i).Angle_to_FA_cent = angle_to_ad_cent(i);
