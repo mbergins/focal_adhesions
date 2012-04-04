@@ -123,9 +123,6 @@ if (i_p.Results.no_ad_splitting || any(strcmp('min_independent_size',i_p.UsingDe
     %segmentation methods, just identify the connected areas
     ad_segment = bwlabel(threshed_image,4);
 else
-%     temp = find_ad_zamir(high_passed_image(343:364,409:440),threshed_image(343:364,409:440), ...
-%         i_p.Results.min_independent_size,'sequential',1);
-
     ad_segment = find_ad_zamir(high_passed_image,threshed_image,i_p.Results.min_independent_size, ... 
         'debug',i_p.Results.debug,'sequential',1);
 end
@@ -144,6 +141,7 @@ if (exist('cell_mask','var'))
             ad_segment(ad_segment == i) = 0;
         end
     end
+    
     if(i_p.Results.status_messages), disp('Done removing adhesions outside the cell edge'); end
 end
 
@@ -153,6 +151,9 @@ end
 ad_nums = unique(ad_segment)';
 assert(ad_nums(1) == 0, 'Background pixels not found after building adhesion label matrix')
 if ((length(ad_nums) - 1) > i_p.Results.max_adhesion_count)
+    highlighted_image = create_highlighted_image(focal_normed, im2bw(ad_segment,0), ...
+        'color_map',[1,1,0]);
+    imwrite(highlighted_image,fullfile(output_dir, 'highlights.png'));
     system(['touch ', fullfile(output_dir, 'Found_too_many_adhesions')]);
     error(['Found more (',num2str(max(ad_segment(:))),') adhesions than', ...
         ' max adhesion count (',num2str(i_p.Results.max_adhesion_count),').']);
