@@ -218,13 +218,12 @@ if (exist('cell_mask','var'))
     highlighted_image = create_highlighted_image(highlighted_image, bwperim(cell_mask),'color_map',[1,0,0]);
 end
 imwrite(highlighted_image,fullfile(output_dir, 'highlights.png'));
-imwrite(focal_normed,fullfile(output_dir, 'reg_image.png'));
 
-c_map = jet(max(ad_segment_perim(:)));
-c_map = c_map(randsample(size(c_map,1),size(c_map,1)),:);
-
-highlighted_image = create_highlighted_image(focal_normed, ad_segment_perim,'color_map',c_map);
-imwrite(highlighted_image,fullfile(output_dir, 'color_highlights.png'));
+%Color Highlights
+% c_map = jet(max(ad_segment_perim(:)));
+% c_map = c_map(randsample(size(c_map,1),size(c_map,1)),:);
+% highlighted_image = create_highlighted_image(focal_normed, ad_segment_perim,'color_map',c_map);
+% imwrite(highlighted_image,fullfile(output_dir, 'color_highlights.png'));
 
 if (i_p.Results.paper_figures)
     col_range = (find(sum(ad_segment),1,'first')-5):(find(sum(ad_segment),1,'last')+5);
@@ -250,7 +249,6 @@ end
 % set(gcf, 'PaperPositionMode', 'auto');
 % print('-dpng', fullfile(output_dir,'high_passed_intensities.png'));
 % close;
-
 
 if (nargout > 0)
     varargout{1} = struct('adhesions',im2bw(ad_segment,0),'ad_segment',ad_segment);
