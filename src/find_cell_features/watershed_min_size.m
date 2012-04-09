@@ -13,8 +13,8 @@ area_vals = [props.Area];
 final_label_mat = ismember(label_mat,find(area_vals < (2*min_size))).*label_mat;
 large_ad_nums = find(area_vals >= 2*min_size);
 
-for i=1:length(large_ad_nums)
-    this_ad = label_mat == large_ad_nums(i);
+for this_ad_num = large_ad_nums
+    this_ad = label_mat == large_ad_nums(this_ad_num);
     
     %we need to determine the order in which to add the pixels, brightest
     %pixels will be in first, let's find the linear indexes and put them in
