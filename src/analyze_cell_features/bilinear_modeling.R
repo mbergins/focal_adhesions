@@ -97,7 +97,7 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
     return(models)
 }
 
-draw_diagnostic_traces <- function(models,file.name) {
+draw_diagnostic_traces <- function(models,file.name,time.spacing=1) {
     ad_nums = sort(union(which(!is.na(models$assembly$slope)),
         which(!is.na(models$disassembly$slope))));
     
@@ -109,7 +109,7 @@ draw_diagnostic_traces <- function(models,file.name) {
         phase_lengths = c(models$assembly$image_count[i],models$disassembly$image_count[i])
         R_sq = c(models$assembly$adj.r.squared[i],models$disassembly$adj.r.squared[i])
         slopes = c(models$assembly$slope[i],models$disassembly$slope[i])
-        plot_ad_intensity(models,i,phase_lengths,R_sq,y_limits,slopes);
+        plot_ad_intensity(models,i,phase_lengths,R_sq,y_limits,slopes,time.spacing);
     }
     graphics.off()
 }
@@ -360,7 +360,7 @@ if (length(args) != 0) {
         diagnostic_diagrams_file = sub(".csv$", ".pdf", model_file ,perl=T)
         output_file = file.path(output_folder,diagnostic_diagrams_file);
         source('FA_analysis_lib.R')
-        draw_diagnostic_traces(model,output_file);
+        draw_diagnostic_traces(model,output_file,time.spacing=time_spacing);
         
         #Write out simple CSV file with assembly/disassembly data
         disassembly_models = model$disassembly;
