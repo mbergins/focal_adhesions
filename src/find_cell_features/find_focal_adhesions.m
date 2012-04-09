@@ -98,9 +98,18 @@ if (i_p.Results.min_adhesion_size > 1)
     threshed_image = labeled_thresh > 0;
 end
 
+% Remove adhesions outside mask
+if (exist('cell_mask','var'))
+    temp_label = bwlabel(threshed_image,4);
+    inside_mask = temp_label .* cell_mask;
+    inside_mask_ad_nums = unique(inside_mask(:));
+    inside_mask_ad_nums = inside_mask_ad_nums(2:end);
+    
+    threshed_image = ismember(temp_label,inside_mask_ad_nums);
+end
 
 %adding a check for finding adhesions, if didn't find any, output error
-%file
+%file and die
 if (sum(sum(threshed_image)) == 0)
     no_ad_found_file = fullfile(output_dir, 'no_ads_found.txt');
     system(['touch ', no_ad_found_file]);
@@ -137,22 +146,6 @@ end
 if(i_p.Results.status_messages), disp('Done finding adhesion regions'); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Remove adhesions outside mask
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if (exist('cell_mask','var'))
-    for i = 1:max(ad_segment(:))
-        assert(any(any(ad_segment == i)), 'Error: can''t find ad number %d', i);
-        this_ad = zeros(size(ad_segment));
-        this_ad(ad_segment == i) = 1;
-        if (sum(sum(this_ad & cell_mask)) == 0)
-            ad_segment(ad_segment == i) = 0;
-        end
-    end
-    
-    if(i_p.Results.status_messages), disp('Done removing adhesions outside the cell edge'); end
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Check for too many adhesions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ad_nums = unique(ad_segment)';
@@ -169,7 +162,6 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Find and fill holes in single adhesions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 %holes can't occur in adhesions below 4 pixels, so we skip those
 props = regionprops(ad_segment,'Area');
 large_ad_nums = find([props.Area] >= 4);
@@ -196,6 +188,7 @@ for i = 2:length(ad_nums)
     ad_segment(ad_segment == ad_nums(i)) = i - 1;
 end
 if(i_p.Results.status_messages), disp('Done renumbering adhesion regions'); end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Build adhesion perimeters image
