@@ -123,8 +123,15 @@ if (i_p.Results.no_ad_splitting || any(strcmp('min_independent_size',i_p.UsingDe
     %segmentation methods, just identify the connected areas
     ad_segment = bwlabel(threshed_image,4);
 else
-    ad_segment = find_ad_zamir(high_passed_image,threshed_image,i_p.Results.min_independent_size, ... 
-        'debug',i_p.Results.debug,'sequential',1);
+    seg_start = tic;
+    ad_segment = watershed_min_size(high_passed_image,bwlabel(threshed_image,4), ...
+        i_p.Results.min_independent_size);
+    toc(seg_start);
+    
+%     tic;
+%     ad_segment = find_ad_zamir(high_passed_image,threshed_image,i_p.Results.min_independent_size, ... 
+%         'debug',i_p.Results.debug,'sequential',0);
+%     toc;
 end
 
 if(i_p.Results.status_messages), disp('Done finding adhesion regions'); end
@@ -162,6 +169,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Find and fill holes in single adhesions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%holes can't occur in adhesions below 4 pixels, so we skip those
 props = regionprops(ad_segment,'Area');
 large_ad_nums = find([props.Area] >= 4);
 for this_num = large_ad_nums
@@ -207,11 +216,6 @@ if(i_p.Results.status_messages), disp('Done building adhesion perimeters'); end
 imwrite(double(ad_segment)/2^16,fullfile(output_dir, filenames.adhesions),'bitdepth',16);
 imwrite(double(ad_segment_perim)/2^16,fullfile(output_dir, filenames.adhesions_perim),'bitdepth',16);
 imwrite(im2bw(ad_segment,0),fullfile(output_dir, filenames.adhesions_binary));
-
-if (length(filter_thresh) > 1)
-    highlighted_image = create_highlighted_image(focal_normed, bwperim(high_passed_image > filter_thresh(2)),'color_map',[0,1,1]);
-    imwrite(highlighted_image,fullfile(output_dir, 'high_seed.png'));
-end
 
 highlighted_image = create_highlighted_image(focal_normed, im2bw(ad_segment_perim,0), 'color_map',[1,1,0]);
 if (exist('cell_mask','var'))

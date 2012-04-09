@@ -1,75 +1,55 @@
-function ad_zamir = find_ad_zamir(high_passed_image,binary_image,min_ad_size,varargin)
-% FIND_AD_ZAMIR    Assigns adhesion pixels to specific adhesions using the
-%                  same algorithm as described in Zamir, 1999
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Setup variables and parse command line
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function final_label_mat = watershed_min_size(image,label_mat,min_size)
 
-i_p = inputParser;
-i_p.FunctionName = 'FIND_AD_ZAMIR';
+%First we filter out the adhesions which are smaller than 2 times the
+%minimum independent adhesion size. We can do this because anything smaller
+%than the 2X threshold can't be split into two objects through the
+%watershed methods, so we won't do anything special to process them
+props = regionprops(label_mat,'Area');
+area_vals = [props.Area];
 
-i_p.addRequired('high_passed_image',@isnumeric);
-i_p.addRequired('binary_image',@islogical);
-i_p.addRequired('min_ad_size',@(x)x >= 1);
-i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
-i_p.addParamValue('sequential',0,@(x)x == 1 || x == 0);
+%this command picks out the small adhesions in the image and then assigns
+%them their labels from the label matrix, remember that ismember returns a
+%binary matrix
+final_label_mat = ismember(label_mat,find(area_vals < (2*min_size))).*label_mat;
+large_ad_nums = find(area_vals >= 2*min_size);
 
-i_p.parse(high_passed_image,binary_image,min_ad_size,varargin{:});
-
-if (i_p.Results.debug == 1), profile on; end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Main Program
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-ad_zamir = zeros(size(high_passed_image));
-
-pix_vals = high_passed_image(binary_image);
-sorted_pix_vals = sort(unique(pix_vals),'descend');
-
-count = 0;
-total_pixels = sum(sum(binary_image));
-
-%Cycle through all pixels of image
-for i = 1:length(sorted_pix_vals)
-    lin_ind = find(high_passed_image == sorted_pix_vals(i));
+for i=1:length(large_ad_nums)
+    this_ad = label_mat == large_ad_nums(i);
     
-    for j = 1:length(lin_ind)
-        [lin_row, lin_col] = ind2sub(size(high_passed_image), lin_ind(j));
-        if (not(binary_image(lin_row, lin_col)))
-            continue;
-        end
+    %we need to determine the order in which to add the pixels, brightest
+    %pixels will be in first, let's find the linear indexes and put them in
+    %order
+    sorted_ad_intensities = sort(image(this_ad),'descend');
     
-        assert(ad_zamir(lin_ind(j)) == 0, 'Error: Adhesion already assigned in this position %d',lin_ind(j))
-        ad_zamir = add_single_pixel(ad_zamir,lin_ind(j),i_p.Results.min_ad_size);
+    %this for loop needs to deal with the unlikely case of ties in ad
+    %intensities, in that case, take the first one out of the find and set
+    %it to an impossible value, so it won't match on the next intensity
+    %search
+    sorted_linear_indexes = zeros(size(sorted_ad_intensities));
+    this_ad_image = this_ad .* image;
+    for ad_int_ind = 1:length(sorted_ad_intensities)
+        sorted_linear_indexes(ad_int_ind) = find(this_ad_image == sorted_ad_intensities(ad_int_ind),1,'first');
         
-        if (i_p.Results.sequential)
-            if (not(exist('sequential','dir'))); mkdir('sequential'); end
-            imwrite(label2rgb(ad_zamir,'jet',[0.25,0.25,0.25]), ... 
-                fullfile('sequential',[sprintf('%04d',count),'.png']));
-        end
+        test = find(image == sorted_ad_intensities(ad_int_ind) & this_ad,1,'first');
         
-        count = count + 1;
+        this_ad_image(sorted_linear_indexes(ad_int_ind)) = -Inf;
+        assert(test == sorted_linear_indexes(ad_int_ind));
+    end
+    
+    watershed_ad = zeros(size(label_mat,1),size(label_mat,2));    
+    while (length(sorted_linear_indexes) >= 1)
+        watershed_ad = add_single_pixel(watershed_ad,sorted_linear_indexes(1),min_size);
         
-        if (mod(count,100) == 0 && i_p.Results.debug)
-            disp(['Watershed Assigned: ',num2str(count),'/',num2str(total_pixels)])
-        end
+        sorted_linear_indexes = sorted_linear_indexes(2:end);
+    end
+    
+    %add the watershed segmented FA back to the master segmentation
+    unique_labels = unique(watershed_ad(:));
+    assert(unique_labels(1) == 0)
+    for j=2:length(unique_labels);
+        final_label_mat(watershed_ad == unique_labels(j)) = max(final_label_mat(:)) + 1;
     end
 end
-
-%renumber the found adhesions to start at one
-ad_nums = unique(ad_zamir);
-assert(ad_nums(1) == 0, 'Background pixels not found after building adhesion label matrix')
-for i = 2:length(ad_nums)
-    ad_zamir(ad_zamir == ad_nums(i)) = i - 1;
-end
-
-profile off;
-if (i_p.Results.debug), profile viewer; end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Functions
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function ad_zamir = add_single_pixel(ad_zamir,pix_pos,min_size)
 
