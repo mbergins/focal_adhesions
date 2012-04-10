@@ -145,12 +145,8 @@ sub create_matlab_code_stack {
             mkpath($output_path);
         }
 		
-		my $extra_opt = '';
-        if (defined $cfg{image_range_norm}) {
-            $extra_opt .= ",'ir_norm',$cfg{image_range_norm}";
-        }
         my $final_out_file = catfile($output_path, $out_file);
-        $matlab_code[0] .= "write_normalized_image('$image_file','$final_out_file','I_num',$i_num$extra_opt);\n";
+        $matlab_code[0] .= "write_normalized_image('$image_file','$final_out_file','I_num',$i_num);\n";
     }
     return @matlab_code;
 }
@@ -186,11 +182,7 @@ sub create_matlab_code_single {
         	mkpath($output_path);
 		}
         my $final_out_file = catfile($output_path, $out_file);
-		my $extra_opt = '';
-        if (defined $cfg{image_range_norm}) {
-            $extra_opt .= ",'ir_norm',$cfg{image_range_norm}";
-        }
-        $matlab_code[0] .= "write_normalized_image('$file_name','$final_out_file'$extra_opt);\n";
+        $matlab_code[0] .= "write_normalized_image('$file_name','$final_out_file');\n";
     }
     return @matlab_code;
 }
