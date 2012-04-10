@@ -49,14 +49,33 @@ if (exists($opt{exp_filter})) {
    @config_files = grep $_ =~ /$opt{exp_filter}/, @config_files;
 }
 
+my $parallel_return = system("which parallel");
+
+my @command_set;
 foreach (@config_files) {
     next if /config\/default/;
-    if ($opt{debug}) {
-        print("./$program_base -cfg $_ $debug_string $opt{extra}\n");
-    } else {
-        print("$_\n");
-        system("./$program_base -cfg $_ $debug_string $opt{extra}");
-    }
+
+    my $command = "ionice -c3 ./$program_base -cfg $_ $debug_string $opt{extra}";
+    $command =~ s/"/\\"/g;
+    push @command_set, "\"$command; echo $_;\"";
+	if ($parallel_return != 0) {
+		if ($opt{debug}) {
+			print "$command\n";
+		} else {
+			print("$_\n");
+			system("$command");
+		}
+	}
+}
+
+if ($parallel_return == 0) {
+	if ($opt{debug}) {
+		my $parallel_cmd = "time parallel -j 75% -u --nice 20 ::: \n\t" . join("\n\t", @command_set) . "\t\n";
+		print $parallel_cmd;
+	} else {
+		my $parallel_cmd = "time parallel -u --nice 20 ::: " . join(" ", @command_set);
+		system($parallel_cmd);
+	}
 }
 
 ###############################################################################
