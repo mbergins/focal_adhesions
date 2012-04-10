@@ -252,7 +252,6 @@ filter_single_adhesion_alignment_data <- function(align_data, min.data.points = 
     ratio = as.matrix(align_data$mat$ratio);
     area = as.matrix(align_data$mat$area);
     
-    #
     above_ratio_limit = ! is.na(ratio) & ratio >= min.ratio
     above_area_limit = ! is.na(area) & area >= min.area
 
@@ -585,6 +584,11 @@ load_alignment_props <- function(alignment_models) {
     for (align_file in alignment_models) {
         data_set = get(load(align_file));
         
+        if (!(any(names(data_set) == "FAAI"))) {
+            print(paste('Problem with:', align_file, 'skipping.'));
+            next;
+        }
+
         align_props$best_FAAI = c(align_props$best_FAAI, data_set$FAAI);
         if (any(names(data_set) == "actual_best_angle")) {
             align_props$actual_best_angle = c(align_props$actual_best_angle, data_set$actual_best_angle);
@@ -594,6 +598,7 @@ load_alignment_props <- function(alignment_models) {
         }
         
         align_props$adhesion_count = c(align_props$adhesion_count,dim(data_set$high_ratio)[1])
+        align_props$adhesion_count_per_time = c(align_props$adhesion_count/dim(data_set$mat$orientation)[2])
 
         align_props$small_FAAI = c(align_props$small_FAAI, data_set$area_results$small$FAAI)
         align_props$medium_FAAI = c(align_props$medium_FAAI, data_set$area_results$medium$FAAI)
@@ -602,9 +607,9 @@ load_alignment_props <- function(alignment_models) {
         align_props$align_file = c(align_props$align_file, align_file);
 
         angles = (data_set$high_ratio$orientation+90)*(pi/180)
-        area = data_set$high_ratio$area
-        align_props$FAO = c(align_props$FAO, find_FAO(angles, area))
-        align_props$noW_FAO = c(align_props$noW_FAO, find_FAO(angles))
+        # area = data_set$high_ratio$area
+        # align_props$FAO = c(align_props$FAO, find_FAO(angles, area))
+        # align_props$noW_FAO = c(align_props$noW_FAO, find_FAO(angles))
         # browser()
         print(paste('Done loading:', align_file))
     }
