@@ -319,6 +319,16 @@ boxplot_with_points <- function(data,names=seq(1,length(data),by=1),
     }
 }
 
+plot_fancy_barplot <- function(data_sets) {
+    library(Hmisc)
+
+    means = unlist(lapply(data_sets, mean, na.rm=T))
+    y_plus = unlist(lapply(data_set,function(x)t.test(x)$conf.int[2]))
+    y_plus = unlist(lapply(data_set,function(x)t.test(x)$conf.int[1]))
+
+    barplot(means)
+}
+
 print_ratio_conf_string <- function(data_1,data_2) {
         p_vals = determine_median_p_value(data_1, data_2);
         
@@ -563,6 +573,15 @@ determine_median_ratio_conf <- function(data_1,data_2, bootstrap.rep=10000) {
     boot_ratio_conf = boot.ci(boot_ratio,type="bca", conf=0.99)
 
     return(boot_ratio_conf)
+}
+
+ratio_samp <- function(data_1, data_2) {
+    no_na_data_1 = na.omit(data_1);
+    no_na_data_2 = na.omit(data_2);
+    samp_1 = sample(no_na_data_1, length(no_na_data_1), replace=TRUE);
+    samp_2= sample(no_na_data_2, length(no_na_data_2), replace=TRUE);
+
+    return((median(samp_2) - median(samp_1))/median(samp_1));
 }
 
 determine_median_p_value <- function(data_1,data_2, bootstrap.rep = 10000) {
@@ -918,7 +937,7 @@ gather_static_props <- function(ind_results, debug=FALSE) {
 }
 
 #######################################
-# Birth Death Rates
+# Adhesion Counts
 #######################################
 count_births_per_point <- function(exp_data) {
     live_adhesions = !is.na(exp_data)
@@ -956,23 +975,28 @@ count_live_adhesions_per_point <- function(exp_data) {
     return(colSums(live_adhesions))
 }
 
-matrix_from_list <- function(this_list,lineup='start') {
-    max_length = max(unlist(lapply(this_list,length)))
+count_adhesions_per_image <- function(results,time.spacing=1,time.unit=10) {
+    data = list();
+	for (i in 1:length(results)) {
+		res = results[[i]];
+        
+        num_time_units = (dim(res$exp_data)[[2]]*time.spacing)/time.unit
+        num_adhesions = dim(res$exp_data)[[1]]
 
-    out_mat = matrix(NA,nrow=length(this_list),ncol=max_length);
+        data$counts = c(data$counts, num_adhesions/num_time_units);
+        data$exp_num = c(data$exp_num, i);
+	}
 
-    if (lineup == 'start') {
-        for (i in 1:length(this_list)) {
-            out_mat[i,] = c(this_list[[i]],rep(NA,max_length - length(this_list[[i]])));
-        }
-    } else if (lineup == 'end') {
-        for (i in 1:length(this_list)) {
-            out_mat[i,] = c(rep(NA,max_length - length(this_list[[i]])),this_list[[i]]);
-        }
-    }
-    
-    return(out_mat)
+    data$exp_num = as.factor(data$exp_num);
+    data = as.data.frame(data);
+
+    return(data);
 }
+
+
+#######################################
+# Column based Functions
+#######################################
 
 colMedians <- function(this_mat,na.rm=T) {
     medis = c()
@@ -994,7 +1018,9 @@ colGeoMeans <- function(this_mat, na.rm=T) {
 colConfUpper <- function(this_mat) {
     upper = c()
     for (i in 1:dim(this_mat)[2]) {
-        if (all(is.na(this_mat[,i]))) {
+        na_count = sum(is.na(this_mat[,i]));
+        non_na_count = dim(this_mat)[1] - na_count;
+        if (non_na_count < 5) {
             upper = c(upper,NA);
         } else {
             #remove any data values that aren't finite, NA, NaN or Inf typically
@@ -1014,7 +1040,9 @@ colConfUpper <- function(this_mat) {
 colConfLower <- function(this_mat) {
     lower = c()
     for (i in 1:dim(this_mat)[2]) {
-        if (all(is.na(this_mat[,i]))) {
+        na_count = sum(is.na(this_mat[,i]));
+        non_na_count = dim(this_mat)[1] - na_count;
+        if (non_na_count < 5) {
             lower = c(lower,NA);
         } else {
             #remove any data values that aren't finite, NA, NaN or Inf typically
@@ -1046,7 +1074,7 @@ colSD <- function(this_mat) {
 #######################################
 # Split Property Measurements
 #######################################
-count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.change=T,
+count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,
     min.lifetime=NA,dist.measurements = NA, min.dist.ptile = 0.4,use.geo.mean=F) {
     library(zoo)
     
@@ -1086,7 +1114,7 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.chang
     }
     
     average_val = rollmean(average_val,20,na.pad=T);
-
+    
     average_val_before = average_val[1:split.time]
     average_val_after = average_val[-1:-split.time]
 
@@ -1095,13 +1123,8 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.chang
     
     if (exp.norm) {
         mean_before = mean(average_val_before,na.rm=T)
-        if (fold.change) {
-            average_val_before = average_val_before/mean_before
-            average_val_after = average_val_after/mean_before
-        } else {
-            average_val_before = average_val_before-mean_before
-            average_val_after = average_val_after-mean_before
-        }
+        average_val_before = average_val_before/mean_before
+        average_val_after = average_val_after/mean_before
     }
 
     averages = list()
@@ -1113,7 +1136,7 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,fold.chang
 
 summarize_split_matrix <- function(exp_data,debug=F) {
     before_temp = matrix_from_list(exp_data$before,lineup='end')
-    before_temp = t(tail(t(before_temp),20))
+    # before_temp = t(tail(t(before_temp),70))
     
     after_temp = matrix_from_list(exp_data$after)
     after_temp = t(head(t(after_temp),70))
@@ -1122,7 +1145,7 @@ summarize_split_matrix <- function(exp_data,debug=F) {
 
     results$mat$before = before_temp
     results$mat$after = after_temp
-
+    
     results$mean$before = colMeans(before_temp,na.rm=T)
     results$mean$after = colMeans(after_temp,na.rm=T)
 
@@ -1131,12 +1154,6 @@ summarize_split_matrix <- function(exp_data,debug=F) {
     
     results$lower_conf$before = colConfLower(before_temp)
     results$lower_conf$after = colConfLower(after_temp)
-
-    results$upper_sd$before = colSD(before_temp) + results$mean$before
-    results$upper_sd$after = colSD(after_temp) + results$mean$after
-    
-    results$lower_sd$before = colSD(before_temp) + results$mean$before
-    results$lower_sd$after = colSD(after_temp) + results$mean$after
     return(results);
 }
 
@@ -1219,15 +1236,6 @@ find_cross_split_mean_prop <- function(prop, lineage_props, split.time, area,
     means$area_diff = means$area_after-means$area_before
 
     return(means)
-}
-
-ratio_samp <- function(data_1, data_2) {
-    no_na_data_1 = na.omit(data_1);
-    no_na_data_2 = na.omit(data_2);
-    samp_1 = sample(no_na_data_1, length(no_na_data_1), replace=TRUE);
-    samp_2= sample(no_na_data_2, length(no_na_data_2), replace=TRUE);
-
-    return((median(samp_2) - median(samp_1))/median(samp_1));
 }
 
 gather_stage_lengths <- function(results_1, results_2, bootstrap.rep = 50000, debug=FALSE) {
@@ -1347,22 +1355,26 @@ ranges_overlap <- function(range_1, range_2) {
 	return(FALSE);
 }
 
-count_adhesions_per_image <- function(results,time.spacing=1,time.unit=10) {
-    data = list();
-	for (i in 1:length(results)) {
-		res = results[[i]];
-        
-        num_time_units = (dim(res$exp_data)[[2]]*time.spacing)/time.unit
-        num_adhesions = dim(res$exp_data)[[1]]
+#######################################
+# Misc
+#######################################
 
-        data$counts = c(data$counts, num_adhesions/num_time_units);
-        data$exp_num = c(data$exp_num, i);
-	}
+matrix_from_list <- function(this_list,lineup='start') {
+    max_length = max(unlist(lapply(this_list,length)))
 
-    data$exp_num = as.factor(data$exp_num);
-    data = as.data.frame(data);
+    out_mat = matrix(NA,nrow=length(this_list),ncol=max_length);
 
-    return(data);
+    if (lineup == 'start') {
+        for (i in 1:length(this_list)) {
+            out_mat[i,] = c(this_list[[i]],rep(NA,max_length - length(this_list[[i]])));
+        }
+    } else if (lineup == 'end') {
+        for (i in 1:length(this_list)) {
+            out_mat[i,] = c(rep(NA,max_length - length(this_list[[i]])),this_list[[i]]);
+        }
+    }
+    
+    return(out_mat)
 }
 
 ################################################################################

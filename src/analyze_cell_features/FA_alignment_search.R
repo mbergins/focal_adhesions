@@ -92,7 +92,12 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     
     plot(data_set$per_image_dom_angle,xlab='Image Number',ylab='Dominant Angle',ylim=c(0,180));
     
-    hist(data_set$single_ad_deviances$mean_dev,main='')
+    print(dim(data_set$single_ad_deviances)[1])
+    #deal with the case where there aren't any single adhesion deviances
+    #quantified, specified as an empty results set
+    if (dim(data_set$single_ad_deviances)[1] != 0) {
+        hist(data_set$single_ad_deviances$mean_dev,main='')
+    }
 
     graphics.off()
 
@@ -146,6 +151,14 @@ find_per_image_dom_angle <- function(mat_data, min.ratio=3) {
 
         good_rows = !is.na(this_orientation) & this_ratio >= min.ratio;
         
+        #deal with the case where there are very few elongated adhesions
+        #present in the image, put in place holders and skip to next image
+        if (sum(good_rows) < 3) {
+            best_angles = c(best_angles, NA);
+    		FAAI = c(FAAI, NA);
+            next;
+        }
+
         angle_search = test_dom_angles(this_orientation[good_rows]);
         best_angle = find_best_alignment_angle(angle_search)
 		
@@ -231,13 +244,15 @@ find_best_FAAI <- function(orientations) {
 # Processing Single Adhesion Data
 ###########################################################
 
-filter_alignment_data <- function(align_data, min.data.points = 2, min.ratio = 3, 
+filter_single_adhesion_alignment_data <- function(align_data, min.data.points = 2, min.ratio = 3, 
 	min.area = -Inf) {
-    
+ 
+    #make sure all the data matrices are formated as matrices
     orientation = as.matrix(align_data$mat$orientation);
     ratio = as.matrix(align_data$mat$ratio);
     area = as.matrix(align_data$mat$area);
     
+    #
     above_ratio_limit = ! is.na(ratio) & ratio >= min.ratio
     above_area_limit = ! is.na(area) & area >= min.area
 
@@ -324,9 +339,15 @@ stopifnot(number_consecutive_trues(c(rep(T,25),rep(F,10),rep(T,10),rep(F,50),rep
 stopifnot(number_consecutive_trues(rep(T,20)) == 20)
 
 gather_all_single_adhesion_deviances <- function(sample_data, min.area=-Inf, min.data.points=2) {
-    sample_data_filtered = filter_alignment_data(sample_data, 
+    sample_data_filtered = filter_single_adhesion_alignment_data(sample_data, 
         min.area=min.area, min.data.points=min.data.points);
     overall_dev = adhesion_angle_deviance(sample_data_filtered$mat$filtered_orientation);
+
+    #no single adhesion devs were calculated, no need for further processing,
+    #return the empty results
+    if (dim(overall_dev)[1] == 0) {
+        return(overall_dev)
+    }
     overall_dev$lineage = sample_data$lineage_data[overall_dev$ad_num,];
 
     diff_from_dominant = c()
@@ -571,6 +592,8 @@ load_alignment_props <- function(alignment_models) {
         } else {
             align_props$best_angle = c(align_props$best_angle, data_set$best_angle);
         }
+        
+        align_props$adhesion_count = c(align_props$adhesion_count,dim(data_set$high_ratio)[1])
 
         align_props$small_FAAI = c(align_props$small_FAAI, data_set$area_results$small$FAAI)
         align_props$medium_FAAI = c(align_props$medium_FAAI, data_set$area_results$medium$FAAI)
