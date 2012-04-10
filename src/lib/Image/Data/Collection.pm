@@ -156,6 +156,7 @@ sub check_data_set_lengths {
             next if ($data_type eq "Cell_not_ad_mean_intensity");
             next if ($data_type eq "Outside_mean_intensity");
             next if ($data_type eq "Adhesion_mean_intensity");
+            next if ($data_type eq "Adhesion_centroid");
             $data_sets_length{$key}{$data_type} = scalar(@{ $data_sets{$key}{$data_type} });
         }
     }
