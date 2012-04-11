@@ -1,20 +1,26 @@
 function final_label_mat = watershed_min_size(image,label_mat,min_size)
 
-%First we filter out the adhesions which are smaller than 2 times the
-%minimum independent adhesion size. We can do this because anything smaller
-%than the 2X threshold can't be split into two objects through the
-%watershed methods, so we won't do anything special to process them
-props = regionprops(label_mat,'Area');
+%This function takes advantage of the fact that with a minimum size
+%threshold, the watershed segmentation only needs to consider objects at
+%least 2 times the minimum size threshold for the segmentation
+props = regionprops(label_mat,image,'Area');
 area_vals = [props.Area];
-
-%this command picks out the small adhesions in the image and then assigns
-%them their labels from the label matrix, remember that ismember returns a
-%binary matrix
-final_label_mat = ismember(label_mat,find(area_vals < (2*min_size))).*label_mat;
 large_ad_nums = find(area_vals >= 2*min_size);
 
-for this_ad_num = large_ad_nums
+final_label_mat = zeros(size(label_mat,1),size(label_mat,2));
+for this_ad_num = 1:max(label_mat(:))
     this_ad = label_mat == this_ad_num;
+    
+    if (mod(this_ad_num,round(max(label_mat(:))/10)) == 0) 
+        fprintf('Done with %d/%d adhesions\n',this_ad_num,max(label_mat(:)));
+    end
+    
+    %we aren't dealing with a large adhesion, so it can't be split by the
+    %watershed methods, add it to the final label matrix and move on
+    if (not(any(this_ad_num == large_ad_nums)))
+        final_label_mat(this_ad) = max(final_label_mat(:)) + 1;
+        continue;
+    end
     
     %we need to determine the order in which to add the pixels, brightest
     %pixels will be in first, let's find the linear indexes and put them in
@@ -28,18 +34,13 @@ for this_ad_num = large_ad_nums
     sorted_linear_indexes = zeros(size(sorted_ad_intensities));
     this_ad_image = this_ad .* image;
     for ad_int_ind = 1:length(sorted_ad_intensities)
-        sorted_linear_indexes(ad_int_ind) = find(this_ad_image == sorted_ad_intensities(ad_int_ind),1,'first');
-        
-        test = find(image == sorted_ad_intensities(ad_int_ind) & this_ad,1,'first');
-        
+        sorted_linear_indexes(ad_int_ind) = find(this_ad_image == sorted_ad_intensities(ad_int_ind),1,'first');        
         this_ad_image(sorted_linear_indexes(ad_int_ind)) = -Inf;
-        assert(test == sorted_linear_indexes(ad_int_ind));
     end
     
-    watershed_ad = zeros(size(label_mat,1),size(label_mat,2));    
+    watershed_ad = zeros(size(label_mat,1),size(label_mat,2));
     while (length(sorted_linear_indexes) >= 1)
         watershed_ad = add_single_pixel(watershed_ad,sorted_linear_indexes(1),min_size);
-        
         sorted_linear_indexes = sorted_linear_indexes(2:end);
     end
     

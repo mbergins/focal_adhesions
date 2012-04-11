@@ -70,7 +70,7 @@ output_dir = fileparts(I_file);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Apply filter to find adhesion regions
+% Apply filters to find adhesion regions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 I_filt = fspecial('disk',i_p.Results.filter_size);
 blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
@@ -85,7 +85,7 @@ end
 threshed_image = find_threshed_image(high_passed_image,filter_thresh, ...
     i_p.Results.proximity_filter,i_p.Results.min_seed_size);
 
-%identify and remove adhesions on the immediate edge of the image
+%identify and remove adhesions on the edge of the image
 threshed_image = remove_edge_adhesions(threshed_image);
 
 %filter out small adhesions if requested
@@ -121,6 +121,7 @@ end
 % Adhesion Segmentation
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+seg_start = tic;
 %If adhesion splitting is off ('no_ad_splitting'), then watershed based
 %segmentation isn't needed because all the watershed method adds is the
 %ability to split touching adhesions. Also, we need to know the pixel size
@@ -132,17 +133,11 @@ if (i_p.Results.no_ad_splitting || any(strcmp('min_independent_size',i_p.UsingDe
     %segmentation methods, just identify the connected areas
     ad_segment = bwlabel(threshed_image,4);
 else
-    seg_start = tic;
+    
     ad_segment = watershed_min_size(high_passed_image,bwlabel(threshed_image,4), ...
         i_p.Results.min_independent_size);
-    toc(seg_start);
-    
-%     tic;
-%     ad_segment = find_ad_zamir(high_passed_image,threshed_image,i_p.Results.min_independent_size, ... 
-%         'debug',i_p.Results.debug,'sequential',0);
-%     toc;
 end
-
+toc(seg_start);
 if(i_p.Results.status_messages), disp('Done finding adhesion regions'); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -162,6 +157,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Find and fill holes in single adhesions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+holes_start = tic;
 %holes can't occur in adhesions below 4 pixels, so we skip those
 props = regionprops(ad_segment,'Area');
 large_ad_nums = find([props.Area] >= 4);
@@ -177,6 +173,7 @@ for this_num = large_ad_nums
         disp(['Done filling holes in ',num2str(this_num), '/', num2str(length(ad_nums))]);
     end
 end
+toc(holes_start);
 if(i_p.Results.status_messages), disp('Done filling adhesion holes'); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -202,9 +199,9 @@ for i = 1:max(ad_segment(:))
 end
 if(i_p.Results.status_messages), disp('Done building adhesion perimeters'); end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Write the output files
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 imwrite(double(ad_segment)/2^16,fullfile(output_dir, filenames.adhesions),'bitdepth',16);
 imwrite(double(ad_segment_perim)/2^16,fullfile(output_dir, filenames.adhesions_perim),'bitdepth',16);
