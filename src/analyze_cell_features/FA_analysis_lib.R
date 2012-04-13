@@ -864,7 +864,9 @@ gather_global_exp_summary <- function(data_set) {
 }
 
 gather_general_dynamic_props <- function(results, min.longevity=NA, max.longevity=NA, 
-    max.FA.angle=NA,min.FA.angle=NA, max.CHull.percentile = NA, debug=FALSE) {
+    max.FA.angle=NA,min.FA.angle=NA, max.CHull.percentile = NA, min.CHull.percentile=NA, 
+    debug=FALSE) {
+
 	points = list()
 	for (i in 1:length(results)) {
 		res = results[[i]]
@@ -894,6 +896,13 @@ gather_general_dynamic_props <- function(results, min.longevity=NA, max.longevit
             max_dist = quantile(CHull_dists,max.CHull.percentile)
 
             filt = filt & CHull_dists <= max_dist;
+        }
+        
+        if (! is.na(min.CHull.percentile)) {
+            CHull_dists = res$exp_props$Mean_FA_CHull_dist;
+            min_dist = quantile(CHull_dists,min.CHull.percentile)
+
+            filt = filt & CHull_dists > min_dist;
         }
 
 		points$longevity = c(points$longevity, res$exp_props$longevity[filt])

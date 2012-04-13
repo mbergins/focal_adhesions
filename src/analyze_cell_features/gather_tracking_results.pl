@@ -326,11 +326,6 @@ sub gather_and_output_lineage_properties {
 	$props{Dist_to_CHull} = &gather_prop_seq("CHull_dist");
 	$props{Mean_FA_CHull_dist} = &gather_average_value($props{Dist_to_CHull});
 
-    ($props{speeds}{All}, $props{velocity}) = &gather_adhesion_speeds;
-    &output_prop_time_series($props{speeds}{All}, "All_speeds");
-    ($props{average_speeds}, $props{variance_speeds}, $props{max_speeds}) = 
-		&gather_speed_props($props{speeds}{All});
-    
 	if (grep "drug_addition_time" eq $_, keys %cfg) {
 		@{$props{drug_addition_time}} = map $cfg{drug_addition_time}, 1..scalar(@tracking_mat);
 	}
