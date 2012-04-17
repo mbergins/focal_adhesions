@@ -44,8 +44,8 @@ if ($opt{lsf}) {
     #$0 - the name of the program currently running, used to protect against
     #future file name changes
     my @command = "$0 -cfg $opt{cfg}";
-    $command[0] .= " -skip_lin_regions" if $opt{skip_lin_regions};
     $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'track_analysis');
+	$opt{M} = 12;
     if (defined $cfg{job_group}) {
         $opt{job_group} = $cfg{job_group};
     }
@@ -290,8 +290,8 @@ sub gather_and_output_lineage_properties {
     }
 
     $props{longevity}               = &gather_longevities;
-    $props{merge_count}             = &gather_merge_count;
-    $props{split_count}             = &gather_split_count;
+    # $props{merge_count}             = &gather_merge_count;
+    # $props{split_count}             = &gather_split_count;
     $props{death_status}            = &gather_death_status;
     $props{split_birth_status}      = &gather_split_birth_status;
     $props{Average_adhesion_signal} = &gather_prop_seq("Average_adhesion_signal");
