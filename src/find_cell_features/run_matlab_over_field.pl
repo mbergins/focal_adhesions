@@ -55,9 +55,6 @@ $opt{root_mwd} = File::Spec->rel2abs($opt{script_dir});
 # Run Decisions
 ###########################################################
 if ($opt{script} =~ /apply_bleaching_correction/) {
-	#using this to check decide whether or not to run the photo bleach
-	#correction, if undefined or not true, exit from the program without
-	#running any matlab jobs
 	if (! (defined $cfg{photo_bleach_correction} && $cfg{photo_bleach_correction})) {
 		exit;
 	} 	
@@ -65,6 +62,12 @@ if ($opt{script} =~ /apply_bleaching_correction/) {
 
 if ($opt{script} =~ /find_background_intensity/) {
 	if (! (defined $cfg{background_correction} && $cfg{background_correction})) {
+		exit;
+	} 	
+}
+
+if ($opt{script} =~ /register_with_nifty/) {
+	if (! (defined $cfg{register_images} && $cfg{register_images})) {
 		exit;
 	} 	
 }
