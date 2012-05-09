@@ -38,8 +38,9 @@ my %cfg     = $ad_conf->get_cfg_hash;
 
 my @image_folders = <$cfg{individual_results_folder}/*>;
 my @image_files   = <$cfg{individual_results_folder}/*/$cfg{adhesion_image_file}>;
-die "Expected to find the same number of image files as folders in the results directory ($cfg{individual_results_folder})."
-  if (scalar(@image_files) != scalar(@image_folders));
+die "Expected to find the same number of image files as folders in the results " . 
+	"directory ($cfg{individual_results_folder})."
+	if (scalar(@image_files) != scalar(@image_folders));
 
 if ($opt{debug}) {
     if (scalar(@image_files) > 1) {
@@ -51,8 +52,12 @@ if ($opt{debug}) {
     }
 }
 
-# my @matlab_code = &create_all_matlab_commands;
-my @matlab_code = &create_single_matlab_command;
+my @matlab_code;
+if (defined($cfg{min_independent_size}) && ! $cfg{no_ad_splitting}) {
+	@matlab_code = &create_all_matlab_commands;
+} else {
+	@matlab_code = &create_single_matlab_command;
+}
 
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'FA');
 $opt{error_file} = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'FA', 'error.txt');
