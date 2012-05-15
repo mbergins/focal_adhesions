@@ -229,14 +229,20 @@ sub wait_till_LSF_jobs_finish {
     #After each step of the pipeline, we want to wait till all the individual
     #jobs are completed, which will be checked three times
 	my $total_checks = 3;
-    for (1 .. $total_checks) {
-        print "LSF finished check number $_/$total_checks\n";
-        my $sleep_time = 10;
-        do {
-            sleep($sleep_time);
-        } while (&running_LSF_jobs);
-    }
-    print "\n";
+	my $first_check = &running_LSF_jobs;
+	
+	if (! $first_check) {
+		print "No LSF jobs detected, jumping to next command.\n";
+	} else {
+		for (1 .. $total_checks) {
+			print "LSF finished check number $_/$total_checks\n";
+			my $sleep_time = 10;
+			do {
+				sleep($sleep_time);
+			} while (&running_LSF_jobs);
+		}
+	}
+	print "\n";
 }
 
 sub running_LSF_jobs {
