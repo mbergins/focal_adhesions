@@ -3,7 +3,7 @@
 ###############################################################################
 
 gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
-    min.ratio = 3,output_file = 'FA_orientation.Rdata',diagnostic.figure=F) {
+    min.ratio = 3,output.file = 'FA_orientation.Rdata',diagnostic.figure=F) {
 
     data_set = read_in_orientation_data(exp_dir, min.ratio=min.ratio);
     print('Done reading in data set')
@@ -58,7 +58,7 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     data_set$single_ad_deviances = gather_all_single_adhesion_deviances(data_set);
     print('Done analyzing single adhesions')
     
-    save(data_set,file=file.path(exp_dir,'..',output_file))
+    save(data_set,file=file.path(exp_dir,'..',output.file))
     
     ###########################################################################
     # Diagnostic Figure
@@ -365,7 +365,7 @@ gather_all_single_adhesion_deviances <- function(sample_data, min.area=-Inf, min
 ###########################################################
 
 find_dist_overlaps_and_orientations <- function(lin_ts_folder,min.ratio=3,
-    min.overlap=10,output_file='FA_dist_orientation.Rdata') {
+    min.overlap=10,output.file='FA_dist_orientation.Rdata') {
 
     centroid_x = read.csv(file.path(lin_ts_folder,'Centroid_x.csv'),header=F)
     centroid_y = read.csv(file.path(lin_ts_folder,'Centroid_y.csv'),header=F)
@@ -384,8 +384,8 @@ find_dist_overlaps_and_orientations <- function(lin_ts_folder,min.ratio=3,
     print('Done loading and filtering position/orientation data')
 
     data_summary = determine_mean_dist_between(centroid_x,centroid_y,orientation,min.overlap=min.overlap);
-    if (! is.na(output_file)) {
-        save(data_summary,file=file.path(lin_ts_folder,'..',output_file));
+    if (! is.na(output.file)) {
+        save(data_summary,file=file.path(lin_ts_folder,'..',output.file));
     }
     return(data_summary);
 }
@@ -668,6 +668,8 @@ if (length(args) != 0) {
         start_time = proc.time();
         temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle, 
             diagnostic.figure=T);
+        temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle, 
+            diagnostic.figure=T,min.ratio = 2, output.file='FA_orientation_ratio2.Rdata');
         end_time = proc.time();
         print(paste('FA Orientation Runtime:',(end_time - start_time)[3]))
         
