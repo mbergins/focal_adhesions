@@ -93,7 +93,7 @@ sub build_derived_parameters {
 		if ($cfg->{opt}{cfg} =~ /$cfg->{data_folder}(.*)/) {
 			$cfg->{exp_name} = File::Basename::dirname($1);
 		} else {
-			die "Unable to find the main data folder to automatically produce the experiment name";
+			die "Unable to find $cfg->{data_folder} in $cfg->{opt}{cfg}.";
 		}
 	}
 
