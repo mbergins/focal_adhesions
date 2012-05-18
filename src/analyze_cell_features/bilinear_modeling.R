@@ -335,7 +335,6 @@ if (length(args) != 0) {
         
         if (file.exists(file.path(data_dir,'lin_time_series','FA_angle_recentered.csv'))) {
             angle_recenter = as.matrix(read.csv(file.path(data_dir,'lin_time_series','FA_angle_recentered.csv'),header=F));
-            angle_recenter = abs(angle_recenter);
             exp_props$Mean_FA_recentered_angle = rowMeans(angle_recenter,na.rm=T);
         } else {
             print(paste('Could not find FA_angle_recentered.csv'))
