@@ -56,11 +56,14 @@ if (exist(fullfile(fileparts(I_file),filenames.cell_mask),'file'))
     cell_mask = imread(fullfile(fileparts(I_file),filenames.cell_mask));
 end
 
-overall_filter_vals = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
-
 %read in and normalize the input focal adhesion image
 focal_image  = double(imread(I_file));
-image_set_min_max = csvread(fullfile(fileparts(I_file),filenames.focal_image_min_max));
+if (exist(fullfile(fileparts(I_file),filenames.focal_image_min_max),'file'))
+    image_set_min_max = csvread(fullfile(fileparts(I_file),filenames.focal_image_min_max));
+else
+    image_set_min_max = quantile(focal_image(:),[0.001,0.999]);
+end
+
 focal_normed = (focal_image - image_set_min_max(1))/(range(image_set_min_max));
 
 output_dir = fileparts(I_file);
@@ -79,6 +82,7 @@ high_passed_image = focal_image - blurred_image;
 if (i_p.Results.per_image_thresh)
     filter_thresh = mean(high_passed_image(:)) + std(high_passed_image(:))*i_p.Results.stdev_thresh;
 else
+    overall_filter_vals = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
     filter_thresh = overall_filter_vals(1) + overall_filter_vals(2)*i_p.Results.stdev_thresh;
 end
 
