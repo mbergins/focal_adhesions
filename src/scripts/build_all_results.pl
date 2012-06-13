@@ -105,10 +105,11 @@ for (@overall_command_seq) {
 		&execute_command_seq(\@command_seq, $starting_dir);
 	}
 
-	#If debugging is not on, we want to wait till the current jobs finish
-	#and then check the file complements of the experiments for completeness
-	&wait_till_LSF_jobs_finish if ($opt{lsf} && not($opt{debug}));
-	if (not($opt{debug}) && not(grep $command_seq[0][1] =~ /$_/, @skip_check)) {
+	#If debugging is off, we want to wait till the current jobs finish, if any
+	#were run, and then check the file complements of the experiments for
+	#completeness
+	my $LSF_was_run = &wait_till_LSF_jobs_finish if ($opt{lsf} && not($opt{debug}));
+	if (not($opt{debug}) && $LSF_was_run && not(grep $command_seq[0][1] =~ /$_/, @skip_check)) {
 		print "Checking for all output files on command $command_seq[0][1]\n";
 		my %exp_sets = &check_file_sets(\@config_files);
 
@@ -233,6 +234,7 @@ sub wait_till_LSF_jobs_finish {
 	
 	if (! $first_check) {
 		print "No LSF jobs detected, jumping to next command.\n";
+		return 0;
 	} else {
 		for (1 .. $total_checks) {
 			print "LSF finished check number $_/$total_checks\n";
@@ -243,6 +245,7 @@ sub wait_till_LSF_jobs_finish {
 		}
 	}
 	print "\n";
+	return 1;
 }
 
 sub running_LSF_jobs {
