@@ -51,7 +51,7 @@ switch i_p.Results.type
         
         axis_ratio = major_axis ./ minor_axis;
         
-        highlight_decision = axis_ratio >= 3;
+        highlight_decision = axis_ratio >= 2;
         
         output_dir = fullfile(exp_dir,'visualizations','axis_ratio_highlight');
     case 'lifetime'
@@ -95,7 +95,7 @@ switch i_p.Results.type
         FA_angle = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','FA_angle_recentered.csv'));
         FA_angle_mean = nanmean(abs(FA_angle),2);
         
-        max_val = 60;
+        max_val = 80;
         
         %remove adhesions above the maximum angle
         highlight_decision(FA_angle_mean > max_val,:) = 0;
@@ -113,6 +113,21 @@ switch i_p.Results.type
         highlight_decision(FA_angle_mean > max_val,:) = 0;
         
         output_dir = fullfile(exp_dir,'visualizations',['FA_angle_outside_',num2str(60)]);
+    case 'zaozao'
+        FA_angle = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','FA_angle_recentered.csv'));
+        FA_angle_mean = nanmean(abs(FA_angle),2);
+
+        FA_dist = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','CHull_dist.csv'));
+        FA_dist_mean = nanmean(FA_dist,2);
+        
+        dist_cutoff = quantile(FA_dist_mean,0.4);
+        
+        highlight_decision(FA_angle_mean <= 80 & FA_dist_mean <= dist_cutoff,:) = 1;
+        highlight_decision(FA_angle_mean > 80 & FA_angle_mean <= 120 ...
+            & FA_dist_mean <= dist_cutoff,:) = 2;
+        highlight_decision(FA_dist_mean > dist_cutoff | FA_angle_mean > 120,:) = 3;
+        
+        output_dir = fullfile(exp_dir,'visualizations','ZZ');
     otherwise
         disp(['Undefined visualization type requested: "',i_p.Results.type, '" exiting.']);
         return
@@ -125,6 +140,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Build the Eccen Vis
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+color_maps = [0,1,0;1,0,0;0,0,1];
+
 for i_num = 1:size(image_dirs)
     this_data = read_in_file_set(fullfile(base_dir,image_dirs(i_num).name),filenames);
     this_decision = highlight_decision(:,i_num);
@@ -132,17 +150,17 @@ for i_num = 1:size(image_dirs)
     
     ad_rows = this_tracking > 0;
     
-    above_rows = ad_rows & this_decision;
-    below_rows = ad_rows & not(this_decision);
+    highlight_nums = unique(this_decision(ad_rows));
     
-    above_ads = this_tracking(above_rows);
-    below_ads = this_tracking(below_rows);
+    highlight = this_data.focal_norm;
+    for h_num = highlight_nums'
+        these_ads = this_tracking(ad_rows & this_decision == h_num);
+        
+        mask = ismember(this_data.adhesions,these_ads);
+        highlight = create_highlighted_image(highlight,mask, ...
+            'color_map',color_maps(h_num,:),'mix_percent',1);
+    end
     
-    above_filled = ismember(this_data.adhesions_perim,above_ads);
-    low_filled = ismember(this_data.adhesions_perim,below_ads);
-    
-    highlight = create_highlighted_image(this_data.focal_norm,above_filled,'color_map',[0,1,0],'mix_percent',1);
-    highlight = create_highlighted_image(highlight,low_filled,'color_map',[1,0,0],'mix_percent',1);
     if (any(strcmp('adhesion_centroid',fieldnames(this_data))))
         highlight = add_centroid_mark(highlight,this_data.adhesion_centroid,[0,0,1]);
     end
