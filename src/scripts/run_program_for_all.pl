@@ -62,8 +62,7 @@ foreach (@config_files) {
 		if ($opt{debug}) {
 			print "$command\n";
 		} else {
-			print("$_\n");
-			system("$command");
+			system("nice -n 20 $command");
 		}
 	}
 }
