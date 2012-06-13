@@ -68,14 +68,15 @@ print SVG_OUT "</g>\n";
 print SVG_OUT '</svg>';
 close SVG_OUT;
 
-my $output_png = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost.png");
-my $output_png_small = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost_small.png");
+my $exp_name = $cfg{exp_name};
+$exp_name =~ s/\//_/g;
+# my $output_png = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost.png");
+# my $output_png_small = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost_small.png");
+my $output_png = catfile($cfg{results_folder}, "$exp_name.png");
+my $output_png_small = catfile($cfg{results_folder}, "$exp_name" . "_small.png");
 
-my $command = "inkscape -z $output_file -d 100 --export-png=$output_png_small --export-background-opacity=1.0";
-if (not $opt{debug}) {
-	$command .= " > /dev/null";
-}
-system $command;
+system "inkscape -z $output_file -d 100 --export-png=$output_png_small --export-background-opacity=1.0";
+# system "inkscape -z $output_file -d 300 --export-png=$output_png --export-background-opacity=1.0";
 
 my $command = "inkscape -z $output_file -d 300 --export-png=$output_png --export-background-opacity=1.0";
 if (not $opt{debug}) {
