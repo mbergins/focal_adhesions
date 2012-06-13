@@ -1,8 +1,0 @@
-\beamer@endinputifotherversion {3.07pt}
-\select@language {english}
-\beamer@sectionintoc {1}{Introduction}{2}{0}{1}
-\beamer@sectionintoc {2}{Finding/Tracking Adhesions}{6}{0}{2}
-\beamer@subsectionintoc {2}{1}{Identifying Focal Adhesions}{6}{0}{2}
-\beamer@subsectionintoc {2}{2}{Visualizing the Results}{11}{0}{2}
-\beamer@sectionintoc {3}{Adhesion Properties}{14}{0}{3}
-\beamer@sectionintoc {4}{Conclusions}{21}{0}{4}
