@@ -199,9 +199,7 @@ for i = 1:max_image_num
     %of the program
     orig_i = orig_i(b_box(2):b_box(4), b_box(1):b_box(3));
     highlighted_all = highlighted_all(b_box(2):b_box(4), b_box(1):b_box(3), 1:3);
-    highlighted_time = highlighted_time(b_box(2):b_box(4), b_box(1):b_box(3), 1:3);
     edge_image_ad_bounded = edge_image_ad(b_box(2):b_box(4), b_box(1):b_box(3), 1:3);
-    edge_image_ad_time_bounded = edge_image_ad_time(b_box(2):b_box(4), b_box(1):b_box(3), 1:3);
 
     spacer = 0.5*ones(size(edge_image_ad_bounded,1),1,3);
     
@@ -235,9 +233,21 @@ for i = 1:max_image_num
             imwrite(frame{j},output_filename);
         end
     end
-
+    
+    
+    props = regionprops(ad_label,'Centroid');
+    temp = [props.Centroid];
+    centroid_row = temp(2:2:end);
+    centroid_col = temp(1:2:end);
+    
+    all_labels = '';
+    for ad_num=1:length(centroid_row)
+%         lineage_num = tracking_mat
+    end
+    
     disp(['Done with ', num2str(i_seen), '/',num2str(max_image_num)]);
 end
 
+toc;
 profile off;
 if (i_p.Results.debug), profile viewer; end
