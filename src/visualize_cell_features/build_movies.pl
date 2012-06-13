@@ -13,7 +13,6 @@ use Benchmark;
 
 use lib "../lib";
 use Config::Adhesions;
-use Image::Data::Collection;
 
 #Perl built-in variable that controls buffering print output, 1 turns off
 #buffering
@@ -34,12 +33,9 @@ my %cfg = $ad_conf->get_cfg_hash;
 ###############################################################################
 my ($t1, $t2);
 
-#Collecting Visualizations
-chdir "../visualize_cell_features";
-
 #Build Movies 
-my @image_numbers = &Image::Data::Collection::gather_sorted_image_numbers(\%cfg);
-my $image_num_length = length(scalar(@image_numbers));
+my @image_folders = <$cfg{individual_results_folder}/*>;
+my $image_num_length = length(scalar(@image_folders));
 
 print "\n\nBuild Movies\n\n" if $opt{debug};
 $t1 = new Benchmark;
@@ -49,8 +45,18 @@ find(\&add_to_movie_dir, (catdir($cfg{exp_results_folder},$cfg{movie_output_fold
 
 foreach my $f1 (@movie_dirs) {
     foreach my $f2 (@{ $cfg{movie_output_prefix} }) {
+		my $unfoldered_exp_name = $cfg{exp_name};
+		$unfoldered_exp_name =~ s#/#_#g;
         my $input_folder = catdir($f1,$f2);
-        system "ffmpeg -v 0 -y -r $cfg{movie_frame_rate} -i $input_folder/%0" . $image_num_length . "d.png -sameq $input_folder.mov 2>&1";
+		my $output_file = catdir($cfg{exp_results_folder},'..',"$unfoldered_exp_name.mov");
+		
+		my $command = "ffmpeg -v 0 -y -r $cfg{movie_frame_rate} -i $input_folder/%0" . 
+			$image_num_length . "d.png -sameq $output_file > /dev/null 2>&1";
+		if ($opt{debug}) {
+        	print "$command\n";
+		} else {
+        	system($command);
+		}
     }
 }
 $t2 = new Benchmark;
