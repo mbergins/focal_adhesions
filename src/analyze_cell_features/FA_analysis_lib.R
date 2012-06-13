@@ -319,14 +319,57 @@ boxplot_with_points <- function(data,names=seq(1,length(data),by=1),
     }
 }
 
-plot_fancy_barplot <- function(data_sets) {
+boxplot.fancy <- function(data,names=seq(1,length(data),by=1),
+    colors=c('darkgreen','red','brown','blue','yellow','pink','cyan','gray','orange','purple'),
+    inc.n.counts = TRUE, inc.points = F, pch=20,
+    na.omit = TRUE, point.cex=0.2,box.return=F,...) {
+	
+    if (any(is.null(data))) {
+        print(paste("The data in position", which(is.null(data)), "is null"))
+        stop()
+    }
+
+    if (na.omit) {
+        data = lapply(data,na.omit)
+    }
+	if (inc.n.counts) {
+		for (i in 1:length(data)) {
+            names[i] = paste(names[i], '\n(n=', length(data[[i]]), ')', sep ='');
+		}
+	}
+	
+	box.data = boxplot(data,pch=19,cex=0.25,axes=F,...)
+
+    axis(2)
+    axis(1,at=1:length(box.data$n),labels = names,padj=0.5)
+
+    plot_dims = par("usr");
+	if (inc.points) {
+        colors = rep(colors,length(data));
+		for (i in 1:length(data)) {
+			this_data = data[[i]]
+			temp_data = this_data[this_data >= box.data$stat[1,i] & this_data <= box.data$stat[5,i]]
+			points(jitter(array(0,dim=c(1,length(temp_data))),10)+i,
+                   temp_data,col=colors[i], pch=pch, cex=point.cex)
+		}
+	}
+    
+    if (box.return) {
+        return(box.data)
+    }
+}
+
+plot_fancy_barplot <- function(data_sets,...) {
     library(Hmisc)
 
     means = unlist(lapply(data_sets, mean, na.rm=T))
-    y_plus = unlist(lapply(data_set,function(x)t.test(x)$conf.int[2]))
-    y_plus = unlist(lapply(data_set,function(x)t.test(x)$conf.int[1]))
+    y_plus = unlist(lapply(data_sets,function(x)t.test(x)$conf.int[2]))
+    y_minus = unlist(lapply(data_sets,function(x)t.test(x)$conf.int[1]))
+    
+    bar_data = barplot(means,ylim=c(0,max(y_plus*1.01)),...)
+    errbar(bar_data,means,y_plus,y_minus,add=T,cex=1E-10,lwd=2,cap=0.3/length(data_sets))
 
-    barplot(means)
+    return(bar_data)
 }
 
 print_ratio_conf_string <- function(data_1,data_2) {
@@ -719,11 +762,14 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         ad_data$joint$disassembly_length = c(ad_data$joint$disassembly_length, res$dis$image_count[joint_filt]);
         ad_data$joint$disassembly_slope = c(ad_data$joint$disassembly_slope, res$dis$slope[joint_filt]);
         ad_data$joint$longevity = c(ad_data$joint$longevity, res$exp_props$longevity[joint_filt]);
-
-        #the assembly/disassembly lengths are saved as number of images, not number of minutes, so to find the stability length we need the number of 
+        
+        # Figuring out the length of the stability phase is a bit complicated.
+        # The assembly and disassembly phases can end and start on the same
+        # image, so we need to ensure that our counts acknowledge that
+        # possiblity. The extra additions do that in the following code.
         i_num_joint_longev = res$exp_props$death_i_num[joint_filt] - res$exp_props$birth_i_num[joint_filt] + 1;
         ad_data$joint$stability_length = c(ad_data$joint$stability_length, 
-            i_num_joint_longev - res$assem$image_count[joint_filt] - res$dis$image_count[joint_filt]);
+            i_num_joint_longev - res$assem$image_count[joint_filt] - res$dis$image_count[joint_filt] + 1);
     }
     
     ad_data$assembly$exp_num = as.factor(ad_data$assembly$exp_num);
@@ -865,7 +911,7 @@ gather_global_exp_summary <- function(data_set) {
 
 gather_general_dynamic_props <- function(results, min.longevity=NA, max.longevity=NA, 
     max.FA.angle=NA,min.FA.angle=NA, max.CHull.percentile = NA, min.CHull.percentile=NA, 
-    debug=FALSE) {
+    debug=FALSE,class='no_class') {
 
 	points = list()
 	for (i in 1:length(results)) {
@@ -885,10 +931,10 @@ gather_general_dynamic_props <- function(results, min.longevity=NA, max.longevit
         }
 
         if (! is.na(min.FA.angle)) {
-            filt = filt & res$exp_props$Mean_FA_recentered_angle > min.FA.angle;
+            filt = filt & abs(res$exp_props$Mean_FA_recentered_angle) > min.FA.angle;
         }
         if (! is.na(max.FA.angle)) {
-            filt = filt & res$exp_props$Mean_FA_recentered_angle <= max.FA.angle;
+            filt = filt & abs(res$exp_props$Mean_FA_recentered_angle) <= max.FA.angle;
         }
 
         if (! is.na(max.CHull.percentile)) {
@@ -897,12 +943,34 @@ gather_general_dynamic_props <- function(results, min.longevity=NA, max.longevit
 
             filt = filt & CHull_dists <= max_dist;
         }
-        
         if (! is.na(min.CHull.percentile)) {
             CHull_dists = res$exp_props$Mean_FA_CHull_dist;
             min_dist = quantile(CHull_dists,min.CHull.percentile)
 
             filt = filt & CHull_dists > min_dist;
+        }
+        
+        if (class == 'leading') {
+            CHull_dists = res$exp_props$Mean_FA_CHull_dist;
+            max_dist = quantile(CHull_dists,0.4)
+            
+            filt = filt & CHull_dists <= max_dist
+
+            filt = filt & abs(res$exp_props$Mean_FA_recentered_angle) <= 80;
+        } else if (class == 'side') {
+            CHull_dists = res$exp_props$Mean_FA_CHull_dist;
+            max_dist = quantile(CHull_dists,0.4)
+            
+            filt = filt & CHull_dists <= max_dist
+
+            filt = filt & abs(res$exp_props$Mean_FA_recentered_angle) > 80 & 
+                abs(res$exp_props$Mean_FA_recentered_angle) <= 120
+        } else if (class == 'other') {
+            CHull_dists = res$exp_props$Mean_FA_CHull_dist;
+            max_dist = quantile(CHull_dists,0.4)
+            
+            filt = filt & (CHull_dists > max_dist |  
+                abs(res$exp_props$Mean_FA_recentered_angle) > 120)
         }
 
 		points$longevity = c(points$longevity, res$exp_props$longevity[filt])
@@ -1002,11 +1070,9 @@ count_adhesions_per_image <- function(results,time.spacing=1,time.unit=10) {
     return(data);
 }
 
-
 #######################################
 # Column based Functions
 #######################################
-
 colMedians <- function(this_mat,na.rm=T) {
     medis = c()
     for (i in 1:dim(this_mat)[2]) {
@@ -1024,48 +1090,43 @@ colGeoMeans <- function(this_mat, na.rm=T) {
     return(geoMeans)
 }
 
-colConfUpper <- function(this_mat) {
-    upper = c()
-    for (i in 1:dim(this_mat)[2]) {
-        na_count = sum(is.na(this_mat[,i]));
-        non_na_count = dim(this_mat)[1] - na_count;
-        if (non_na_count < 5) {
-            upper = c(upper,NA);
-        } else {
-            #remove any data values that aren't finite, NA, NaN or Inf typically
-            data_col = this_mat[,i];
-            data_col = data_col[is.finite(data_col)]
-            temp = t.test(data_col,conf.level=0.95)
-            if (is.nan(temp$conf.int[2])) {
-                upper = c(upper,0)
-            } else {
-                upper = c(upper,temp$conf.int[2])
-            }
-        }
+colConf <- function(this_mat,type,conf.level=0.95) {
+    conf.index = NA;
+    if (type == 'upper') {
+        conf.index = 2
+    } else if (type == 'lower') {
+        conf.index = 1
+    } else {
+        stop('When using colConf, either upper or lower must be specified in the second option')
     }
-    return(upper)
-}
 
-colConfLower <- function(this_mat) {
-    lower = c()
+    values = c()
     for (i in 1:dim(this_mat)[2]) {
         na_count = sum(is.na(this_mat[,i]));
         non_na_count = dim(this_mat)[1] - na_count;
         if (non_na_count < 5) {
-            lower = c(lower,NA);
+            values = c(values,NA);
         } else {
             #remove any data values that aren't finite, NA, NaN or Inf typically
-            data_col = this_mat[,i];
+            data_col = this_mat[,i]
             data_col = data_col[is.finite(data_col)]
-            temp = t.test(data_col,conf.level=0.95)
-            if (is.nan(temp$conf.int[1])) {
-                lower = c(lower,0)
-            } else {
-                lower = c(lower,temp$conf.int[1])
-            }
+            
+            #This tryCatch is hear to deal with an error t.test throws when the
+            #data is constant and it has trouble determing a conf interval. In
+            #these cases, I want the confidence interval to just be the mean
+            #value.
+            temp = tryCatch({
+                t.test(data_col,conf.level=conf.level)
+            }, warning = function(w) {
+                list(conf.int = rep(mean(data_col),2))
+            }, error = function(e) {
+                list(conf.int = rep(mean(data_col),2))
+            })
+            
+            values = c(values,temp$conf.int[conf.index])
         }
     }
-    return(lower)
+    return(values)
 }
 
 colSD <- function(this_mat) {
@@ -1080,11 +1141,24 @@ colSD <- function(this_mat) {
     return(st_devs)
 }
 
+colSE <- function(this_mat) {
+    st_err = c()
+    for (i in 1:dim(this_mat)[2]) {
+        if (all(is.na(this_mat[,i]))) {
+            st_err = c(st_err,NA);
+        } else {
+            st_err = c(st_err,sd(this_mat[,i],na.rm=T)/sqrt(length(na.omit(this_mat[,i]))))
+        }
+    }
+    return(st_err)
+}
+
 #######################################
 # Split Property Measurements
 #######################################
 count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,
-    min.lifetime=NA,dist.measurements = NA, min.dist.ptile = 0.4,use.geo.mean=F) {
+    min.lifetime=NA,dist.measurements = NA, area.data=NA,min.area=NA, 
+    min.dist.ptile = 0.4,use.geo.mean=F, roll.length = 1) {
     library(zoo)
     
     #######################################################
@@ -1096,14 +1170,16 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,
        lifetimes = rowSums(!is.na(exp_data))
        before_size = dim(exp_data)[1]
        exp_data = exp_data[lifetimes >= min.lifetime,];
-       # print(dim(exp_data)[1]/before_size)
     }
 
     if (! is.na(dist.measurements[1])) {
        before_size = dim(exp_data)[1]
        min.dist = quantile(dist.measurements, c(min.dist.ptile));
        exp_data = exp_data[dist.measurements >= min.dist,]
-       # print(dim(exp_data)[1]/before_size)
+    }
+
+    if (! is.na(min.area) & ! is.null(dim(area.data))) {
+        exp_data[area.data < min.area] = NA
     }
     
     #######################################################
@@ -1122,16 +1198,17 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,
         average_val = exp_data;
     }
     
-    average_val = rollmean(average_val,20,na.pad=T);
+    average_val = rollmean(average_val,roll.length,na.pad=T);
     
     average_val_before = average_val[1:split.time]
     average_val_after = average_val[-1:-split.time]
 
-    # average_val_before = rollmean(average_val_before,20,na.pad=T,align='right')
-    # average_val_after = rollmean(average_val_after,20,na.pad=T,align='left')
-    
     if (exp.norm) {
-        mean_before = mean(average_val_before,na.rm=T)
+        # mean_before = mean(average_val_before,na.rm=T)
+        
+        # remove all the zero values, as divisions by zero mess up the
+        # downstream plotting
+        mean_before = tail(average_val_before[average_val_before != 0],1)
         average_val_before = average_val_before/mean_before
         average_val_after = average_val_after/mean_before
     }
@@ -1145,7 +1222,7 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,
 
 summarize_split_matrix <- function(exp_data,debug=F) {
     before_temp = matrix_from_list(exp_data$before,lineup='end')
-    # before_temp = t(tail(t(before_temp),70))
+    before_temp = t(tail(t(before_temp),30))
     
     after_temp = matrix_from_list(exp_data$after)
     after_temp = t(head(t(after_temp),70))
@@ -1157,12 +1234,18 @@ summarize_split_matrix <- function(exp_data,debug=F) {
     
     results$mean$before = colMeans(before_temp,na.rm=T)
     results$mean$after = colMeans(after_temp,na.rm=T)
-
-    results$upper_conf$before = colConfUpper(before_temp)
-    results$upper_conf$after = colConfUpper(after_temp)
     
-    results$lower_conf$before = colConfLower(before_temp)
-    results$lower_conf$after = colConfLower(after_temp)
+    results$SD$before = colSD(before_temp)
+    results$SD$after = colSD(after_temp)
+    
+    results$SE$before = colSE(before_temp)
+    results$SE$after = colSE(after_temp)
+
+    results$upper_conf$before = colConf(before_temp,'upper',conf.level=0.9)
+    results$upper_conf$after = colConf(after_temp,'upper',conf.level=0.9)
+    
+    results$lower_conf$before = colConf(before_temp,'lower',conf.level=0.9)
+    results$lower_conf$after = colConf(after_temp,'lower',conf.level=0.9)
     return(results);
 }
 
