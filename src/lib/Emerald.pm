@@ -13,9 +13,9 @@ use Data::Dumper;
 ###############################################################################
 # Module Definition
 ###############################################################################
-my %opt = ("queue" => "day", "output_filename" => "out.txt", 
+my %opt = ("queue" => "hour", "output_filename" => "out.txt", 
            "error_filename" => "error.txt", "error_folder" => "./",
-           "runtime" => "24",);
+           );
 
 sub send_LSF_commands {
     my @commands = @{$_[0]};
