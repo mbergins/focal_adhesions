@@ -79,10 +79,12 @@ I_filt = fspecial('disk',i_p.Results.filter_size);
 blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
 high_passed_image = focal_image - blurred_image;
 
-if (i_p.Results.per_image_thresh)
+filter_file = fullfile(fileparts(I_file),filenames.focal_image_threshold);
+
+if (i_p.Results.per_image_thresh || not(exist(filter_file,'file')))
     filter_thresh = mean(high_passed_image(:)) + std(high_passed_image(:))*i_p.Results.stdev_thresh;
 else
-    overall_filter_vals = csvread(fullfile(fileparts(I_file),filenames.focal_image_threshold));
+    overall_filter_vals = csvread(filter_file);
     filter_thresh = overall_filter_vals(1) + overall_filter_vals(2)*i_p.Results.stdev_thresh;
 end
 
@@ -162,10 +164,10 @@ end
 % Find and fill holes in single adhesions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 holes_start = tic;
-%holes can't occur in adhesions below 4 pixels, so we skip those
-props = regionprops(ad_segment,'Area');
-large_ad_nums = find([props.Area] >= 4);
-for this_num = large_ad_nums
+filled_ads = imfill(ad_segment,'holes');
+hole_pixels = unique(filled_ads(filled_ads & not(ad_segment)));
+
+for this_num = hole_pixels'
     %first make a binary image of the current adhesion and then run imfill
     %to fill any holes present
     this_ad = zeros(size(ad_segment));

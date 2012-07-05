@@ -2,8 +2,8 @@ function find_cell_mask(I_file)
 %CREATE_CELL_MASK_IMAGE   Gather and write the cell mask from a
 %                         fluorescence image 
 %
-%   create_cell_mask_image(I,OF) finds the cell mask using the image in
-%   file 'I' and writes the binary cell mask to the output file 'OF'
+%   create_cell_mask_image(I) finds the cell mask using the image in
+%   file 'I' and writes the binary cell mask to the same folder as 'I'
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Setup variables and parse command line
@@ -32,7 +32,7 @@ sorted_mask_pixels = sort(mask_image(:));
 [heights, intensity] = hist(sorted_mask_pixels,1000);
 
 smoothed_heights = smooth(heights,0.05,'loess');
-[zmax,imax,zmin,imin]= extrema(smoothed_heights);
+[~,imax,~,imin]= extrema(smoothed_heights);
 
 %keep in mind that the zmax is sorted by value, so the highest peak is
 %first and the corresponding index is also first in imax, the same pattern
@@ -47,7 +47,7 @@ assert(length(min_index) == 1, 'Error: expected to only find one minimum index b
 threshed_mask = mask_image > intensity(imin(min_index));
 
 %%Mask Cleanup
-connected_areas = bwlabel(threshed_mask);%
+connected_areas = bwlabel(threshed_mask);
 region_sizes = regionprops(connected_areas, 'Area');
 
 %filter out connected regions smaller than 2.5% of the total image area
