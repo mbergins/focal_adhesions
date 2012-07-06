@@ -55,13 +55,13 @@ if ($opt{debug}) {
 my @matlab_code;
 if (defined($cfg{min_independent_size}) && ! $cfg{no_ad_splitting}) {
 	@matlab_code = &create_all_matlab_commands;
+	$opt{queue} = "hour";
 } else {
 	@matlab_code = &create_single_matlab_command;
 }
 
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'FA');
 $opt{error_file} = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'FA', 'error.txt');
-$opt{runtime} = "1";
 if (defined $cfg{job_group}) {
     $opt{job_group} = $cfg{job_group};
 }
