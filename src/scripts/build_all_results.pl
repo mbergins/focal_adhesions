@@ -71,7 +71,7 @@ my @overall_command_seq = (
 #it's name
 my @run_only_once = qw();
 
-my @skip_check = qw(find_exp_thresholds track_adhesions gather_tracking_results
+my @skip_check = qw(find_exp_thresholds gather_tracking_results
 	build_R_models build_alignment_models collect_visualizations
 	max_intent_project make_eccen_filtered_vis);
 
