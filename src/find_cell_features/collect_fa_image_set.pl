@@ -57,7 +57,8 @@ if (defined($cfg{min_independent_size}) && ! $cfg{no_ad_splitting}) {
 	@matlab_code = &create_all_matlab_commands;
 	$opt{queue} = "hour";
 } else {
-	@matlab_code = &create_single_matlab_command;
+	# @matlab_code = &create_single_matlab_command;
+	@matlab_code = &create_bundled_matlab_commands;
 }
 
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'FA');
@@ -80,6 +81,30 @@ sub create_all_matlab_commands {
     foreach my $file_name (@image_files) {
 		$matlab_code[0] .= "find_focal_adhesions('$file_name'$extra_opt)\n";
     }
+
+    return @matlab_code;
+}
+
+sub create_bundled_matlab_commands {
+    my @matlab_code;
+
+    my @image_files = <$cfg{individual_results_folder}/*/$cfg{adhesion_image_file}>;
+	my $extra_opt = &build_extra_opts;
+	
+	my @image_nums = 1..scalar(@image_files);
+	while (@image_nums) {
+		my @this_set;
+		for (1..10) {
+			if (@image_nums) {
+				push @this_set, shift @image_nums;
+			}
+		}
+		my $num_str = '[' . join(",",@this_set) . ']';
+			
+		my $these_opt = "$extra_opt,'i_num',$num_str";
+
+		push @matlab_code, "find_focal_adhesions_full_exp('$cfg{exp_results_folder}'$these_opt)\n";
+	}
 
     return @matlab_code;
 }
