@@ -101,7 +101,7 @@ sub create_bundled_matlab_commands {
 		}
 		my $num_str = '[' . join(",",@this_set) . ']';
 			
-		my $these_opt = "$extra_opt,'i_num',$num_str";
+		my $these_opt = "$extra_opt,'i_nums',$num_str";
 
 		push @matlab_code, "find_focal_adhesions_full_exp('$cfg{exp_results_folder}'$these_opt)\n";
 	}
