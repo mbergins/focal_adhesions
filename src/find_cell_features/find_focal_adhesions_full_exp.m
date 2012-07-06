@@ -10,6 +10,8 @@ i_p = inputParser;
 i_p.addRequired('exp_folder',@(x)exist(x,'dir') == 7);
 
 %Adhesion filtering parameters
+i_p.addParamValue('i_nums',@(x)isnumeric(x));
+
 i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
 i_p.addParamValue('min_independent_size',14,@(x)isnumeric(x) && x > 0);
@@ -56,6 +58,10 @@ end
 
 image_folders = dir(fullfile(exp_folder,'individual_pictures'));
 image_folders = image_folders(3:end);
+if (not(any(strcmp('i_nums',i_p.UsingDefaults))))
+    image_folders = image_folders(i_p.Results.i_nums);
+    clean_opts = rmfield(clean_opts,'i_nums');
+end
 
 for i = 1:length(image_folders)
     I_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.focal_image);
