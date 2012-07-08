@@ -119,8 +119,7 @@ end
 if (sum(sum(threshed_image)) == 0)
     no_ad_found_file = fullfile(output_dir, 'no_ads_found.txt');
     system(['touch ', no_ad_found_file]);
-    warning('FA:noadsfound','Didn''t find any adhesions');
-    return;
+    disp('Didn''t find any adhesions');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -139,7 +138,6 @@ if (i_p.Results.no_ad_splitting || any(strcmp('min_independent_size',i_p.UsingDe
     %segmentation methods, just identify the connected areas
     ad_segment = bwlabel(threshed_image,4);
 else
-    
     ad_segment = watershed_min_size(high_passed_image,bwlabel(threshed_image,4), ...
         i_p.Results.min_independent_size);
 end
