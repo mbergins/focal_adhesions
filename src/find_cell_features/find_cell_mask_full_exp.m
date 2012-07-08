@@ -1,4 +1,4 @@
-function find_cell_mask_full_exp(exp_folder)
+function find_cell_mask_full_exp(exp_folder,varargin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Setup variables and parse command line
@@ -9,7 +9,8 @@ i_p = inputParser;
 
 i_p.addRequired('exp_folder',@(x)exist(x,'dir') == 7);
 
-i_p.parse(exp_folder);
+i_p.addParamValue('mask_threshold',0,@(x)isnumeric(x) && x > 0);
+i_p.parse(exp_folder,varargin{:});
 
 %Add the folder with all the scripts used in this master program
 addpath('matlab_scripts');
@@ -40,7 +41,7 @@ image_folders = image_folders(3:end);
 
 for i = 1:length(image_folders)
     mask_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.raw_mask);
-    find_cell_mask(mask_file);
+    find_cell_mask(mask_file,clean_opts);
     disp(['Done with ',mask_file]);
 end
 toc(overall_start);

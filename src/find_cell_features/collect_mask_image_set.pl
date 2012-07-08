@@ -58,7 +58,6 @@ if ($opt{debug}) {
     }
 }
 
-# my @matlab_code = &create_all_matlab_commands;
 my @matlab_code = &create_single_matlab_command;
 
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'mask_set');
@@ -88,7 +87,12 @@ sub create_all_matlab_commands {
 sub create_single_matlab_command {
     my @matlab_code;
 	
-	$matlab_code[0] = "find_cell_mask_full_exp('$cfg{exp_results_folder}')\n";
+	my $extra_opts = '';
+	if (defined $cfg{mask_threshold}) {
+		$extra_opts = ",'mask_threshold',$cfg{mask_threshold}";
+	}
+
+	$matlab_code[0] = "find_cell_mask_full_exp('$cfg{exp_results_folder}'$extra_opts)\n";
 
     return @matlab_code;
 }
