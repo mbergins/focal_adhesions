@@ -33,7 +33,6 @@ all_high_passed = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Collect all the images
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 for i_num = 1:size(image_dirs,1)
     puncta_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
     
@@ -51,7 +50,6 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Determine min/max and identification thresholds
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 trimmed_pix_values = trim_data_set(all_images(:),1E-4);
 min_max = [trimmed_pix_values(1),trimmed_pix_values(end)];
 

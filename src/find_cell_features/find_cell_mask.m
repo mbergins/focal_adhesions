@@ -1,4 +1,4 @@
-function find_cell_mask(I_file,varargin)
+function varargout = find_cell_mask(I_file,varargin)
 %CREATE_CELL_MASK_IMAGE   Gather and write the cell mask from a
 %                         fluorescence image
 %
@@ -34,6 +34,7 @@ end
 
 if (not(any(strcmp(i_p.UsingDefaults,'mask_threshold'))))
     threshed_mask = mask_image > i_p.Results.mask_threshold;
+    varargout{1} = i_p.Results.mask_threshold;
 else
     %%Threshold identification
     sorted_mask_pixels = sort(mask_image(:));
@@ -55,6 +56,8 @@ else
     min_index = find(imin > sorted_max_indexes(first_max_index) & imin < sorted_max_indexes(first_max_index + 1));
     assert(length(min_index) == 1, 'Error: expected to only find one minimum index between the first two max indexes, instead found %d', length(min_index));
     threshed_mask = mask_image > intensity(imin(min_index));
+    
+    varargout{1} = intensity(imin(min_index));
 end
 
 %%Mask Cleanup
