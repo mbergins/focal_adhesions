@@ -7,11 +7,11 @@ overall_start = tic;
 
 i_p = inputparser;
 
-i_p.addrequired('exp_folder',@(x)exist(x,'dir') == 7);
+i_p.addRequired('exp_folder',@(x)exist(x,'dir') == 7);
 
-i_p.addparamvalue('mask_threshold',0,@(x)isnumeric(x) && x > 0);
-i_p.addparamvalue('median_filter',0,@(x)x==1 || x==0);
-i_p.addparamvalue('single_threshold',0,@(x)x==1 || x==0);
+i_p.addParamValue('mask_threshold',0,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('median_filter',0,@(x)x==1 || x==0);
+i_p.addParamValue('single_threshold',0,@(x)x==1 || x==0);
 i_p.parse(exp_folder,varargin{:});
 
 %add the folder with all the scripts used in this master program
