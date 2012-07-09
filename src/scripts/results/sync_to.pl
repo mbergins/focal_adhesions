@@ -32,7 +32,7 @@ if ($opt{server} eq "NOSERVER" || $opt{debug}) {
     while($opt{repeat} != 0) {
         my $return = system "$command";
         print "Done with sync $opt{repeat} Return code: $return\n\n";
-		if ($return) {
+		if ($return == 65280) {
 			print "Caught exit code.";
 			last;
 		}
