@@ -89,7 +89,10 @@ sub create_single_matlab_command {
 	
 	my $extra_opts = '';
 	if (defined $cfg{mask_threshold}) {
-		$extra_opts = ",'mask_threshold',$cfg{mask_threshold}";
+		$extra_opts .= ",'mask_threshold',$cfg{mask_threshold}";
+	}
+	if (defined $cfg{median_cell_mask_filter}) {
+		$extra_opts .= ",'median_filter',$cfg{median_cell_mask_filter}";
 	}
 
 	$matlab_code[0] = "find_cell_mask_full_exp('$cfg{exp_results_folder}'$extra_opts)\n";

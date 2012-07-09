@@ -10,6 +10,7 @@ i_p = inputParser;
 i_p.addRequired('exp_folder',@(x)exist(x,'dir') == 7);
 
 i_p.addParamValue('mask_threshold',0,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('median_filter',0,@(x)x==1 || x==0);
 i_p.parse(exp_folder,varargin{:});
 
 %Add the folder with all the scripts used in this master program

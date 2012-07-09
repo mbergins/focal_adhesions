@@ -13,6 +13,7 @@ i_p.StructExpand = true;
 
 i_p.addRequired('I_file',@(x)exist(x,'file') == 2);
 i_p.addParamValue('mask_threshold',0,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('median_filter',0,@(x)x==1 || x==0);
 
 i_p.parse(I_file,varargin{:});
 
@@ -26,6 +27,10 @@ filenames = add_filenames_to_struct(struct());
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if (i_p.Results.median_filter)
+    mask_image = medfilt2(mask_image,[3,3]);
+end
 
 if (not(any(strcmp(i_p.UsingDefaults,'mask_threshold'))))
     threshed_mask = mask_image > i_p.Results.mask_threshold;
