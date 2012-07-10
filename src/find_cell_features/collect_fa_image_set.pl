@@ -13,6 +13,7 @@ use File::Spec::Functions;
 use File::Basename;
 use Getopt::Long;
 use Data::Dumper;
+use POSIX;
 
 use Config::Adhesions;
 use Math::Matlab::Extra;
@@ -55,12 +56,11 @@ if ($opt{debug}) {
 my @matlab_code;
 if (defined($cfg{min_independent_size}) && ! $cfg{no_ad_splitting}) {
 	@matlab_code = &create_all_matlab_commands;
-	$opt{queue} = "hour";
 } else {
-	# @matlab_code = &create_single_matlab_command;
 	@matlab_code = &create_bundled_matlab_commands;
 }
 
+$opt{queue} = "day";
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'FA');
 $opt{error_file} = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'FA', 'error.txt');
 if (defined $cfg{job_group}) {
@@ -92,9 +92,12 @@ sub create_bundled_matlab_commands {
 	my $extra_opt = &build_extra_opts;
 	
 	my @image_nums = 1..scalar(@image_files);
+	my $data_sets_runs = floor(scalar(@image_files)/150);
+	$data_sets_runs = 1 if ($data_sets_runs < 1);
+	my $min_image_count = ceil(scalar(@image_files)/$data_sets_runs);
 	while (@image_nums) {
 		my @this_set;
-		for (1..10) {
+		for (1..$min_image_count) {
 			if (@image_nums) {
 				push @this_set, shift @image_nums;
 			}
