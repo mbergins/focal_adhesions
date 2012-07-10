@@ -46,23 +46,41 @@ end
 image_folders = dir(fullfile(exp_folder,'individual_pictures'));
 image_folders = image_folders(3:end);
 
+mask_pix = [];
+
 mask_thresholds = zeros(length(image_folders),1);
 for i = 1:length(image_folders)
     mask_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.raw_mask);
+    temp = imread(mask_file);
+    mask_pix = [mask_pix; temp(:)];
     mask_thresholds(i) = find_cell_mask(mask_file,clean_opts);
     if (mod(i,10) == 0)
         disp(['Done with ',mask_file]);
     end
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Diagnostic Plots
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if (not(exist(fullfile(exp_folder,'adhesion_props'),'dir')))
+    mkdir(fullfile(exp_folder,'adhesion_props'))
+end
+
+single_threshold_val = find_middle_valley(mask_pix);
+
+hist(double(mask_pix(:)),1000);
+hold on;
+ylimits = ylim;
+plot([median(mask_thresholds),median(mask_thresholds)],ylimits,'r');
+plot([single_threshold_val,single_threshold_val],ylimits,'g');
+print('-dpng', fullfile(exp_folder,'adhesion_props','cell_mask_intensities.png'));
+hold off;
+
 mask_plot = plot(mask_thresholds);
 ylimits = ylim;
 ylim([0,ylimits(2)]);
 hold on;
 plot([0,length(mask_thresholds)],[median(mask_thresholds),median(mask_thresholds)],'r')
-if (not(exist(fullfile(exp_folder,'adhesion_props'),'dir')))
-    mkdir(fullfile(exp_folder,'adhesion_props'))
-end
 saveas(mask_plot,fullfile(exp_folder,'adhesion_props','cell_mask_thresholds.png'));
 
 if (i_p.Results.single_threshold)
@@ -77,3 +95,26 @@ if (i_p.Results.single_threshold)
 end
 
 toc(overall_start);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function threshold = find_middle_valley(pix_values)
+
+    [heights, intensity] = hist(double(pix_values),1000);
+    
+    smoothed_heights = smooth(heights,0.01,'loess');
+    [~,imax,~,imin]= extrema(smoothed_heights);
+    
+    %keep in mind that the zmax is sorted by value, so the highest peak is
+    %first and the corresponding index is also first in imax, the same pattern
+    %hold for zmin and imin
+    
+    sorted_max_indexes = sort(imax);
+    first_max_index = find(sorted_max_indexes == imax(1));
+    
+    %locate the index between the first two maximums
+    min_index = find(imin > sorted_max_indexes(first_max_index) & imin < sorted_max_indexes(first_max_index + 1));
+    assert(length(min_index) == 1, 'Error: expected to only find one minimum index between the first two max indexes, instead found %d', length(min_index));
+    threshold = intensity(imin(min_index));

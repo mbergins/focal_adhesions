@@ -42,7 +42,7 @@ else
     
     [heights, intensity] = hist(sorted_mask_pixels,1000);
     
-    smoothed_heights = smooth(heights,0.01,'loess');
+    smoothed_heights = smooth(heights,0.05,'loess');
     [~,imax,~,imin]= extrema(smoothed_heights);
     
     %keep in mind that the zmax is sorted by value, so the highest peak is
