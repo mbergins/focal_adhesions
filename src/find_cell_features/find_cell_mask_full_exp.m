@@ -50,20 +50,30 @@ mask_thresholds = zeros(length(image_folders),1);
 for i = 1:length(image_folders)
     mask_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.raw_mask);
     mask_thresholds(i) = find_cell_mask(mask_file,clean_opts);
-    disp(['Done with ',mask_file]);
+    if (mod(i,10) == 0)
+        disp(['Done with ',mask_file]);
+    end
 end
 
 mask_plot = plot(mask_thresholds);
 ylimits = ylim;
 ylim([0,ylimits(2)]);
+hold on;
+plot([0,length(mask_thresholds)],[median(mask_thresholds),median(mask_thresholds)],'r')
+if (not(exist(fullfile(exp_folder,'adhesion_props'),'dir')))
+    mkdir(fullfile(exp_folder,'adhesion_props'))
+end
 saveas(mask_plot,fullfile(exp_folder,'adhesion_props','cell_mask_thresholds.png'));
 
 if (i_p.Results.single_threshold)
+    repro_start = tic;
+    disp('Re-processing cell masks with a single threshold');
     clean_opts.mask_threshold = median(mask_thresholds);
     for i = 1:length(image_folders)
         mask_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.raw_mask);
         mask_thresholds(i) = find_cell_mask(mask_file,clean_opts);
     end
+    toc(repro_start);
 end
 
 toc(overall_start);
