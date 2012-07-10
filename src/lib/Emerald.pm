@@ -47,7 +47,7 @@ sub create_LSF_Matlab_commands {
     if (defined $opt{M}) {
 		$bsub_command .= " -M $opt{M}";
     }
-    my $matlab_command = "matlab -singleCompThread -nodisplay -nojvm -nosplash -r";
+    my $matlab_command = "matlab -singleCompThread -nodisplay -nosplash -r";
 
     @commands = map { split(/\n/, $_) } @commands;
     @commands = map { "$bsub_command $matlab_command \"$_\""} @commands;
