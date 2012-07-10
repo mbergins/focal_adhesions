@@ -29,13 +29,18 @@ filenames = add_filenames_to_struct(struct());
 %certain things when variables are not specified, but if we pass the raw
 %i_p.results parameter, it appears that all the parameters are specified,
 %even when they were probably mostly default
-clean_opts = i_p.results;
+clean_opts = i_p.Results;
 clean_opts = rmfield(clean_opts,'exp_folder');
 opt_field_names = fieldnames(clean_opts);
 for i = 1:length(opt_field_names)
-    if (any(strcmp(opt_field_names{i},i_p.usingdefaults)))
+    if (any(strcmp(opt_field_names{i},i_p.UsingDefaults)))
         clean_opts = rmfield(clean_opts,opt_field_names{i});
     end
+end
+
+%remove single_threshold parameter, if present
+if (not(isempty(strcmp('single_threshold',fieldnames(clean_opts)))))
+    clean_opts = rmfield(clean_opts,'single_threshold');
 end
 
 image_folders = dir(fullfile(exp_folder,'individual_pictures'));
@@ -45,7 +50,7 @@ mask_thresholds = zeros(length(image_folders),1);
 for i = 1:length(image_folders)
     mask_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.raw_mask);
     mask_thresholds(i) = find_cell_mask(mask_file,clean_opts);
-    disp(['done with ',mask_file]);
+    disp(['Done with ',mask_file]);
 end
 
 mask_plot = plot(mask_thresholds);
@@ -53,7 +58,7 @@ ylimits = ylim;
 ylim([0,ylimits(2)]);
 saveas(mask_plot,fullfile(exp_folder,'adhesion_props','cell_mask_thresholds.png'));
 
-if (i_p.results.single_threshold && i_p.Results.mask_threshold > 0)
+if (i_p.Results.single_threshold)
     clean_opts.mask_threshold = median(mask_thresholds);
     for i = 1:length(image_folders)
         mask_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.raw_mask);
