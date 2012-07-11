@@ -37,10 +37,8 @@ if (not(any(strcmp(i_p.UsingDefaults,'mask_threshold'))))
     varargout{1} = i_p.Results.mask_threshold;
 else
     %%Threshold identification
-    sorted_mask_pixels = sort(mask_image(:));
-    % sorted_mask_pixels(1:0.05*round(length(sorted_mask_pixels))) = 0;
     
-    [heights, intensity] = hist(sorted_mask_pixels,1000);
+    [heights, intensity] = hist(mask_image(:),1000);
     
     smoothed_heights = smooth(heights,0.05,'loess');
     [~,imax,~,imin]= extrema(smoothed_heights);
@@ -57,6 +55,18 @@ else
     assert(length(min_index) == 1, 'Error: expected to only find one minimum index between the first two max indexes, instead found %d', length(min_index));
     threshed_mask = mask_image > intensity(imin(min_index));
     
+    hist(mask_image(:),1000);
+    xlim([0,10000]);
+    ylim([0,14000]);
+    xlabel('Pixel Intensity');
+    ylabel('Pixel Count');
+    hold on;
+    plot(intensity,smoothed_heights,'r','LineWidth',3);
+    hold on;
+    ylimits = ylim;
+    plot([intensity(imin(min_index)),intensity(imin(min_index))],ylimits,'g','LineWidth',3);
+    hold off;
+    print('-dpng',fullfile(fileparts(I_file),'cell_mask_hist.png'))
     varargout{1} = intensity(imin(min_index));
 end
 

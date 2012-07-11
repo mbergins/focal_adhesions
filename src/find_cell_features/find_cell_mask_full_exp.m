@@ -82,6 +82,7 @@ ylim([0,ylimits(2)]);
 hold on;
 plot([0,length(mask_thresholds)],[median(mask_thresholds),median(mask_thresholds)],'r')
 saveas(mask_plot,fullfile(exp_folder,'adhesion_props','cell_mask_thresholds.png'));
+hold off;
 
 if (i_p.Results.single_threshold)
     repro_start = tic;
@@ -104,7 +105,7 @@ function threshold = find_middle_valley(pix_values)
 
     [heights, intensity] = hist(double(pix_values),1000);
     
-    smoothed_heights = smooth(heights,0.01,'loess');
+    smoothed_heights = smooth(heights,0.05,'loess');
     [~,imax,~,imin]= extrema(smoothed_heights);
     
     %keep in mind that the zmax is sorted by value, so the highest peak is
