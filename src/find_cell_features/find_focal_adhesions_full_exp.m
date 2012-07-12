@@ -21,10 +21,12 @@ i_p.addParamValue('min_seed_size',NaN,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
 
 i_p.addParamValue('max_adhesion_count', Inf, @(x) isnumeric(x));
-i_p.addParamValue('stdev_thresh',2,@(x)isnumeric(x) && all(x > 0));
+i_p.addParamValue('stdev_thresh',2,@(x)isnumeric(x));
 i_p.addParamValue('per_image_thresh',0,@(x)islogical(x) || x == 0 || x == 1);
 
 i_p.addParamValue('proximity_filter',0,@(x)isnumeric(x) && all(x >= 0));
+
+i_p.addParamValue('confocal_mode',0,@(x)isnumeric(x) && all(x >= 0));
 
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 i_p.addParamValue('paper_figures',0,@(x)x == 1 || x == 0);

@@ -34,10 +34,12 @@ i_p.addParamValue('min_seed_size',NaN,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
 
 i_p.addParamValue('max_adhesion_count', Inf, @(x) isnumeric(x));
-i_p.addParamValue('stdev_thresh',2,@(x)isnumeric(x) && all(x > 0));
+i_p.addParamValue('stdev_thresh',2,@(x)isnumeric(x));
 i_p.addParamValue('per_image_thresh',0,@(x)islogical(x) || x == 0 || x == 1);
 
 i_p.addParamValue('proximity_filter',0,@(x)isnumeric(x) && all(x >= 0));
+
+i_p.addParamValue('confocal_mode',0,@(x)isnumeric(x) && all(x >= 0));
 
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 i_p.addParamValue('paper_figures',0,@(x)x == 1 || x == 0);
@@ -72,24 +74,31 @@ output_dir = fileparts(I_file);
 % Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Apply filters to find adhesion regions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-I_filt = fspecial('disk',i_p.Results.filter_size);
-blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
-high_passed_image = focal_image - blurred_image;
-
-filter_file = fullfile(fileparts(I_file),filenames.focal_image_threshold);
-
-if (i_p.Results.per_image_thresh || not(exist(filter_file,'file')))
-    filter_thresh = mean(high_passed_image(:)) + std(high_passed_image(:))*i_p.Results.stdev_thresh;
+if (i_p.Results.confocal_mode)
+    focal_image_med_filt = medfilt2(focal_image, [7,7]);
+    
+    threshed_image = focal_image_med_filt > 0;
 else
-    overall_filter_vals = csvread(filter_file);
-    filter_thresh = overall_filter_vals(1) + overall_filter_vals(2)*i_p.Results.stdev_thresh;
+    I_filt = fspecial('disk',i_p.Results.filter_size);
+    blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
+    high_passed_image = focal_image - blurred_image;
+    
+    filter_file = fullfile(fileparts(I_file),filenames.focal_image_threshold);
+    
+    if (i_p.Results.per_image_thresh || not(exist(filter_file,'file')))
+        filter_thresh = mean(high_passed_image(:)) + std(high_passed_image(:))*i_p.Results.stdev_thresh;
+    else
+        overall_filter_vals = csvread(filter_file);
+        filter_thresh = overall_filter_vals(1) + overall_filter_vals(2)*i_p.Results.stdev_thresh;
+    end
+    
+    threshed_image = find_threshed_image(high_passed_image,filter_thresh, ...
+        i_p.Results.proximity_filter,i_p.Results.min_seed_size);
 end
-
-threshed_image = find_threshed_image(high_passed_image,filter_thresh, ...
-    i_p.Results.proximity_filter,i_p.Results.min_seed_size);
 
 %identify and remove adhesions on the edge of the image
 threshed_image = remove_edge_adhesions(threshed_image);
@@ -242,7 +251,7 @@ end
 % xlabel('High Pass Filtered Intensity','FontSize',16,'FontName','Helvetica');
 % ylabel('Pixel Count','FontSize',16,'FontName','Helvetica');
 % y_limits = ylim();
-% 
+%
 % set(gca, 'FontName','Helvetica','FontSize',16,'Box','off');
 % set(gcf, 'PaperPositionMode', 'auto');
 % print('-dpng', fullfile(output_dir,'high_passed_intensities.png'));
@@ -267,7 +276,7 @@ else
     
     if (not(isnan(min_seed_size)))
         high_threshed_labels = bwlabel(high_threshed_image);
-        high_threshed_props = regionprops(high_threshed_labels,'Area');
+        high_threshed_props = regionprops(high_threshed_labels,'Area'); %#ok<MRPBW>
         
         high_threshed_image = ismember(high_threshed_labels,find([high_threshed_props.Area] >= 4));
     end

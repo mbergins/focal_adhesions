@@ -52,7 +52,8 @@ background_correction = 0;
 
 cor_file = fullfile(fileparts(focal_file),filenames.background_intensity);
 if (exist(cor_file,'file'))
-   background_correction = csvread(cor_file); 
+    disp('Found background correction file, using to correct adhesion intensities');
+    background_correction = csvread(cor_file);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

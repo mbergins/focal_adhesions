@@ -149,6 +149,9 @@ sub build_extra_opts {
 	if (defined $cfg{per_image_thresh}) {
 		$extra_opt .= ",'per_image_thresh',$cfg{per_image_thresh}";
 	}
+	if (defined $cfg{confocal_mode}) {
+		$extra_opt .= ",'confocal_mode',$cfg{confocal_mode}";
+	}
 	
 	return $extra_opt;
 }
