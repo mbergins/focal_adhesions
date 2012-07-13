@@ -74,14 +74,14 @@ output_dir = fileparts(I_file);
 % Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Apply filters to find adhesion regions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if (i_p.Results.confocal_mode)
-    focal_image_med_filt = medfilt2(focal_image, [7,7]);
+    focal_image_med_filt = medfilt2(focal_image, [7,7],'symmetric');
     
-    threshed_image = focal_image_med_filt > 0;
+%     threshed_image = focal_image_med_filt > 0;
+    threshed_image = focal_image_med_filt > (mean(focal_image_med_filt(:)) + std(focal_image_med_filt(:))*2);
 else
     I_filt = fspecial('disk',i_p.Results.filter_size);
     blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
@@ -147,7 +147,7 @@ if (i_p.Results.no_ad_splitting || any(strcmp('min_independent_size',i_p.UsingDe
     %segmentation methods, just identify the connected areas
     ad_segment = bwlabel(threshed_image,4);
 else
-    ad_segment = watershed_min_size(high_passed_image,bwlabel(threshed_image,4), ...
+    ad_segment = watershed_min_size(focal_image,bwlabel(threshed_image,4), ...
         i_p.Results.min_independent_size);
 end
 toc(seg_start);
