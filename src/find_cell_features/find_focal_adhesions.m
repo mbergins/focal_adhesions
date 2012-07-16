@@ -87,7 +87,7 @@ if (i_p.Results.confocal_mode)
     %downstream code assumes that we won't see adhesions with zero
     %intensity, so filter them out.
     labeled_thresh = bwlabel(threshed_image,4);
-    props = regionprops(threshed_image,focal_image,'MeanIntensity');
+    props = regionprops(labeled_thresh,focal_image,'MeanIntensity'); %#ok<MRPBW>
     labeled_thresh = ismember(labeled_thresh, find([props.MeanIntensity] > 0));
     
     threshed_image = labeled_thresh > 0;
