@@ -81,6 +81,16 @@ if (i_p.Results.confocal_mode)
     focal_image_med_filt = medfilt2(focal_image, [7,7],'symmetric');
     
     threshed_image = focal_image_med_filt > (mean(focal_image_med_filt(:)) + std(focal_image_med_filt(:))*2);
+    
+    %Deal with the rare case where an identified adhesion makes it through
+    %threshold, but none of the pixels are above zero in intensity. Lots of
+    %downstream code assumes that we won't see adhesions with zero
+    %intensity, so filter them out.
+    labeled_thresh = bwlabel(threshed_image,4);
+    props = regionprops(threshed_image,focal_image,'MeanIntensity');
+    labeled_thresh = ismember(labeled_thresh, find([props.MeanIntensity] > 0));
+    
+    threshed_image = labeled_thresh > 0;
 else
     I_filt = fspecial('disk',i_p.Results.filter_size);
     blurred_image = imfilter(focal_image,I_filt,'same',mean(focal_image(:)));
