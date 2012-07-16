@@ -52,6 +52,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 trimmed_pix_values = trim_data_set(all_images(:),1E-4);
 min_max = [trimmed_pix_values(1),trimmed_pix_values(end)];
+clear all_images;
 
 output_file = fullfile(base_dir,image_dirs(1).name,filenames.focal_image_min_max);
 [output_folder,~,~] = fileparts(output_file);
