@@ -63,7 +63,7 @@ my @overall_command_seq = (
 	[ [ "../analyze_cell_features",   "./build_rate_models.pl" ], ],
 	[ [ "../analyze_cell_features",   "./build_alignment_models.pl" ], ],
 	[ [ "../visualize_cell_features", "./collect_visualizations.pl" ], ],
-	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script ../visualize_cell_features/max_intent_project" ], ],
+	# [ [ "../find_cell_features",      "./run_matlab_over_field.pl -script ../visualize_cell_features/max_intent_project" ], ],
 );
 
 #some of the scripts only need to be run once for each experiment, this will
@@ -72,7 +72,7 @@ my @overall_command_seq = (
 my @run_only_once = qw();
 
 my @skip_check = qw(find_exp_thresholds gather_tracking_results
-	build_R_models build_alignment_models collect_visualizations
+	build_rate_models build_alignment_models collect_visualizations
 	max_intent_project make_eccen_filtered_vis);
 
 my $cfg_suffix = basename($opt{cfg});
@@ -200,14 +200,21 @@ sub execute_command_seq {
             my $config_command = "$command -cfg $cfg_file";
             chdir $dir;
             my $return_code = 0;
-            if ($opt{debug}) {
+			$executed_scripts_count++;
+			print "Done submitting: " if $executed_scripts_count == 1;
+            
+			if ($opt{debug}) {
 				# print "Working in directory: $dir\n";
                 print $config_command, "\n";
             } else {
-                $executed_scripts_count++;
-                print "RUNNING: $config_command $executed_scripts_count/" . scalar(@these_config_files) . "\n";
                 $return_code = system($config_command);
-				print "RETURN CODE: $return_code\n";
+				if ($return_code) {
+                	print "PROBLEM WITH: $config_command\n";
+					print "RETURN CODE: $return_code\n";
+				}
+				if ($executed_scripts_count % ceil(scalar(@these_config_files)/10) == 0) {
+					print sprintf('%.0f%% ',100*($executed_scripts_count/scalar(@these_config_files)));
+				}
             }
             chdir $starting_dir;
 
@@ -219,6 +226,7 @@ sub execute_command_seq {
                 @config_files = grep $cfg_file ne $_, @config_files;
             }
         }
+		print "\n";
     }
 }
 
@@ -229,7 +237,7 @@ sub execute_command_seq {
 sub wait_till_LSF_jobs_finish {
     #After each step of the pipeline, we want to wait till all the individual
     #jobs are completed, which will be checked three times
-	my $total_checks = 3;
+	my $total_checks = 1;
 	my $first_check = &running_LSF_jobs;
 	
 	if (! $first_check) {
