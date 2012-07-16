@@ -80,7 +80,6 @@ output_dir = fileparts(I_file);
 if (i_p.Results.confocal_mode)
     focal_image_med_filt = medfilt2(focal_image, [7,7],'symmetric');
     
-%     threshed_image = focal_image_med_filt > 0;
     threshed_image = focal_image_med_filt > (mean(focal_image_med_filt(:)) + std(focal_image_med_filt(:))*2);
 else
     I_filt = fspecial('disk',i_p.Results.filter_size);
