@@ -156,21 +156,36 @@ for i=1:max(labeled_adhesions(:))
     
     centroid_rounded = round(adhesion_props(i).Centroid);
     adhesion_props(i).CHull_dist = convex_dists(centroid_rounded(2),centroid_rounded(1));
+
+    angle_to_FA_vector = [cosd(angle_to_ad_cent(i)),sind(angle_to_ad_cent(i))];
+    FA_orientation_vector = [cosd(adhesion_props(i).Orientation),sind(adhesion_props(i).Orientation)];
+    FA_orientation_vector_alt = [cosd(adhesion_props(i).Orientation + 180),
+        sind(adhesion_props(i).Orientation + 180)];
     
-    if (mod(i,10) == 0 && i_p.Results.debug)
+    angle_between = acosd(dot(angle_to_FA_vector,FA_orientation_vector));
+    angle_between_alt = acosd(dot(angle_to_FA_vector,FA_orientation_vector_alt));
+    
+    if (abs(angle_between) < abs(angle_between_alt)) 
+        adhesion_props(i).Angle_diff_from_radial = angle_between;
+    else
+        adhesion_props(i).Angle_diff_from_radial = angle_between_alt;
+    end
+    
+    if (i_p.Results.debug)
         temp = zeros(size(labeled_adhesions));
         temp(labeled_adhesions == i) = 1;
         temp(labeled_adhesions ~= i) = 2;
         temp(not(labeled_adhesions)) = 0;
         temp(round(ad_centroid(2))-3:round(ad_centroid(2))+3,round(ad_centroid(1))-3:round(ad_centroid(1))+3) = 3;
         
-        disp(['Finished Ad: ',num2str(i), '/', num2str(max(labeled_adhesions(:)))]);
+        if (mod(i,10) == 0)
+            disp(['Finished Ad: ',num2str(i), '/', num2str(max(labeled_adhesions(:)))]);
+        end
     end
 end
 
 adhesion_mask = im2bw(labeled_adhesions,0);
 adhesion_props(1).Adhesion_mean_intensity = sum(sum(orig_I(adhesion_mask)))/sum(sum(adhesion_mask));
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Properites Extracted If Cell Mask Available
@@ -278,7 +293,11 @@ field_names = fieldnames(S);
 
 ad_props_cell = struct2cell(S);
 
-print_strings = struct('PixelIdxList','%0.f');
+print_strings = struct('PixelIdxList','%0.f','Angle_diff_from_radial','%0.2f',...
+    'Orientation','%0.2f','Angle_to_FA_cent','%0.2f','MajorAxisLength','%0.2f',...
+    'MinorAxisLength','%0.2f','Average_adhesion_signal','%0.2f', ...
+    'Variance_adhesion_signal','%0.2f','Min_adhesion_signal','%0.2f', ...
+    'Max_adhesion_signal','%0.2f');
 
 for i = 1:size(field_names,1)
     
