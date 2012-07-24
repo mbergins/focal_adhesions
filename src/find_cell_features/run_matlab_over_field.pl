@@ -103,6 +103,8 @@ sub build_extra_command_line_opts {
 			$extra = ",'type','ratio'";
 		} elsif ($opt{extra} eq "FA_angle") {
 			$extra = ",'type','FA_angle'";
+		} elsif ($opt{extra} eq "live_at_point") {
+			$extra = ",'type','live_at_point'";
 		} else {
 			$extra = ",'type','FA_dist'";
 		}
