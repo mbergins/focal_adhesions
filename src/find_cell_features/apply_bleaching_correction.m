@@ -34,15 +34,38 @@ assert(str2num(single_image_folders(3).name) == 1, 'Error: expected the third st
 single_image_folders = single_image_folders(3:end);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Collect the intensity correction
+% Apply the Focal Image Bleaching Correction
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+correct_bleaching(image_dir,single_image_folders,filenames.focal_image,exp_dir);
+correct_bleaching(image_dir,single_image_folders,filenames.kinase,exp_dir);
+
+toc;
+
+end
+
+function correct_bleaching(image_dir, single_image_folders,file_to_correct,exp_dir)
+
+%Test image and uncorrected files
+base_image_file = fullfile(image_dir,single_image_folders(1).name,file_to_correct);
+uncorrected_image_file = fullfile(image_dir,single_image_folders(1).name,['uncorrected_',file_to_correct]);
+
+if (not(exist(base_image_file,'file')))
+    disp(['Couldn''t find the image file: ',base_image_file]);
+    return;
+end
+
+if (exist(uncorrected_image_file,'file'))
+    disp(['Found the uncorrected image file, skipping image correction:',uncorrected_image_file]);
+    return;
+end
 
 expression_levels = zeros(1,length(single_image_folders));
 after_correction = zeros(1,length(single_image_folders));
 sum_expression_levels = zeros(1,length(single_image_folders));
 for i=1:length(single_image_folders)
-    base_image_file = fullfile(image_dir,single_image_folders(i).name,filenames.focal_image);
-    uncorrected_image_file = fullfile(image_dir,single_image_folders(i).name,['uncorrected_',filenames.focal_image]);
+    base_image_file = fullfile(image_dir,single_image_folders(i).name,file_to_correct);
+    uncorrected_image_file = fullfile(image_dir,single_image_folders(i).name,['uncorrected_',file_to_correct]);
     if (exist(uncorrected_image_file,'file'))
         disp('Found corrected image file, not applying correction.');
         continue;
@@ -60,11 +83,12 @@ for i=1:length(single_image_folders)
     imwrite(cor_image, base_image_file,'Bitdepth',16);
 end
 
-if (not(exist(fullfile(exp_dir,'adhesion_props'),'dir')))
-    mkdir(fullfile(exp_dir,'adhesion_props'));
+summary_stats_dir = fullfile(exp_dir,'adhesion_props','photo_bleaching_correction');
+if (not(exist(summary_stats_dir,'dir')))
+    mkdir(summary_stats_dir);
 end
 
-csvwrite(fullfile(exp_dir,'adhesion_props','mean_levels.csv'),expression_levels)
-csvwrite(fullfile(exp_dir,'adhesion_props','integrated_levels.csv'),sum_expression_levels)
+csvwrite(fullfile(summary_stats_dir,[file_to_correct,'_mean_levels.csv']),expression_levels)
+csvwrite(fullfile(summary_stats_dir,[file_to_correct,'_integrated_levels.csv']),sum_expression_levels)
 
-toc;
+end

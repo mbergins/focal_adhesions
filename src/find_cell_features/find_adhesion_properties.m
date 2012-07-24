@@ -41,10 +41,13 @@ if (exist(fullfile(fileparts(focal_file),filenames.cell_mask),'file'))
     cell_mask = imread(fullfile(fileparts(focal_file),filenames.cell_mask));
 end
 
-%read in and normalize the input focal adhesion image
-focal_image = double(imread(focal_file));
+%read in the kinase file if available
+if (exist(fullfile(fileparts(focal_file),filenames.kinase),'file'))
+    kinase = imread(fullfile(fileparts(focal_file),filenames.kinase));
+end
 
-%read in the labeled adhesions
+%read in the input focal adhesion image data
+focal_image = double(imread(focal_file));
 adhesions = imread(adhesions_file);
 
 %gather the background correction, if available
@@ -66,6 +69,10 @@ if (exist('cell_mask','var'))
 else
     adhesion_properties = collect_adhesion_properties(focal_image,adhesions,background_correction, ...
         'debug',i_p.Results.debug);
+end
+
+if (exist('kinase','var'))
+    adhesion_properties(1).Kinase_mean_intensity = mean(kinase(adhesions > 0));
 end
 if (i_p.Results.debug), disp('Done with gathering properties'); end
 
