@@ -97,7 +97,7 @@ sub convert_data_to_units {
 	  Shrunk_corrected_signal Cell_mean_intensity Outside_mean_intensity
 	  Cell_not_ad_mean_intensity Adhesion_mean_intensity CB_corrected_signal
 	  Photo_cor_ad_signal Angle_to_FA_cent Adhesion_centroid
-	  Angle_diff_from_radial);
+	  Angle_diff_from_radial Kinase_mean_intensity);
 	
 	my @lin_conversion = qw(Centroid_dist_from_edge Centroid_dist_from_center
 		MajorAxisLength MinorAxisLength Dist_to_FA_cent CHull_dist);
@@ -193,7 +193,7 @@ sub output_single_adhesion_props {
 #######################################
 sub gather_and_output_overall_cell_properties {
 	my @single_props = qw(Cell_size Cell_mean_intensity Outside_mean_intensity
-		Cell_not_ad_mean_intensity Adhesion_mean_intensity);
+		Cell_not_ad_mean_intensity Adhesion_mean_intensity Kinase_mean_intensity);
 
 	foreach my $data_type (@single_props) {
         next if (not(grep $data_type eq $_, @available_data_types));
