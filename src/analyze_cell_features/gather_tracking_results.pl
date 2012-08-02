@@ -69,11 +69,11 @@ my @tracking_mat = &Image::Data::Collection::read_in_tracking_mat(\%cfg, \%opt);
 print "\n\nCreating/Outputing Overall Cell Property Files\n" if $opt{debug};
 &gather_and_output_overall_cell_properties;
 
-print "\n\nCreating/Outputing Individual Adhesion Property Files\n" if $opt{debug};
-my @single_ad_props = &gather_single_ad_props(\%cfg, \%opt);
-&output_single_adhesion_props(@single_ad_props);
-@single_ad_props = ();
-undef @single_ad_props;
+# print "\n\nCreating/Outputing Individual Adhesion Property Files\n" if $opt{debug};
+# my @single_ad_props = &gather_single_ad_props(\%cfg, \%opt);
+# &output_single_adhesion_props(@single_ad_props);
+# @single_ad_props = ();
+# undef @single_ad_props;
 
 print "\n\nCreating/Outputing Adhesion Lineage Property Files\n", if $opt{debug};
 &gather_and_output_lineage_properties;
@@ -297,36 +297,37 @@ sub gather_and_output_lineage_properties {
     $props{death_status}            = &gather_death_status;
     $props{split_birth_status}      = &gather_split_birth_status;
     $props{Average_adhesion_signal} = &gather_prop_seq("Average_adhesion_signal");
+    $props{birth_i_num} = &gather_birth_i_num($props{Average_adhesion_signal});
+    $props{death_i_num} = &gather_death_i_num($props{Average_adhesion_signal});
     &output_prop_time_series($props{Average_adhesion_signal}, "Average_adhesion_signal");
     $props{ad_sig} = &gather_average_value($props{Average_adhesion_signal});
     undef $props{Average_adhesion_signal};
     
 	$props{MajorAxisLength} = &gather_prop_seq("MajorAxisLength");
-	$props{mean_major_axis} = &gather_average_value($props{MajorAxisLength});
+	# $props{mean_major_axis} = &gather_average_value($props{MajorAxisLength});
     $props{MinorAxisLength} = &gather_prop_seq("MinorAxisLength");
-	$props{mean_minor_axis} = &gather_average_value($props{MinorAxisLength});
+	# $props{mean_minor_axis} = &gather_average_value($props{MinorAxisLength});
 	$props{axial_ratio} = &gather_prop_ratio($props{"MajorAxisLength"},$props{"MinorAxisLength"});
 	$props{mean_axial_ratio} = &gather_average_value($props{axial_ratio});
-	
-    $props{Centroid_x} = &gather_prop_seq("Centroid_x");
-    $props{start_x} = &gather_first_entry($props{Centroid_x});
-    $props{end_x} = &gather_last_entry($props{Centroid_x});
-    $props{birth_i_num} = &gather_birth_i_num($props{Centroid_x});
-    $props{death_i_num} = &gather_death_i_num($props{Centroid_x});
-    &output_prop_time_series($props{Centroid_x}, "Centroid_x");
-    undef $props{Centroid_x};
+	undef $props{MajorAxisLength};
+	undef $props{MinorAxisLength};
+	undef $props{axial_ratio};
 
-    $props{Centroid_y} = &gather_prop_seq("Centroid_y");
-    $props{start_y} = &gather_first_entry($props{Centroid_y});
-    $props{end_y} = &gather_last_entry($props{Centroid_y});
-    &output_prop_time_series($props{Centroid_y}, "Centroid_y");
-    undef $props{Centroid_y};
+    # $props{Centroid_x} = &gather_prop_seq("Centroid_x");
+    # &output_prop_time_series($props{Centroid_x}, "Centroid_x");
+    # undef $props{Centroid_x};
+
+    # $props{Centroid_y} = &gather_prop_seq("Centroid_y");
+    # &output_prop_time_series($props{Centroid_y}, "Centroid_y");
+    # undef $props{Centroid_y};
 	
 	$props{Dist_to_FA_cent} = &gather_prop_seq("Dist_to_FA_cent");
 	$props{Mean_FA_cent_dist} = &gather_average_value($props{Dist_to_FA_cent});
-	
+	undef $props{Dist_to_FA_cent};
+
 	$props{Dist_to_CHull} = &gather_prop_seq("CHull_dist");
 	$props{Mean_FA_CHull_dist} = &gather_average_value($props{Dist_to_CHull});
+	undef $props{Dist_to_CHull};	
 
 	if (grep "drug_addition_time" eq $_, keys %cfg) {
 		@{$props{drug_addition_time}} = map $cfg{drug_addition_time}, 1..scalar(@tracking_mat);
@@ -344,18 +345,18 @@ sub gather_and_output_lineage_properties {
     if (grep "Centroid_dist_from_center" eq $_, @available_data_types) {
         $props{Centroid_dist_from_center} = &gather_prop_seq("Centroid_dist_from_center");
         &output_prop_time_series($props{Centroid_dist_from_center}, "Centroid_dist_from_center");
-        $props{starting_center_dist} = &gather_first_entry($props{Centroid_dist_from_center});
+        # $props{starting_center_dist} = &gather_first_entry($props{Centroid_dist_from_center});
         $props{mean_center_dist}   = &gather_average_value($props{Centroid_dist_from_center});
-        $props{ending_center_dist}   = &gather_last_entry($props{Centroid_dist_from_center});
+        # $props{ending_center_dist}   = &gather_last_entry($props{Centroid_dist_from_center});
         undef $props{Centroid_dist_from_center};
     }
 
     if (grep "Centroid_dist_from_edge" eq $_, @available_data_types) {
         $props{Centroid_dist_from_edge} = &gather_prop_seq("Centroid_dist_from_edge");
         &output_prop_time_series($props{Centroid_dist_from_edge}, "Centroid_dist_from_edge");
-        $props{starting_edge_dist} = &gather_first_entry($props{Centroid_dist_from_edge});
+        # $props{starting_edge_dist} = &gather_first_entry($props{Centroid_dist_from_edge});
         $props{mean_edge_dist} = &gather_average_value($props{Centroid_dist_from_edge});
-        $props{ending_edge_dist}   = &gather_last_entry($props{Centroid_dist_from_edge});
+        # $props{ending_edge_dist}   = &gather_last_entry($props{Centroid_dist_from_edge});
         undef $props{Centroid_dist_from_edge};
     }
 
