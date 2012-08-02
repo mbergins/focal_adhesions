@@ -55,7 +55,7 @@ if ($opt{debug}) {
 
 my @matlab_code;
 if (defined($cfg{min_independent_size}) && ! $cfg{no_ad_splitting}) {
-	@matlab_code = &create_all_matlab_commands;
+	@matlab_code = &create_bundled_matlab_commands(10);
 } else {
 	@matlab_code = &create_bundled_matlab_commands;
 }
@@ -86,19 +86,29 @@ sub create_all_matlab_commands {
 }
 
 sub create_bundled_matlab_commands {
+	my $bundled_count = 150;
+	if (scalar(@_) > 0) {
+		$bundled_count = $_[0];
+	}
+	
     my @matlab_code;
 
     my @image_files = <$cfg{individual_results_folder}/*/$cfg{adhesion_image_file}>;
 	my $extra_opt = &build_extra_opts;
 	
 	my @image_nums = 1..scalar(@image_files);
-	my $data_sets_runs = floor(scalar(@image_files)/150);
+	my $data_sets_runs = floor(scalar(@image_files)/$bundled_count);
 	$data_sets_runs = 1 if ($data_sets_runs < 1);
 	my $min_image_count = ceil(scalar(@image_files)/$data_sets_runs);
 	while (@image_nums) {
 		my @this_set;
 		for (1..$min_image_count) {
 			if (@image_nums) {
+				push @this_set, shift @image_nums;
+			}
+		}
+		if (scalar(@image_nums) < $min_image_count) {
+			while (@image_nums) {
 				push @this_set, shift @image_nums;
 			}
 		}
