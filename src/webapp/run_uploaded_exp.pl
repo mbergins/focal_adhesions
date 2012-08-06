@@ -5,6 +5,7 @@ use lib "../lib";
 use Data::Dumper;
 use File::Basename;
 use File::Copy;
+use File::Path;
 use File::Spec::Functions qw(catdir catfile);
 use Getopt::Long;
 use Cwd;
@@ -28,7 +29,11 @@ if ($opt{fullnice}) {
 my $start_time = time;
 
 my $upload_dir = "/usr/lib/cgi-bin/FA_webapp/upload/";
-my $data_proc_dir = "../../data/fa_webapp/";
+my $data_proc_dir = "../../data/";
+
+if (! -e $data_proc_dir) {
+	mkpath($data_proc_dir);
+}
 
 my $public_output_folder = "/var/www/FA_webapp/results/";
 my $run_file = "fa_webapp.$opt{ID}.run";
@@ -62,52 +67,55 @@ for my $file (@uploaded_files) {
 	$upload_data{$name}{orig_cfg} = $cfg;
 }
 
-my %youngest_file = &find_oldest_new_upload_file(\%upload_data);
-$youngest_file{target_dir} = catdir($data_proc_dir,$youngest_file{name});
-
-%youngest_file = &setup_and_unzip_file(%youngest_file);
-
-&add_image_dir_to_config(%youngest_file);
-
-my %config = ParseConfig(\%youngest_file);
-if (defined $config{email}) {
-	$youngest_file{email} = $config{email};
+my %oldest_file = &find_oldest_upload_file(\%upload_data);
+if ($opt{debug}) {
+	print "Found oldest upload file: $oldest_file{source}\n";
 }
-$youngest_file{self_note} = $config{self_note};
+$oldest_file{target_dir} = catdir($data_proc_dir,$oldest_file{name});
+
+%oldest_file = &setup_and_unzip_file(%oldest_file);
+
+&add_image_dir_to_config(%oldest_file);
+
+my %config = ParseConfig(\%oldest_file);
+if (defined $config{email}) {
+	$oldest_file{email} = $config{email};
+}
+$oldest_file{self_note} = $config{self_note};
 if (defined $config{phone} && defined $config{provider}) {
-	$youngest_file{phone} = $config{phone};
-	$youngest_file{provider} = $config{provider};
+	$oldest_file{phone} = $config{phone};
+	$oldest_file{provider} = $config{provider};
 }
 
 ###########################################################
 # Processing
 ###########################################################
 
-# &send_start_email(%youngest_file);
+# &send_start_email(%oldest_file);
 
-&setup_exp(%youngest_file);
-&run_processing_pipeline(\%youngest_file,\%config);
-&build_vector_vis(%youngest_file);
-$youngest_file{public_zip} = &zip_results_folder(\%youngest_file,\%config);
+&setup_exp(%oldest_file);
+&run_processing_pipeline(\%oldest_file,\%config);
+&build_vector_vis(%oldest_file);
+$oldest_file{public_zip} = &zip_results_folder(\%oldest_file,\%config);
 
 ###########################################################
 # Notifications, Cleanup
 ###########################################################
-if (defined $youngest_file{email}) {
-	&send_done_email(%youngest_file);
+if (defined $oldest_file{email}) {
+	&send_done_email(%oldest_file);
 }
-if (defined $youngest_file{phone} && defined $youngest_file{provider}) {
-	&send_done_text(%youngest_file);
+if (defined $oldest_file{phone} && defined $oldest_file{provider}) {
+	&send_done_text(%oldest_file);
 }
 
 &delete_run_file($run_file);
-&add_runtime_to_config(\%youngest_file,$start_time);
+&add_runtime_to_config(\%oldest_file,$start_time);
 
 ###############################################################################
 # Functions
 ###############################################################################
 
-sub find_oldest_new_upload_file {
+sub find_oldest_upload_file {
 	my %upload_data = %{$_[0]};
 
 	my @sorted_files = sort {
@@ -118,9 +126,9 @@ sub find_oldest_new_upload_file {
 		}
 	} keys %upload_data;
 	
-	my %youngest_file = %{$upload_data{$sorted_files[0]}};
-	$youngest_file{name} = $sorted_files[0];
-	return %youngest_file;
+	my %oldest_file = %{$upload_data{$sorted_files[0]}};
+	$oldest_file{name} = $sorted_files[0];
+	return %oldest_file;
 }
 
 sub setup_and_unzip_file {
@@ -131,12 +139,15 @@ sub setup_and_unzip_file {
 	$file_data{output_zip} = catfile($file_data{target_dir},"$file_data{name}.zip");
 	$file_data{output_cfg} = catfile($file_data{target_dir},"$file_data{name}.cfg");
 	$file_data{cfg} = catfile($file_data{target_dir},"$file_data{name}.cfg");
-
-	move($file_data{source},$file_data{output_zip}) or die "$!";
-	move($file_data{orig_cfg},$file_data{output_cfg}) or die "$!";
 	
-	system("unzip -q -d $file_data{target_dir} $file_data{output_zip}");
-
+	if (! $opt{debug}) {
+		move($file_data{source},$file_data{output_zip}) or die "$!";
+		move($file_data{orig_cfg},$file_data{output_cfg}) or die "$!";
+		
+		system("unzip -q -d $file_data{target_dir} $file_data{output_zip}");
+	} else {
+		print("unzip -q -d $file_data{target_dir} $file_data{output_zip}\n");
+	}
 	return %file_data;
 }
 
@@ -281,7 +292,7 @@ sub send_done_email {
 	
 	my $body = "Your experiment ($config{name}) has finished processing. " . 
 		"You can download your results here:\n\n" .
-		"http://snotra.bme.unc.edu/$striped_output/$config{public_zip}\n\n";
+		"http://152.19.101.79/$striped_output/$config{public_zip}\n\n";
 
 	my %done_email = (
 		'address' => "$config{email}",
@@ -337,7 +348,6 @@ sub setup_exp {
 	} else {
 		system($command);
 	}
-		system($command);
 	chdir $starting_dir;
 }
 
@@ -361,29 +371,29 @@ sub run_processing_pipeline {
 }
 
 sub zip_results_folder {
-	my %youngest_file = %{$_[0]};
+	my %oldest_file = %{$_[0]};
 	my %config = %{$_[1]};
 	
-	my $output_zip = catfile($public_output_folder,"$youngest_file{name}.zip");
+	my $output_zip = catfile($public_output_folder,"$oldest_file{name}.zip");
 	
 	my $starting_dir = getcwd;
 	chdir $config{results_folder};
-	my $command = "zip -q -r $output_zip $youngest_file{name}";
+	my $command = "zip -q -r $output_zip $oldest_file{name}";
 	if ($opt{debug}) {
 		print "$command\n";
 	} else {
 		system($command);
 	}
 	chdir $starting_dir;
-	return "$youngest_file{name}.zip"; 
+	return "$oldest_file{name}.zip"; 
 }
 
 sub build_vector_vis {
-	my %youngest_file = @_;
+	my %oldest_file = @_;
 		
 	my $starting_dir = getcwd;
 	chdir "../visualize_cell_features";
-	my $command = "./build_vector_vis.pl -cfg $youngest_file{output_cfg}";
+	my $command = "./build_vector_vis.pl -cfg $oldest_file{output_cfg}";
 	
 	if ($opt{debug}) {
 		print "$command\n";
