@@ -32,7 +32,7 @@ my $run_exp_dir = '/home/mbergins/Documents/Projects/fa_webapp_run/src/webapp/';
 my $q = CGI->new();
 
 print $q->header,
-	  $q->start_html(-title=>'Focal Adhesion Analysis Server',-style=>'/FA_webapp/css/screen.css');
+      $q->start_html(-title=>'Focal Adhesion Analysis Server',-style=>'/FA_webapp/css/screen.css');
 	  
 print "<div class=\"container\">\n";
 print $q->h1('Focal Adhesion Analysis Server - Server Status');

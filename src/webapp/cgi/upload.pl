@@ -217,7 +217,7 @@ sub output_config {
 	my $target_file = $_[1];
 	
 	open OUTPUT, ">$target_file" or die $!;
-	print OUTPUT "<<include ../../config/webapp_default.cfg>>\n\n";
+	print OUTPUT "<<include ../config/webapp_default.cfg>>\n\n";
 	foreach (keys %cfg) {
 		print OUTPUT "$_ = $cfg{$_}\n";
 	}
