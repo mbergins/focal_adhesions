@@ -23,7 +23,7 @@ $| = 1;
 ###############################################################################
 
 my $upload_dir = 'upload';
-my $run_exp_dir = '/home/mbergins/Documents/Projects/fa_webapp_run/src/webapp/';
+my $run_exp_dir = '/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp/';
 
 ###############################################################################
 # Main Program

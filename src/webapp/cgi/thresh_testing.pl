@@ -11,6 +11,7 @@ use CGI;
 use CGI::Carp;
 use IO::Handle;
 use Config::General;
+use Data::Dumper;
 
 use lib './';
 use webserver_funcs qw(print_html_end);
@@ -23,10 +24,11 @@ $| = 1;
 # Configuration
 ###############################################################################
 
-my $prefix = '/var/www/';
-my $output_dir = '/var/www/FA_webapp/threshold_testing';
+my $output_dir = "$ENV{DOCUMENT_ROOT}/FA_webapp/threshold_testing";
+$output_dir =~ /(.*)/;
+$output_dir = $1;
 if (! -e $output_dir) {
-	mkpath($output_dir);
+	mkpath($1);
 }
 
 ###############################################################################
@@ -35,8 +37,6 @@ if (! -e $output_dir) {
 
 my $q = CGI->new();
 
-#First check for a valid file handle, if so, present user with acknowledgement
-#of the upload
 my $lightweight_fh = $q->upload('uploaded_file');
 if (defined $lightweight_fh) {
 	my $start_time = time;
@@ -100,8 +100,9 @@ if (defined $lightweight_fh) {
 	select STDOUT;
 
 	my $url_out_dir = $dir;
-	$url_out_dir =~ s/$prefix//g;
-	my $final_url = "http://snotra.bme.unc.edu/$url_out_dir";
+	$url_out_dir =~ s/$ENV{'DOCUMENT_ROOT'}//g;
+	my $hostname = $ENV{'HTTP_ORIGIN'};
+	my $final_url = "$ENV{'HTTP_ORIGIN'}/$url_out_dir";
 	
 	print $q->redirect($final_url);
 } else {

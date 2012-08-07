@@ -104,7 +104,7 @@ if (defined $lightweight_fh) {
 } else {
     #no valid file handle was available, instead present the user with the
     #regular upload page
-	print "Instructions are at the bottom of the page.\n";
+	print "Full Instructions are at the bottom of the page.\n";
 
     print $q->start_form(-method=>"POST",
                      -action=>"upload.pl",
