@@ -70,19 +70,11 @@ close SVG_OUT;
 
 my $exp_name = $cfg{exp_name};
 $exp_name =~ s/\//_/g;
-# my $output_png = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost.png");
-# my $output_png_small = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost_small.png");
-my $output_png = catfile($cfg{results_folder}, "$exp_name.png");
-my $output_png_small = catfile($cfg{results_folder}, "$exp_name" . "_small.png");
+my $output_png = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost.png");
+my $output_png_small = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost_small.png");
 
-system "inkscape -z $output_file -d 100 --export-png=$output_png_small --export-background-opacity=1.0";
-# system "inkscape -z $output_file -d 300 --export-png=$output_png --export-background-opacity=1.0";
-
-my $command = "inkscape -z $output_file -d 300 --export-png=$output_png --export-background-opacity=1.0";
-if (not $opt{debug}) {
-	$command .= " > /dev/null";
-}
-system $command;
+system "convert -density 300 -resample 300 $output_file -trim $output_png";
+system "convert -density 100 $output_file -trim $output_png_small";
 
 ###############################################################################
 #Functions
