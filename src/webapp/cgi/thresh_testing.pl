@@ -138,6 +138,9 @@ if (defined $lightweight_fh) {
 	
 	print $q->br,$q->br, "Don't have an image to upload as a test? Try this ", 
 		$q->a({href=>"/FA_webapp/sample/sample_image.png"},'one'), ".";
+	
+	print $q->br,$q->br, "See a sample result page ", 
+		$q->a({href=>"/FA_webapp/threshold_testing_sample"},'here'), ".";
 }
 
 print_html_end($q);
