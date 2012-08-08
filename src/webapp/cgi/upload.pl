@@ -113,7 +113,7 @@ if (defined $lightweight_fh) {
     print $q->h3({class=>'thin'},'Adhesion Image File'), 
           $q->filefield('uploaded_file','',50,80);
 
-    print $q->h2('Advanced Settings'), 
+    print $q->h2('Detection Settings'), 
 	   	  $q->h3({class=>'thin'},'Adhesion Detection Threshold'),
           $q->textfield(-name=>'filter_thresh',-value=>'2',-size=>50,
 			  -id=>'thresh_field',-onChange=>'validate_thresh(this.id)',
@@ -131,14 +131,14 @@ if (defined $lightweight_fh) {
 		Please input a valid email address.</div>\n";
     print $q->h3({class=>'thin'},'Note to Self About Experiment'),
           $q->textfield('self_note','',50,80);
-	print $q->h3({class=>'thin'},'Cell Phone Number/Provider'),
-		  $q->textfield(-name=>'phone',-id=>'phone_field',-value=>'XXX-XXX-XXXX',-size=>15,-maxlength=>20,
-		  	-onChange=>"validate_phone(this.id)");
-	print " ",$q->popup_menu(-name=>'provider', -values=>[("", "AT&T", "Verizon", "Sprint")],
-		  	-default=>"");
-	print "<div class=\"hide\" id=\"phone_help\">
-		The phone number must be entered as XXX-XXX-XXXX or XXXXXXXXXX.
-		</div>\n";
+	# print $q->h3({class=>'thin'},'Cell Phone Number/Provider'),
+	# 	  $q->textfield(-name=>'phone',-id=>'phone_field',-value=>'XXX-XXX-XXXX',-size=>15,-maxlength=>20,
+	# 	  	-onChange=>"validate_phone(this.id)");
+	# print " ",$q->popup_menu(-name=>'provider', -values=>[("", "AT&T", "Verizon", "Sprint")],
+	# 	  	-default=>"");
+	# print "<div class=\"hide\" id=\"phone_help\">
+	# 	The phone number must be entered as XXX-XXX-XXXX or XXXXXXXXXX.
+	# 	</div>\n";
 	# print $q->h3({class=>'thin'},'Cell Phone Provider'),
 
     print $q->br,$q->br,
