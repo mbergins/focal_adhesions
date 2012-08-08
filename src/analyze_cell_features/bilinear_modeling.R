@@ -362,19 +362,23 @@ if (length(args) != 0) {
         draw_diagnostic_traces(model,output_file,time.spacing=time_spacing);
         
         #Write out simple CSV file with assembly/disassembly data
-        disassembly_models = model$disassembly;
-        disassembly_models$ad_num = seq(1,dim(disassembly_models)[1]);
-        disassembly_models$class = rep('Disassembly',dim(disassembly_models)[1]);
-        disassembly_adhesions = subset(disassembly_models, 
-            !is.na(p.value) & p.value < 0.05 & slope > 0, 
-            select = c('class','ad_num','slope','p.value','adj.r.squared'));
-        
         assembly_models = model$assembly;
         assembly_models$ad_num = seq(1,dim(assembly_models)[1]);
         assembly_models$class = rep('Assembly',dim(assembly_models)[1]);
         assembly_adhesions = subset(assembly_models, 
             !is.na(p.value) & p.value < 0.05 & slope > 0, 
             select = c('class','ad_num','slope','p.value','adj.r.squared'));
+        assembly_adhesions$slope = round(assembly_adhesions$slope,4);
+        assembly_adhesions$adj.r.squared = round(assembly_adhesions$adj.r.squared,3);
+
+        disassembly_models = model$disassembly;
+        disassembly_models$ad_num = seq(1,dim(disassembly_models)[1]);
+        disassembly_models$class = rep('Disassembly',dim(disassembly_models)[1]);
+        disassembly_adhesions = subset(disassembly_models, 
+            !is.na(p.value) & p.value < 0.05 & slope > 0, 
+            select = c('class','ad_num','slope','p.value','adj.r.squared'));
+        disassembly_adhesions$slope = round(disassembly_adhesions$slope,4);
+        disassembly_adhesions$adj.r.squared = round(disassembly_adhesions$adj.r.squared,3);
     
         write.csv(rbind(assembly_adhesions,disassembly_adhesions),
             file=file.path(data_dir,'ad_kinetics.csv'),row.names=F)
