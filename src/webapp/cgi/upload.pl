@@ -163,7 +163,7 @@ sub print_analysis_instrucitons {
 	print "Thank you for helping to test the focal adhesion analysis webserver.
 	Currently the service is only running on one CPU of my lab's server, so it
 	might take some time for submitted jobs to make it through the system. If you
-	encounter any problems, feel free to email <a href=mailto:matthew.berginski\@gmail.com>me</a>.";
+	encounter any problems, feel free to email me (matthew.berginski [AT] gmail.com).";
 	
 	print $q->h2('Required Options');
 
@@ -199,17 +199,16 @@ sub print_analysis_instrucitons {
 	experiment status page returned on submission needs to bookmarked in order
 	to retrieve your results.";
 	
-	print $q->h3({class=>'thin'},'Phone Number/Provider'); 
-	print "If a cell phone number and cell phone provider are supplied, you will
-	be sent a text message when your experiment is done processing. Your cell
-	phone number will only be used for nofication purposes.";
+	# print $q->h3({class=>'thin'},'Phone Number/Provider'); 
+	# print "If a cell phone number and cell phone provider are supplied, you will
+	# be sent a text message when your experiment is done processing. Your cell
+	# phone number will only be used for nofication purposes.";
 
     print $q->h2('Note to Self About Experiment');
 
     print "Whatever you put in this box will be send back to you in any email
     the system sends concerning your experiment. It is limited to 80
     characters.";
-        
 }
 
 sub output_config {
