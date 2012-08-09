@@ -169,7 +169,9 @@ sub build_matlab_visualization_config {
         push @config_lines, "output_original_image = 0;";
     }
 
-    if (exists($cfg{pixel_size})) {
+	#block adding the pixel size parameter if it is set to the default value of
+	#1, this probably means that no pixel size was given
+    if (exists($cfg{pixel_size}) && $cfg{pixel_size} != 1) {
         push @config_lines, "pixel_size = $cfg{pixel_size};\n";
     }
 
