@@ -352,12 +352,12 @@ if (length(args) != 0) {
         model$exp_dir = data_dir;
         model$exp_data = data_set;
         
-        R_model_file = sub(".csv$", ".Rdata", model_file ,perl=T)
+		R_model_file = sub("\\..*",".Rdata",model_file,perl=T)
         output_file = file.path(output_folder,R_model_file);
         save(model,file = output_file)
         
-        diagnostic_diagrams_file = sub(".csv$", ".pdf", model_file ,perl=T)
-        output_file = file.path(output_folder,diagnostic_diagrams_file);
+        diagnostic_diagrams_file = sub("\\..*",".pdf",model_file,perl=T)
+		output_file = file.path(output_folder,diagnostic_diagrams_file);
         source('FA_analysis_lib.R')
         draw_diagnostic_traces(model,output_file,time.spacing=time_spacing);
         

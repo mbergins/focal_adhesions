@@ -78,6 +78,13 @@ print "\n\nCreating/Outputing Overall Cell Property Files\n" if $opt{debug};
 print "\n\nCreating/Outputing Adhesion Lineage Property Files\n", if $opt{debug};
 &gather_and_output_lineage_properties;
 
+my $gzip_which = system("which gzip > /dev/null");
+if (! $gzip_which) {
+	my $command = "gzip " . 
+		catdir($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, $cfg{lineage_ts_folder},"*");
+	system($command);
+}
+
 ###############################################################################
 # Functions
 ###############################################################################

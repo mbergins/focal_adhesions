@@ -40,7 +40,7 @@ my %cfg = ParseConfig(\%opt);
 ################################################################################
 # Main Program
 ################################################################################
-my @model_files = qw(Average_adhesion_signal.csv);
+my @model_files = qw(Average_adhesion_signal.csv Average_adhesion_signal.csv.gz);
 if ($opt{lsf}) {
     my @commands;
     foreach (@model_files) {
@@ -83,7 +83,7 @@ if (defined($opt{model_file})) {
 		my $this_model_file = catfile($data_dir,'lin_time_series',$_);
 
 		if (not -e $this_model_file) {
-			warn "Could not find file for $_ ($this_model_file), skipping";
+			# warn "Could not find file for $_ ($this_model_file), skipping";
 			next;
 		}
 
