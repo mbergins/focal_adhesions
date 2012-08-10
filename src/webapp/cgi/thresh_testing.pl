@@ -129,6 +129,17 @@ if (defined $lightweight_fh) {
 
     print $q->br,$q->hr;
 
+	print $q->p, "The most critical parameter in the analysis pipeline is the
+	threshold used to segment the focal adhesions from background. Since running
+	the full analysis can take several hours, you may want to run a
+	representative image through this system to see what threshold will be most
+	appropriate for your data set. It might take up to 30 seconds depending on
+	the server load for an image to be uploaded and processed. After the image
+	processed you will be automatically forwarded to the results page.";
+
+    print $q->br;
+    print $q->br;
+	
 	print $q->p, "Most image formats should work in the thresholding algorithm,
 	but I've only tested it with tiff (unstacked please) and png files. Also
 	keep in mind that in a full run of the processing pipeline, the entire image
