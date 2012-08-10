@@ -23,7 +23,8 @@ $| = 1;
 ###############################################################################
 
 my $upload_dir = 'upload';
-my $results_dir = '/var/www/FA_webapp/results/';
+my $running_results_dir = '/home/mbergins/Documents/Projects/focal_adhesions/trunk/results/';
+my $final_results_dir = '/var/www/FA_webapp/results/';
 
 ###############################################################################
 # Main Program
@@ -46,36 +47,33 @@ if (not defined $q->param('exp_id')) {
 }
 
 my $exp_id = $q->param('exp_id');
-
 print $q->p, "<b>Experiment ID:</b> ", $exp_id;
 
-my @upload_zips = <$upload_dir/*.zip>;
-my @results_files = <$results_dir/*>;
-if (not grep $_ =~ /$exp_id/, @upload_zips) {
-	if (not grep $_ =~ /$exp_id/, @results_files) {
-		print $q->p, "I'm sorry, but the experiment ID you specified ($exp_id)
-		wasn't found. If you followed a link please make sure it appears correct
-		in the URL bar.";
-		&print_html_end($q);
-		exit;
-	}
-}
-
-my $queue_pos = &find_exp_position($exp_id,\@upload_zips);
-if (defined $queue_pos) {
-	print $q->p, "<b>Experiments in queue:</b> ", scalar(@upload_zips);
-	print $q->p, "<b>Position in queue:</b> ", $queue_pos;
-	&print_html_end($q);
-	exit;
-}
-
-my @results_zips = <$results_dir/*.zip>;
-if (grep $_ =~ /$exp_id/, @results_zips) {
+#There are three places an experiment might be: in the queue, being processed or
+#in the final results directory. I'll check them in that order.
+my @final_results_files = <$final_results_dir/*>;
+if (grep $_ =~ /$exp_id/, @final_results_files) {
 	print $q->p, "Your experiment has finished processing. You can download your
 	results ", $q->a({href=>"/FA_webapp/results/$exp_id.zip"}, "here") , ".";
 } else {
-	print $q->p, "Your experiment is currently processing.";
+	my @running_results_files = <$running_results_dir/*>;
+	if (grep $_ =~ /$exp_id/, @running_results_files) {
+		print $q->p, "Your experiment is being processed.";
+	} else {
+		my @upload_zips = <$upload_dir/*.zip>;
+		if (grep $_ =~ /$exp_id/, @upload_zips) {
+			my $queue_pos = &find_exp_position($exp_id,\@upload_zips);
+			print $q->p, "Your experiment is in the queue.";
+			print $q->p, "<b>Experiments in queue:</b> ", scalar(@upload_zips);
+			print $q->p, "<b>Position in queue:</b> ", $queue_pos;
+		} else {
+			print $q->p, "I'm sorry, but the experiment ID you specified
+			($exp_id) wasn't found. If you followed a link please make sure it
+			appears correct in the URL bar.";
+		}
+	}
 }
+
 &print_html_end($q);
 
 ###############################################################################
