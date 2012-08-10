@@ -28,6 +28,8 @@ if ($opt{fullnice}) {
 ###############################################################################
 my $start_time = time;
 
+my $hostname = "mimir.bme.unc.edu";
+
 my $upload_dir = "/usr/lib/cgi-bin/FA_webapp/upload/";
 my $data_proc_dir = "../../data/";
 
@@ -78,7 +80,7 @@ $oldest_file{target_dir} = catdir($data_proc_dir,$oldest_file{name});
 &add_image_dir_to_config(%oldest_file);
 
 my %config = ParseConfig(\%oldest_file);
-if (defined $config{email}) {
+if ($config{email} ne '') {
 	$oldest_file{email} = $config{email};
 }
 $oldest_file{self_note} = $config{self_note};
@@ -262,12 +264,14 @@ sub send_email {
 	my %email_data = @_;
 	
 	if ($email_data{self_note}) {
-		$email_data{body} = "$email_data{body}\n\n" . 
-			"Your note to yourself about this experiment:\n$email_data{self_note}";
+		$email_data{body} = "$email_data{body}\n" . 
+			"Your note to yourself about this experiment:\n\n$email_data{self_note}";
 	}
+	
+	my $from_str = "\"From: noreply\@FAAS (FAAS Notification)\"";
 
-	my $command = "echo \"$email_data{body}\" | mail -s \"$email_data{subject}\" $email_data{address}";
-
+	my $command = "echo \"$email_data{body}\" | mail -a $from_str -s \"$email_data{subject}\" $email_data{address}";
+	# print $command;
 	system $command;
 }
 
@@ -292,7 +296,9 @@ sub send_done_email {
 	
 	my $body = "Your experiment ($config{name}) has finished processing. " . 
 		"You can download your results here:\n\n" .
-		"http://152.19.101.79/$striped_output/$config{public_zip}\n\n";
+		"http://$hostname/$striped_output/$config{public_zip}\n\n" . 
+		"You can find help with understanding the results here:\n\n" .
+		"http://$hostname/FA_webapp/results_understanding/\n\n";
 
 	my %done_email = (
 		'address' => "$config{email}",
@@ -393,13 +399,12 @@ sub build_vector_vis {
 		
 	my $starting_dir = getcwd;
 	chdir "../visualize_cell_features";
-	my $command = "./build_vector_vis.pl -cfg $oldest_file{output_cfg}";
+	my $command = "./build_vector_vis.pl -cfg $oldest_file{output_cfg} -white_background";
 	
 	if ($opt{debug}) {
 		print "$command\n";
 	} else {
 		system($command);
 	}
-		system($command);
 	chdir $starting_dir;
 }
