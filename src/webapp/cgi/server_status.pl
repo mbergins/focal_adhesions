@@ -1,19 +1,9 @@
 #!/usr/bin/perl -wT
 
 use strict;
-use File::Path;
-use File::Basename;
-use File::Spec::Functions;
-use File::Copy;
-use File::Temp qw(tempfile);
-use POSIX;
 use CGI;
 use CGI::Carp;
-use IO::Handle;
-use Config::General;
-
-use lib './';
-use webserver_funcs qw(print_html_end);
+use HTML::Template;
 
 my $start = time;
 
@@ -31,26 +21,22 @@ my $run_exp_dir = '/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/w
 
 my $q = CGI->new();
 
-print $q->header,
-      $q->start_html(-title=>'Focal Adhesion Analysis Server',-style=>'/FA_webapp/css/screen.css');
-	  
-print "<div class=\"container\">\n";
-print $q->h1('Focal Adhesion Analysis Server - Server Status');
+my $template = HTML::Template->new(filename => 'template/server_status.tmpl');
 
 my @upload_zips = <$upload_dir/*.zip>;
-print $q->p, "<b>Experiments in queue:</b> ", scalar(@upload_zips);
+$template->param(queue_count => scalar(@upload_zips));
 
 my @run_files = <$run_exp_dir/fa_webapp.*.run>;
-print $q->p, "<b>Experiments being processed:</b> ", scalar(@run_files);
-
-print $q->p, "<b>Number of Processing Workers:</b> ", &count_upload_workers;
+$template->param(run_count => scalar(@run_files),
+				 worker_count => &count_upload_workers);
 
 my %uptime_props = &process_uptime_reading;
 
-print $q->p, "<b>The server has been running for:</b> ", $uptime_props{runtime};
-print $q->p, "<b>The server load levels are:</b> ", $uptime_props{load};
+$template->param(server_uptime => $uptime_props{runtime},
+				 server_load => $uptime_props{load});
 
-&print_html_end($q);
+print $q->header();
+print $template->output;
 
 ###############################################################################
 # Functions

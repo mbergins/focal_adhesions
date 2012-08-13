@@ -1,0 +1,105 @@
+<!DOCTYPE html
+	PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en-US" xml:lang="en-US">
+<head>
+<title>Focal Adhesion Analysis Server - Experiment Upload</title>
+<link rel="stylesheet" type="text/css" href="/FA_webapp/css/screen.css" />
+<script src="/FA_webapp/javascript/validation.js" type="text/javascript"></script>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+</head>
+<body>
+<div class="container">
+<h1>
+	Focal Adhesion Analysis Server - Experiment Upload
+</h1>
+Full Instructions are at the bottom of the page.
+<form method="post" action="upload.pl" enctype="multipart/form-data" name="fa_upload">
+<h3 class="thin">
+	Adhesion Image File
+</h3>
+<input type="file" name="uploaded_file"  size="50" maxlength="80" /><h2>
+	Detection Settings
+</h2>
+<h3 class="thin">
+	Adhesion Detection Threshold
+</h3>
+<input type="text" name="filter_thresh" value="2" size="50" onselect="validate_thresh(this.id)" onchange="validate_thresh(this.id)" id="thresh_field" />
+
+<div class="hide" id="thresh_help">
+	The threshold must be a number above 0, see instructions below for more help.
+</div>
+
+<TMPL_IF NAME="advanced_options">
+<h3 class="thin">Advanced Options</h3>
+<input type="checkbox" name="short_exp" />Just Setup the Experiment<br />
+</TMPL_IF>
+
+<h2>
+	Optional Settings
+</h2>
+<h3 class="thin">
+	Email Address
+</h3>
+<input type="text" name="email"  size="50" onselect="validate_email(this.id)" onchange="validate_email(this.id)" id="email_field" /><div class="hide" id="email_help">
+		Please input a valid email address.</div>
+<h3 class="thin">
+	Note to Self About Experiment
+</h3>
+<input type="text" name="self_note" size="50" maxlength="80" /><br />
+<br />
+<input type="submit" name="Submit Data" value="Submit Data" id="submit_button" /></form><br />
+<hr />
+<h1>
+	Instructions
+</h1>
+Thank you for helping to test the focal adhesion analysis webserver.
+	Currently the service is only running on one CPU of my lab's server, so it
+	might take some time for submitted jobs to make it through the system. If you
+	encounter any problems, feel free to email me (matthew.berginski [AT] gmail.com).<h2>
+	Required Options
+</h2>
+<h3 class="thin">
+	Adhesion Image File
+</h3>
+The program expects that you will submit a single zip file or a
+	stacked TIFF. If you upload a zip file, it should contain one folder with
+	all the images from your experiment.  The images can be in a
+	single stack or in separate files.<h2>
+	Advanced Settings
+</h2>
+<h3 class="thin">
+	Adhesion Detection Threshold
+</h3>
+This number is used by the adhesion detection script to determine
+	when a pixel is or is not part of an adhesion. After appling a high pass
+	filter to the images, pixels above this level are considered part of an
+	adhesion, while the pixels below are classified as background. The lower
+	this number, the more pixels will be classified as part of an adhesion.  The
+	default value of 2 works well in most cases, but values down to around 1 may
+	be appropriate. Also be aware that lower values will lengthen the runtime.
+	If you want to see what one of your images looks like when processed with a
+	specific threshold try out the threshold <a
+	href=thresh_testing.pl>tester</a>.<h2>
+	Notification Options
+</h2>
+<h3 class="thin">
+	Email
+</h3>
+If an email address is provided, you will be notified via email when
+	your job starts processing and when it finishes. Your email address will
+	only be used for notification purposes. If this is not provided, then the
+	experiment status page returned on submission needs to bookmarked in order
+	to retrieve your results.<h2>
+	Note to Self About Experiment
+</h2>
+Whatever you put in this box will be send back to you in any email
+    the system sends concerning your experiment. It is limited to 80
+    characters.<br />
+
+</div>
+
+<TMPL_INCLUDE NAME="html_end.tmpl">
+
+</body>
+</html>

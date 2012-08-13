@@ -11,9 +11,10 @@ use CGI::Pretty;
 use CGI::Carp;
 use IO::Handle;
 use Config::General;
+use HTML::Template;
 
-use lib './';
-use webserver_funcs qw(print_html_end);
+# use lib './';
+# use webserver_funcs qw(print_html_end);
 
 my $start = time;
 
@@ -32,49 +33,47 @@ my $final_results_dir = '/var/www/FA_webapp/results/';
 
 my $q = CGI->new();
 
-print $q->header,
-	  $q->start_html(-title=>'Focal Adhesion Analysis Server - Experiment Status',
-		  -style=>'/FA_webapp/css/screen.css');
+print $q->header();
 
-print "<div class=\"container\">\n";
-print $q->h1('Focal Adhesion Analysis Server - Experiment Status');
+my $exp_id = $q->param('exp_id');
+
+my $template = HTML::Template->new(filename => 'template/exp_status.tmpl');
 
 if (not defined $q->param('exp_id')) {
-	print $q->p, "I'm sorry, no experiment ID was specified. If you followed a
-	link please make sure it appears correct in the URL bar.";
-	&print_html_end($q);
+	$template->param('no_id' => 1);
+	print $template->output;
 	exit;
 }
 
-my $exp_id = $q->param('exp_id');
-print $q->p, "<b>Experiment ID:</b> ", $exp_id;
-
 #There are three places an experiment might be: in the queue, being processed or
 #in the final results directory. I'll check them in that order.
-my @final_results_files = <$final_results_dir/*>;
-if (grep $_ =~ /$exp_id/, @final_results_files) {
-	print $q->p, "Your experiment has finished processing. You can download your
-	results ", $q->a({href=>"/FA_webapp/results/$exp_id.zip"}, "here") , ".";
+my @final_results_files = <$final_results_dir/*.zip>;
+if (grep $_ =~ /$exp_id\.zip/, @final_results_files) {
+	$template->param(download_link => "/FA_webapp/results/$exp_id.zip",
+					 exp_name => $exp_id,
+				 	 exp_finished => 1);
+	print $template->output;
 } else {
 	my @running_results_files = <$running_results_dir/*>;
-	if (grep $_ =~ /$exp_id/, @running_results_files) {
-		print $q->p, "Your experiment is being processed.";
+	if (grep $_ =~ /$exp_id$/, @running_results_files) {
+		$template->param(exp_name => $exp_id,exp_running => 1);
+		print $template->output;
 	} else {
 		my @upload_zips = <$upload_dir/*.zip>;
-		if (grep $_ =~ /$exp_id/, @upload_zips) {
+		if (grep $_ =~ /$exp_id\.zip/, @upload_zips) {
 			my $queue_pos = &find_exp_position($exp_id,\@upload_zips);
-			print $q->p, "Your experiment is in the queue.";
-			print $q->p, "<b>Experiments in queue:</b> ", scalar(@upload_zips);
-			print $q->p, "<b>Position in queue:</b> ", $queue_pos;
+			
+			$template->param(exp_name => $exp_id, 
+							 queue_count => scalar(@upload_zips), 
+							 queue_position => $queue_pos,
+						 	 exp_in_queue => 1);
+			print $template->output;
 		} else {
-			print $q->p, "I'm sorry, but the experiment ID you specified
-			($exp_id) wasn't found. If you followed a link please make sure it
-			appears correct in the URL bar.";
+			$template->param(exp_name => $exp_id,exp_wrong_id => 1);
+			print $template->output;
 		}
 	}
 }
-
-&print_html_end($q);
 
 ###############################################################################
 # Functions
