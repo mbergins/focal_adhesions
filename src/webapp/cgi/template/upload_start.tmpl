@@ -31,8 +31,9 @@ Full Instructions are at the bottom of the page.
 </div>
 
 <TMPL_IF NAME="advanced_options">
-<h3 class="thin">Advanced Options</h3>
+<h2>Advanced Options</h2>
 <input type="checkbox" name="short_exp" />Just Setup the Experiment<br />
+<input type="checkbox" name="no_ad_splitting" />Don't Split Adjacent Adhesions<br />
 </TMPL_IF>
 
 <h2>
@@ -65,37 +66,44 @@ Thank you for helping to test the focal adhesion analysis webserver.
 The program expects that you will submit a single zip file or a
 	stacked TIFF. If you upload a zip file, it should contain one folder with
 	all the images from your experiment.  The images can be in a
-	single stack or in separate files.<h2>
-	Advanced Settings
-</h2>
-<h3 class="thin">
-	Adhesion Detection Threshold
-</h3>
-This number is used by the adhesion detection script to determine
-	when a pixel is or is not part of an adhesion. After appling a high pass
-	filter to the images, pixels above this level are considered part of an
-	adhesion, while the pixels below are classified as background. The lower
-	this number, the more pixels will be classified as part of an adhesion.  The
-	default value of 2 works well in most cases, but values down to around 1 may
-	be appropriate. Also be aware that lower values will lengthen the runtime.
-	If you want to see what one of your images looks like when processed with a
-	specific threshold try out the threshold <a
-	href=thresh_testing.pl>tester</a>.<h2>
-	Notification Options
-</h2>
+	single stack or in separate files.
+	
+<h2>Detection Settings</h2>
+<h3 class="thin">Adhesion Detection Threshold</h3>
+This number is used by the adhesion detection script to determine when a pixel
+is or is not part of an adhesion. After appling a high pass filter to the
+images, pixels above this level are considered part of an adhesion, while the
+pixels below are classified as background. The lower this number, the more
+pixels will be classified as part of an adhesion.  The default value of two
+works well in most cases, but values down to around one may be appropriate.
+Also be aware that lower values will lengthen the runtime.  If you want to see
+what one of your images looks like when processed with a specific threshold try
+out the threshold <a href=thresh_testing.pl>tester</a>.
+
+<TMPL_IF NAME="advanced_options">
+<h2>Advanced Options</h2>
+<b>Just Setup the Experiment:</b> Only setup the results folder, but don't do
+any processing. I use this option mostly for testing the website upload and
+setup process without the much longer process of analyzing the images.
+<p/><b>Don't Split Adjacent Adhesions:</b> This option turns off the wateshed
+segmentation method normally used to split adjacent adhesions. The watershed
+segmentation is the slowest part of the image processing, if this option is
+selected, processing runtimes decrease. You might want to turn on this option
+if the adhesions in your experiments don't appear to touch one another.
+</TMPL_IF>
+
+<h2>Notification Options</h2>
 <h3 class="thin">
 	Email
 </h3>
-If an email address is provided, you will be notified via email when
-	your job starts processing and when it finishes. Your email address will
-	only be used for notification purposes. If this is not provided, then the
-	experiment status page returned on submission needs to bookmarked in order
-	to retrieve your results.<h2>
-	Note to Self About Experiment
-</h2>
-Whatever you put in this box will be send back to you in any email
-    the system sends concerning your experiment. It is limited to 80
-    characters.<br />
+If an email address is provided, you will be notified via email when your job
+finishes processing. Your email address will only be used for notification
+purposes. If this is not provided, then the experiment status page returned on
+submission needs to bookmarked in order to retrieve your results.
+
+<h2> Note to Self About Experiment</h2>
+Whatever you put in this box will be send back to you in any email the system
+sends concerning your experiment. It is limited to 80 characters.<br />
 
 </div>
 

@@ -73,6 +73,9 @@ if (defined $lightweight_fh) {
 	if (defined $q->param('short_exp')) {
 		$new_cfg{short_exp} = 1;
 	}
+	if (defined $q->param('no_ad_splitting')) {
+		$new_cfg{no_ad_splitting} = 1;
+	}
 	&output_config(\%new_cfg,"$output_file.cfg");
 	
 	my $file_type = &determine_file_type($output_file);
