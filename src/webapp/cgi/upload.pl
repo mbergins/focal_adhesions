@@ -162,9 +162,8 @@ sub print_analysis_instrucitons {
     print $q->h1('Instructions');
     
 	print "Thank you for helping to test the focal adhesion analysis webserver.
-	Currently the service is only running on one CPU of my lab's server, so it
-	might take some time for submitted jobs to make it through the system. If you
-	encounter any problems, feel free to email me (matthew.berginski [AT] gmail.com).";
+	If you encounter any problems, feel free to email me (matthew.berginski [AT]
+	gmail.com).";
 	
 	print $q->h2('Required Options');
 
