@@ -65,6 +65,7 @@ if (defined $lightweight_fh) {
     my %new_cfg;
     $new_cfg{self_note} = $q->param('self_note');
     $new_cfg{stdev_thresh} = $q->param('filter_thresh');
+    $new_cfg{min_independent_size} = 14;
     $new_cfg{upload_time} = $end-$start;
     $new_cfg{exp_ID} = basename($output_file);
 	if (defined $q->param('phone')) {
