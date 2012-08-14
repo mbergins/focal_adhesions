@@ -144,6 +144,9 @@ sub build_extra_opts {
 	if (defined $cfg{min_adhesion_size}) {
 		$extra_opt .= ",'min_adhesion_size',$cfg{min_adhesion_size}";
 	}
+	if (defined $cfg{max_adhesion_size}) {
+		$extra_opt .= ",'max_adhesion_size',$cfg{max_adhesion_size}";
+	}
 	if (defined $cfg{min_independent_size}) {
 		$extra_opt .= ",'min_independent_size',$cfg{min_independent_size}";
 	}

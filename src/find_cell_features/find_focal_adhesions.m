@@ -26,6 +26,7 @@ i_p.parse(I_file);
 
 %Adhesion filtering parameters
 i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('max_adhesion_size',Inf,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
 i_p.addParamValue('min_independent_size',14,@(x)isnumeric(x) && x > 0);
 
@@ -117,7 +118,12 @@ if (i_p.Results.min_adhesion_size > 1)
     labeled_thresh = bwlabel(threshed_image,4);
     
     props = regionprops(labeled_thresh,'Area'); %#ok<MRPBW>
-    labeled_thresh = ismember(labeled_thresh, find([props.Area] >= i_p.Results.min_adhesion_size));
+	areas = [props.Area];
+	filter_result = areas >= i_p.Results.min_adhesion_size;
+	if (not(isinf(i_p.Results.max_adhesion_size)))
+		filter_result = filter_result & areas <= i_p.Results.max_adhesion_size;
+	end
+    labeled_thresh = ismember(labeled_thresh, find(filter_result));
     
     threshed_image = labeled_thresh > 0;
 end
