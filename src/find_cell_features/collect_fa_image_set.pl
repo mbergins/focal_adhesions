@@ -107,11 +107,6 @@ sub create_bundled_matlab_commands {
 				push @this_set, shift @image_nums;
 			}
 		}
-		if (scalar(@image_nums) < $min_image_count) {
-			while (@image_nums) {
-				push @this_set, shift @image_nums;
-			}
-		}
 		my $num_str = '[' . join(",",@this_set) . ']';
 			
 		my $these_opt = "$extra_opt,'i_nums',$num_str";
