@@ -70,6 +70,12 @@ if (defined $lightweight_fh) {
 	if ($q->param('email') ne '') {
 		$new_cfg{email} = $q->param('email');
 	}
+	if ($q->param('min_adhesion_size') ne '') {
+		$new_cfg{min_adhesion_size} = $q->param('min_adhesion_size');
+	}
+	if ($q->param('max_adhesion_size') ne '') {
+		$new_cfg{max_adhesion_size} = $q->param('max_adhesion_size');
+	}
 	if (defined $q->param('short_exp')) {
 		$new_cfg{short_exp} = 1;
 	}

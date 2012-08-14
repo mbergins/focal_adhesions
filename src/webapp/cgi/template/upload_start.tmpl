@@ -34,6 +34,9 @@ Full Instructions are at the bottom of the page.
 <h2>Advanced Options</h2>
 <input type="checkbox" name="short_exp" />Just Setup the Experiment<br />
 <input type="checkbox" name="no_ad_splitting" />Don't Split Adjacent Adhesions<br />
+
+Min Adhesion Size (pixels): <input type="text" name="min_adhesion_size" value="" size="20" id="min_adhesion_size" /><br />
+Max Adhesion Size (pixels): <input type="text" name="max_adhesion_size" value="" size="20" id="max_adhesion_size" />
 </TMPL_IF>
 
 <h2>
@@ -90,6 +93,9 @@ segmentation method normally used to split adjacent adhesions. The watershed
 segmentation is the slowest part of the image processing, if this option is
 selected, processing runtimes decrease. You might want to turn on this option
 if the adhesions in your experiments don't appear to touch one another.
+<p/><b>Min/Max Adhesion Size:</b> These settings control the minimum or maximum
+adhesion sizes allowed through the segmentation step, both are specified in
+pixels.
 </TMPL_IF>
 
 <h2>Notification Options</h2>
