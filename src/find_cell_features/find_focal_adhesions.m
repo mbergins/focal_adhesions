@@ -114,16 +114,13 @@ end
 threshed_image = remove_edge_adhesions(threshed_image);
 
 %filter out small adhesions if requested
-if (i_p.Results.min_adhesion_size > 1)
+if (i_p.Results.min_adhesion_size > 1 || i_p.Results.max_adhesion_size < Inf)
     labeled_thresh = bwlabel(threshed_image,4);
     
     props = regionprops(labeled_thresh,'Area'); %#ok<MRPBW>
 	areas = [props.Area];
-	filter_result = areas >= i_p.Results.min_adhesion_size;
-	if (not(isinf(i_p.Results.max_adhesion_size)))
-		filter_result = filter_result & areas <= i_p.Results.max_adhesion_size;
-	end
-    labeled_thresh = ismember(labeled_thresh, find(filter_result));
+	filter_result = areas >= i_p.Results.min_adhesion_size & areas <= i_p.Results.max_adhesion_size;
+	labeled_thresh = ismember(labeled_thresh, find(filter_result));
     
     threshed_image = labeled_thresh > 0;
 end
