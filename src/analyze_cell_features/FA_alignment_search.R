@@ -110,12 +110,12 @@ read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
     data_set$FA_cent$per_image = read.table(file.path(time_series_dir,'../single_props/Adhesion_centroid.csv'),
         sep=',',header=F);
     
-    data_set$mat$orientation = read.csv(file.path(time_series_dir,'Orientation.csv.gz'),header=F);
-    data_set$mat$area = read.csv(file.path(time_series_dir,'Area.csv.gz'),header=F);
-    data_set$mat$angle_to_FA_cent = read.csv(file.path(time_series_dir,'Angle_to_FA_cent.csv.gz'),header=F);
+    data_set$mat$orientation = read.csv(file.path(time_series_dir,'Orientation.csv'),header=F);
+    data_set$mat$area = read.csv(file.path(time_series_dir,'Area.csv'),header=F);
+    data_set$mat$angle_to_FA_cent = read.csv(file.path(time_series_dir,'Angle_to_FA_cent.csv'),header=F);
     
-    major_axis = read.csv(file.path(time_series_dir,'MajorAxisLength.csv.gz'),header=F);
-    minor_axis = read.csv(file.path(time_series_dir,'MinorAxisLength.csv.gz'),header=F);
+    major_axis = read.csv(file.path(time_series_dir,'MajorAxisLength.csv'),header=F);
+    minor_axis = read.csv(file.path(time_series_dir,'MinorAxisLength.csv'),header=F);
     data_set$mat$major_axis = major_axis;
     data_set$mat$minor_axis = minor_axis;
     data_set$mat$ratio = major_axis/minor_axis;
@@ -367,12 +367,12 @@ gather_all_single_adhesion_deviances <- function(sample_data, min.area=-Inf, min
 find_dist_overlaps_and_orientations <- function(lin_ts_folder,min.ratio=3,
     min.overlap=10,output.file='FA_dist_orientation.Rdata') {
 
-    centroid_x = read.csv(file.path(lin_ts_folder,'Centroid_x.csv.gz'),header=F)
-    centroid_y = read.csv(file.path(lin_ts_folder,'Centroid_y.csv.gz'),header=F)
+    centroid_x = read.csv(file.path(lin_ts_folder,'Centroid_x.csv'),header=F)
+    centroid_y = read.csv(file.path(lin_ts_folder,'Centroid_y.csv'),header=F)
 
-    major = read.csv(file.path(lin_ts_folder,'MajorAxisLength.csv.gz'),header=F)
-    minor = read.csv(file.path(lin_ts_folder,'MinorAxisLength.csv.gz'),header=F)
-    orientation = read.csv(file.path(lin_ts_folder,'Orientation.csv.gz'),header=F)
+    major = read.csv(file.path(lin_ts_folder,'MajorAxisLength.csv'),header=F)
+    minor = read.csv(file.path(lin_ts_folder,'MinorAxisLength.csv'),header=F)
+    orientation = read.csv(file.path(lin_ts_folder,'Orientation.csv'),header=F)
 
     ratio = major/minor;
     low_ratio = !is.na(ratio) & ratio < min.ratio;
