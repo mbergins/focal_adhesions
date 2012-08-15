@@ -55,24 +55,24 @@ my @command_set;
 foreach (@config_files) {
     next if /config\/default/;
 
-    my $command = "ionice -c3 ./$program_base -cfg $_ $debug_string $opt{extra}";
+    my $command = "./$program_base -cfg $_ $debug_string $opt{extra}";
     $command =~ s/"/\\"/g;
     push @command_set, "\"$command; echo $_;\"";
 	if ($parallel_return != 0) {
 		if ($opt{debug}) {
 			print "$command\n";
 		} else {
-			system("nice -n 20 $command");
+			system("ionice -c3 nice -n 20 $command");
 		}
 	}
 }
 
 if ($parallel_return == 0) {
 	if ($opt{debug}) {
-		my $parallel_cmd = "time parallel -j 75% -u --nice 20 ::: \n\t" . join("\n\t", @command_set) . "\t\n";
+		my $parallel_cmd = "time parallel --ungroup --nice 20 ::: \n\t" . join("\n\t", @command_set) . "\t\n";
 		print $parallel_cmd;
 	} else {
-		my $parallel_cmd = "time parallel -u --nice 20 ::: " . join(" ", @command_set);
+		my $parallel_cmd = "time parallel --ungroup --nice 20 ::: " . join(" ", @command_set);
 		system($parallel_cmd);
 	}
 }
