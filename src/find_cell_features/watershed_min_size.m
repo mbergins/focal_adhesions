@@ -109,7 +109,7 @@ else
             large_ad_num = find(meets_size_min);
             watershed_ads(pix_pos) = large_ad_num;
             
-            doesnt_meet_size_min = find([props.Area] > 0 & [props.Area] < min_size); %#ok<EFIND>
+            doesnt_meet_size_min = find([props.Area] > 0 & [props.Area] < min_size);
             if (not(isempty(doesnt_meet_size_min)))
                 %now assign those touching positions to the same adhesion
                 %as selected by the distance metric
@@ -135,7 +135,7 @@ else
             %now do a search for any small adhesions that didn't meet the
             %minimum size threshold, but are still touching the current
             %position, again, highly unlikely, but just in case...
-            doesnt_meet_size_min = find([props.Area] > 0 & [props.Area] < min_size); %#ok<EFIND>
+            doesnt_meet_size_min = find([props.Area] > 0 & [props.Area] < min_size);
             
             if (not(isempty(doesnt_meet_size_min)))
                 %now assign those touching positions to the same adhesion
