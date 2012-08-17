@@ -309,6 +309,10 @@ sub gather_and_output_lineage_properties {
     &output_prop_time_series($props{Average_adhesion_signal}, "Average_adhesion_signal");
     $props{ad_sig} = &gather_average_value($props{Average_adhesion_signal});
     undef $props{Average_adhesion_signal};
+	
+	$props{Angle_to_FA_cent} = &gather_prop_seq("Angle_to_FA_cent");
+	$props{birth_angle} = &gather_first_entry($props{Angle_to_FA_cent});
+	undef $props{Angle_to_FA_cent};
     
 	$props{MajorAxisLength} = &gather_prop_seq("MajorAxisLength");
 	# $props{mean_major_axis} = &gather_average_value($props{MajorAxisLength});
@@ -368,7 +372,8 @@ sub gather_and_output_lineage_properties {
     }
 
     my @lin_summary_data = &gather_lineage_summary_data(\%props);
-    my $output_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, $cfg{lineage_summary_props_file});
+    my $output_file = catfile($cfg{exp_results_folder}, 
+		$cfg{adhesion_props_folder}, $cfg{lineage_summary_props_file});
     &output_mat_csv(\@lin_summary_data, $output_file);
     %props = ();
 }
@@ -858,7 +863,7 @@ sub gather_lineage_summary_data {
 	ending_center_dist merge_count split_count death_status split_birth_status
 	average_speeds max_speeds ad_sig birth_i_num start_x start_y death_i_num
 	end_x end_y mean_axial_ratio mean_major_axis mean_minor_axis
-	drug_addition_time Mean_FA_cent_dist Mean_FA_CHull_dist); 
+	drug_addition_time Mean_FA_cent_dist Mean_FA_CHull_dist birth_angle); 
 	
     my @lin_summary_data;
     for (@possible_props) {

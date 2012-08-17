@@ -32,7 +32,20 @@ sub gather_data_sets {
     my @folders = <$cfg{individual_results_folder}/*/$cfg{raw_data_folder}>;
 	my @image_nums = &gather_sorted_image_numbers(\%cfg);
 	die if (scalar(@folders) != scalar(@image_nums));
-
+		
+	if (defined $opt{image_num}) {
+		my @process_nums = split(",",$opt{image_num});
+		my @process_zero_index;
+		foreach (@process_nums) {
+			push @process_zero_index, $_ - 1;
+		}
+		if ($#folders >= ($process_zero_index[$#process_zero_index] + 1)) {
+			push @process_zero_index, $process_zero_index[$#process_zero_index] + 1;
+		}
+		
+		@folders = @folders[@process_zero_index];
+		@image_nums = @image_nums[@process_zero_index];
+	}
 
     #Will hold a list of data files seen in other images, if a discrepency is
     #noticed in list on scanning a folder, an error will be raised.
@@ -41,12 +54,9 @@ sub gather_data_sets {
     foreach (0..$#folders) {
 		my $this_folder = $folders[$_];
         my $i_num = $image_nums[$_];
-		my @adj_nums = ($i_num);
-		if (defined $image_nums[$_ - 1]) {
-			push @adj_nums, $image_nums[$_ - 1];
-		}
+		my @adj_nums = ($i_num - 0);
 		if (defined $image_nums[$_ + 1]) {
-			push @adj_nums, $image_nums[$_ + 1];
+			push @adj_nums, $image_nums[$_ + 1] - 0;
 		}
 
         #Skip further processing on images in the excluded list
@@ -55,11 +65,6 @@ sub gather_data_sets {
 		#skip further processing if the an image number is in the options and
 		#the current image number is more than one number away from that image
 		#number, further away properties aren't used, so this is a safe operation
-		if (defined $opt{image_num}) {
-			if (not (grep $opt{image_num} == $_, @adj_nums)) {
-				next;
-			}
-		}
 
         foreach my $file (@data_files) {
             my @file_matches = <$this_folder/$file.*>;
@@ -76,7 +81,6 @@ sub gather_data_sets {
                 }
             }
 
-
             next if (scalar(@file_matches) == 0);
 
             if (-e "$file_matches[0]" && -f "$file_matches[0]" && -r "$file_matches[0]") {
@@ -92,6 +96,7 @@ sub gather_data_sets {
                 }
             }
         }
+		print "Done reading data from folder $this_folder\n" if $opt{debug};
     }
 
     die "No $cfg{raw_data_folder} folders found in $cfg{individual_results_folder}" if (scalar(keys %data_sets) == 0);
@@ -157,6 +162,7 @@ sub check_data_set_lengths {
             next if ($data_type eq "Outside_mean_intensity");
             next if ($data_type eq "Adhesion_mean_intensity");
             next if ($data_type eq "Adhesion_centroid");
+            next if ($data_type eq "Kinase_mean_intensity");
             $data_sets_length{$key}{$data_type} = scalar(@{ $data_sets{$key}{$data_type} });
         }
     }
