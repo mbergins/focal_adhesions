@@ -46,10 +46,9 @@ if (not $opt{debug}) {
 }
 my @image_sets = (
     [qw(raw_mask_folder raw_mask_file)],
-    [qw(raw_FRET_folder raw_FRET_file)],
     [qw(raw_kinase_folder raw_kinase_file)],
-    [qw(adhesion_image_folder adhesion_image_file)],
-    [qw(gel_image_folder gel_image_file)],
+    [qw(adhesion_image_folder_generic adhesion_image_file)],
+    [qw(adhesion_image_folder_pax adhesion_image_file)],
     [qw(adhesion_image_folder_vin adhesion_image_file)],
     [qw(adhesion_image_folder_fak adhesion_image_file)],
     );
@@ -59,7 +58,7 @@ my $all_images_empty = 1;
 foreach (@image_sets) {
     my $folder   = $cfg{ $_->[0] };
     my $out_file = $cfg{ $_->[1] };
-    
+ 	
 	next if (not(defined($folder)));
 
     #Remove an ' marks used in config file to keep the folder name together
