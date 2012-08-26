@@ -56,6 +56,7 @@ if (defined $lightweight_fh) {
     $new_cfg{min_independent_size} = 14;
     $new_cfg{upload_time} = $end-$start;
     $new_cfg{exp_ID} = basename($output_file);
+    $new_cfg{submitter_ip} = $q->remote_addr();
 	if ($q->param('self_note') ne '') {
 			$new_cfg{self_note} = $q->param('self_note');
 	}
@@ -157,9 +158,9 @@ sub move_tiff_file {
 
 	chdir 'upload';
 	# move($file,"tmp_$file");
-	make_path("Images");
+	make_path("Images/FA_marker");
 
-	move($file,"Images/data.tif");
+	move($file,"Images/FA_marker/data.tif");
 	$ENV{PATH} = '/usr/bin/';
 	system("/usr/bin/zip -r -q -0 $file.zip Images");
 	remove_tree("Images");
