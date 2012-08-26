@@ -80,10 +80,12 @@ $oldest_file{target_dir} = catdir($data_proc_dir,$oldest_file{name});
 &add_image_dir_to_config(%oldest_file);
 
 my %config = ParseConfig(\%oldest_file);
-if ($config{email} ne '') {
+if (defined $config{email}) {
 	$oldest_file{email} = $config{email};
 }
-$oldest_file{self_note} = $config{self_note};
+if (defined $config{self_note}) {
+	$oldest_file{self_note} = $config{self_note};
+}
 if (defined $config{phone} && defined $config{provider}) {
 	$oldest_file{phone} = $config{phone};
 	$oldest_file{provider} = $config{provider};
@@ -96,8 +98,13 @@ if (defined $config{phone} && defined $config{provider}) {
 # &send_start_email(%oldest_file);
 
 &setup_exp(%oldest_file);
-&run_processing_pipeline(\%oldest_file,\%config);
-&build_vector_vis(%oldest_file);
+if ($config{short_exp}) {
+	#this is left blank on purpose, to make the decision clear, if we are only
+	#running a short experiment, then we don't want to do the full processing
+} else {
+	&run_processing_pipeline(\%oldest_file,\%config);
+	&build_vector_vis(%oldest_file);
+}
 $oldest_file{public_zip} = &zip_results_folder(\%oldest_file,\%config);
 
 ###########################################################
@@ -263,12 +270,12 @@ sub delete_run_file {
 sub send_email {
 	my %email_data = @_;
 	
-	if ($email_data{self_note}) {
+	if (defined $email_data{self_note}) {
 		$email_data{body} = "$email_data{body}\n" . 
 			"Your note to yourself about this experiment:\n\n$email_data{self_note}";
 	}
 	
-	my $from_str = "\"From: noreply\@FAAS (FAAS Notification)\"";
+	my $from_str = "\"From: noreply\@mimir.bme.unc.edu (FAAS Notification)\"";
 
 	my $command = "echo \"$email_data{body}\" | mail -a $from_str -s \"$email_data{subject}\" $email_data{address}";
 	# print $command;
@@ -284,6 +291,10 @@ sub send_start_email {
 		'subject' => "Your experiment has started processing ($config{name})",
 		'self_note' => "$config{self_note}",
 	);
+
+	if (defined $config{self_note}) {
+		$start_email{self_note} = $config{self_note};
+	}
 
 	&send_email(%start_email);
 }
@@ -304,8 +315,11 @@ sub send_done_email {
 		'address' => "$config{email}",
 		'body' => $body,
 		'subject' => "Your experiment has finished processing ($config{name})",
-		'self_note' => "$config{self_note}",
 	);
+
+	if (defined $config{self_note}) {
+		$done_email{self_note} = $config{self_note};
+	}
 
 	&send_email(%done_email);
 }
