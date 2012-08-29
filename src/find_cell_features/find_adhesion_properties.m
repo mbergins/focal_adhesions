@@ -158,7 +158,6 @@ convex_dists = bwdist(~convex_hull);
 
 for i=1:max(labeled_adhesions(:))
     adhesion_props(i).Average_adhesion_signal = mean(orig_I(labeled_adhesions == i)) - background_correction;
-    adhesion_props(i).Variance_adhesion_signal = var(orig_I(labeled_adhesions == i));
     
     adhesion_props(i).Dist_to_FA_cent = dist_to_centroid(i);
     adhesion_props(i).Angle_to_FA_cent = angle_to_ad_cent(i);
