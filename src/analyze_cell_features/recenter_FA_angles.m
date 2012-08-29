@@ -33,18 +33,21 @@ for i=2:size(FA_cent_pos,1)
     cent_pos_diffs(i-1,2) = (FA_cent_pos(i,2) - FA_cent_pos(i-1,2))*-1;
 end
 
+sum_cent_movement = sum(cent_pos_diffs);
 mean_cent_movement = mean(cent_pos_diffs);
 
-cent_direction = atan2(mean_cent_movement(2),mean_cent_movement(1))*(180/pi);
+cent_direction = atan2(sum_cent_movement(2),sum_cent_movement(1))*(180/pi);
 
 %if the cell direction is specified in the parameter set, we will use that
 %for the recentering
 if (not(isnan(i_p.Results.by_hand_direction)))
-    csvwrite(fullfile(exp_dir,'adhesion_props','cell_direction.csv'), ...
-        [i_p.Results.by_hand_direction,cent_direction]);
-    
     cent_direction = i_p.Results.by_hand_direction;
 end
+
+csvwrite(fullfile(exp_dir,'adhesion_props','cell_direction.csv'), ...
+    [i_p.Results.by_hand_direction,cent_direction]);
+csvwrite(fullfile(exp_dir,'adhesion_props','movement_magnitude.csv'), ...
+    sqrt(mean_cent_movement(1)^2+mean_cent_movement(2)^2));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Recenter and Save Results
