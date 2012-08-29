@@ -73,6 +73,10 @@ end
 
 if (exist('kinase','var'))
     adhesion_properties(1).Kinase_mean_intensity = mean(kinase(adhesions > 0));
+    kinase_prop = regionprops(adhesions,kinase,'MeanIntensity');
+    [adhesion_properties.Kinase_intensity] = kinase_prop.MeanIntensity;
+    adhesion_properties(1).FA_Kinase_intensity_corr = ...
+        corr([adhesion_properties.Average_adhesion_signal]',[kinase_prop.MeanIntensity]');
 end
 if (i_p.Results.debug), disp('Done with gathering properties'); end
 
@@ -304,7 +308,7 @@ print_strings = struct('PixelIdxList','%0.f','Angle_diff_from_radial','%0.2f',..
     'Orientation','%0.2f','Angle_to_FA_cent','%0.2f','MajorAxisLength','%0.2f',...
     'MinorAxisLength','%0.2f','Average_adhesion_signal','%0.2f', ...
     'Variance_adhesion_signal','%0.2f','Min_adhesion_signal','%0.2f', ...
-    'Max_adhesion_signal','%0.2f');
+    'Max_adhesion_signal','%0.2f','Kinase_intensity','%0.2f');
 
 for i = 1:size(field_names,1)
     
