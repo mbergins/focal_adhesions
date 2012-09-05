@@ -31,7 +31,7 @@ my %cfg = $ad_conf->get_cfg_hash;
 ###############################################################################
 my $vis_dir = catdir($cfg{exp_results_folder},$cfg{movie_output_folder});
 
-my @filtered_movie_folders = qw(axis_ratio FA_angle);
+my @filtered_movie_folders = qw(axis_ratio FA_angle live_at_15);
 
 foreach (@filtered_movie_folders) {
 	my @match_folders = <$vis_dir/$_*>;
