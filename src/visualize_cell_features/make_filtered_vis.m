@@ -51,7 +51,8 @@ switch i_p.Results.type
         
         axis_ratio = major_axis ./ minor_axis;
         
-        highlight_decision = axis_ratio >= 2;
+        highlight_decision(axis_ratio < 2) = 2;
+        highlight_decision(axis_ratio >= 2) = 1;
         
         output_dir = fullfile(exp_dir,'visualizations','axis_ratio_highlight');
     case 'lifetime'
@@ -95,10 +96,13 @@ switch i_p.Results.type
         FA_angle = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','FA_angle_recentered.csv'));
         FA_angle_mean = nanmean(abs(FA_angle),2);
         
-        max_val = 80;
+        max_val = 90;
         
-        %remove adhesions above the maximum angle
-        highlight_decision(FA_angle_mean > max_val,:) = 0;
+        %mark adhesions above the maximum angle - on a per image basis
+        highlight_decision(abs(FA_angle) > max_val) = 2;
+        
+        %mark adhesions above the maximum angle - on an average angle basis
+%         highlight_decision(FA_angle_mean < max_val,:) = 2;
         
         output_dir = fullfile(exp_dir,'visualizations',['FA_angle_',num2str(max_val)]);
     case 'FA_angle_outside'
@@ -116,7 +120,7 @@ switch i_p.Results.type
     case 'zaozao'
         FA_angle = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','FA_angle_recentered.csv'));
         FA_angle_mean = nanmean(abs(FA_angle),2);
-
+        
         FA_dist = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','CHull_dist.csv'));
         FA_dist_mean = nanmean(FA_dist,2);
         
@@ -128,6 +132,17 @@ switch i_p.Results.type
         highlight_decision(FA_dist_mean > dist_cutoff | FA_angle_mean > 120,:) = 3;
         
         output_dir = fullfile(exp_dir,'visualizations','ZZ');
+    case 'live_at_point'
+        highlight_decision(tracking_mat(:,15) <= 0,:) = 2;
+        highlight_decision(tracking_mat(:,15) > 0,:) = 1;
+        
+        output_dir = fullfile(exp_dir,'visualizations','live_at_15');
+    case 'at_birth'
+        highlight_decision(tracking_mat > 0) = 2;
+        for ad_num = 1:size(tracking_mat,1) 
+            highlight_decision(ad_num,find(tracking_mat(ad_num,:) > 0,1,'first')) = 1;
+        end
+        output_dir = fullfile(exp_dir,'visualizations','at_birth');        
     otherwise
         disp(['Undefined visualization type requested: "',i_p.Results.type, '" exiting.']);
         return
