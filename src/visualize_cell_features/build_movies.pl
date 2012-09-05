@@ -50,8 +50,8 @@ foreach my $f1 (@movie_dirs) {
         my $input_folder = catdir($f1,$f2);
 		my $output_file = catdir($cfg{exp_results_folder},'..',"$unfoldered_exp_name.mov");
 		
-		my $command = "ffmpeg -v 0 -y -r $cfg{movie_frame_rate} -i $input_folder/%0" . 
-			$image_num_length . "d.png -sameq $output_file > /dev/null 2>&1";
+		my $command = "avconv -v 0 -y -r $cfg{movie_frame_rate} -i $input_folder/%0" . 
+			$image_num_length . "d.png -qscale 5 $output_file > /dev/null 2>&1";
 		if ($opt{debug}) {
         	print "$command\n";
 		} else {
