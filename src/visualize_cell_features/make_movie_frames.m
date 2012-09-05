@@ -234,17 +234,6 @@ for i = 1:max_image_num
         end
     end
     
-    
-    props = regionprops(ad_label,'Centroid');
-    temp = [props.Centroid];
-    centroid_row = temp(2:2:end);
-    centroid_col = temp(1:2:end);
-    
-    all_labels = '';
-    for ad_num=1:length(centroid_row)
-%         lineage_num = tracking_mat
-    end
-    
     disp(['Done with ', num2str(i_seen), '/',num2str(max_image_num)]);
 end
 
