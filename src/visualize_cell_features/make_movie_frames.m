@@ -78,10 +78,9 @@ for i_num = 1:length(image_folders)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %Gather the adhesion label image and perimeters
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ad_label = imread(fullfile(individual_images_dir,image_folders(i_num).name,filenames.adhesions));
     ad_label_perim = imread(fullfile(individual_images_dir,image_folders(i_num).name,filenames.adhesions_perim));
     
-    cell_mask_file = fullfile(individual_images_dir,image_folders(i_num).name,filenames.adhesions_perim);
+    cell_mask_file = fullfile(individual_images_dir,image_folders(i_num).name,filenames.cell_mask);
     if (exist(cell_mask_file,'file'))
         cell_edge = bwperim(imread(cell_mask_file));
     end
@@ -152,8 +151,9 @@ for i_num = 1:length(image_folders)
     out_file = fullfile(out_folder,sprintf('%05d.png',i_num));
     imwrite(composite_image,out_file);
     
-    disp(['Done with ', num2str(i_num), '/',num2str(length(image_folders))]);
-    1;
+    if (i_p.Results.debug)
+        disp(['Done with ', num2str(i_num), '/',num2str(length(image_folders))]);
+    end
 end
 
 toc;

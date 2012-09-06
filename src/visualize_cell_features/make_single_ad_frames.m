@@ -1,110 +1,48 @@
-function make_single_ad_frames(cfg_file,varargin)
-%MAKE_SINGLE_AD_FRAMES    Builds single image montages that track single
-%                         adhesions through their entire lifecycle,
-%                         including frames immediately preceding and
-%                         following the adhesion's lifetime, if available
-%
-%   make_single_ad_frames(cfg_file,options) builds single adhesion montages
-%   from raw experimental data, most config options are set in cfg_file
-%
-%   Options:
-%
-%       -debug: set to 1 to output debugging information, defaults to 0
-
+function make_single_ad_frames(exp_dir,varargin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Setup variables and parse command line
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
 i_p = inputParser;
-i_p.FunctionName = 'MAKE_SINGLE_AD_FRAMES';
 
-i_p.addRequired('cfg_file',@(x)exist(x,'file') == 2);
+i_p.addRequired('exp_dir',@(x)exist(x,'dir') == 7);
+
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
-i_p.addParamValue('start_row',1,@(x)x >= 1);
-i_p.addParamValue('end_row',1,@(x)x >= 1);
-i_p.addParamValue('adhesion_file',@(x)exist(x,'file') == 2);
 i_p.addParamValue('min_longevity',-Inf,@(x)isnumeric(x) && x > 0);
 
-i_p.parse(cfg_file,varargin{:});
+i_p.parse(exp_dir,varargin{:});
 
 addpath(genpath('..'))
+
 filenames = add_filenames_to_struct(struct());
+
+image_padding_min = 10;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Process config file
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-fid = fopen(cfg_file);
-while 1
-    line = fgetl(fid);
-    if ~ischar(line), break; end
-    eval(line);
-end
-
-addpath(genpath(path_folders));
+individual_images_dir = fullfile(exp_dir,filenames.individual_results_dir);
+image_folders = dir(individual_images_dir);
+image_folders = image_folders(3:end);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Collect General Properties
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-max_image_num = find_max_image_num(I_folder);
-folder_char_length = length(num2str(max_image_num));
-i_size = size(imread(fullfile(I_folder,num2str(max_image_num),focal_image)));
-
-tracking_seq = load(tracking_seq_file) + 1;
+tracking_seq = csvread(fullfile(exp_dir,filenames.tracking)) + 1;
 tracking_seq_size = size(tracking_seq);
 
-%Filter the tracking matrix according to 'start_row' and 'end_row' rules
-%provided via command parameters.
-if (   isempty(strmatch('start_row', i_p.UsingDefaults)) ...
-    && isempty(strmatch('end_row', i_p.UsingDefaults)))
-
-    assert(i_p.Results.start_row <= size(tracking_seq,1));
-    assert(i_p.Results.end_row <= size(tracking_seq,1));
-    tracking_beginning = zeros(i_p.Results.start_row - 1,size(tracking_seq,2));
-    tracking_middle = tracking_seq(i_p.Results.start_row:i_p.Results.end_row,:);
-    tracking_end = zeros(size(tracking_seq,1) - i_p.Results.end_row, size(tracking_seq,2));
-    
-    tracking_seq = [tracking_beginning; tracking_middle; tracking_end];
-    
-elseif (isempty(strmatch('start_row', i_p.UsingDefaults)))
-
-    assert(i_p.Results.start_row <= size(tracking_seq,1));
-    tracking_beginning = zeros(i_p.Results.start_row - 1,size(tracking_seq,2));
-    tracking_end = tracking_seq(i_p.Results.start_row:end,:);
-    
-    tracking_seq = [tracking_beginning; tracking_end];
-    
-elseif (isempty(strmatch('end_row', i_p.UsingDefaults)))
-    
-    assert(i_p.Results.end_row <= size(tracking_seq,1));
-    tracking_beginning = tracking_seq(1:i_p.Results.end_row,:);
-    tracking_end = zeros(size(tracking_seq,1) - i_p.Results.end_row, size(tracking_seq,2));
-    
-    tracking_seq = [tracking_beginning; tracking_end];
-    
-end
-assert(all(size(tracking_seq) == tracking_seq_size));
-
-if (isempty(strmatch('adhesion_file', i_p.UsingDefaults)))
-    ad_to_include = csvread(i_p.Results.adhesion_file);
-    
-    temp_tracking_mat = zeros(tracking_seq_size);
-    temp_tracking_mat(ad_to_include(:,1),:) = tracking_seq(ad_to_include(:,1),:);
-    tracking_seq = temp_tracking_mat;
-end
+% if (isempty(strmatch('adhesion_file', i_p.UsingDefaults)))
+%     ad_to_include = csvread(i_p.Results.adhesion_file);
+%     
+%     temp_tracking_mat = zeros(tracking_seq_size);
+%     temp_tracking_mat(ad_to_include(:,1),:) = tracking_seq(ad_to_include(:,1),:);
+%     tracking_seq = temp_tracking_mat;
+% end
 
 longevities = sum(tracking_seq > 0,2);
 tracking_seq(longevities < i_p.Results.min_longevity,:) = 0;
-
-rows_to_examine = zeros(size(tracking_seq,1),1);
-for i=1:size(tracking_seq)
-    rows_to_examine(i) = any(tracking_seq(i,:) > 0);
-end
-rows_to_examine = find(rows_to_examine);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Gather Bounding Matrices
@@ -121,24 +59,22 @@ rows_to_examine = find(rows_to_examine);
 bounding_matrix = [Inf*ones(size(tracking_seq,1),1), Inf*ones(size(tracking_seq,1),1), ...
     -Inf*ones(size(tracking_seq,1),1), -Inf*ones(size(tracking_seq,1),1)];
 
-i_seen = 0;
+i_size = [];
 
-for j = 1:max_image_num
-    padded_i_num = sprintf(['%0',num2str(folder_char_length),'d'],j);
-
-    if (not(exist(fullfile(I_folder,padded_i_num,focal_image),'file'))), continue; end
-
-    i_seen = i_seen + 1;
-
-    ad_label = imread(fullfile(I_folder,padded_i_num,adhesions_filename));
+for i_num = 1:length(image_folders)
+    ad_label = imread(fullfile(individual_images_dir,image_folders(i_num).name,filenames.adhesions));
+    
+    if (i_num == 1)
+        i_size = size(ad_label);
+    end
     
     bounds = regionprops(ad_label,'BoundingBox');
 
     for i = 1:size(tracking_seq,1)
         tracking_row = tracking_seq(i,:);
-        if (tracking_row(i_seen) <= 0), continue; end
+        if (tracking_row(i_num) <= 0), continue; end
                 
-        ad_num = tracking_row(i_seen);
+        ad_num = tracking_row(i_num);
 
         corners = [bounds(ad_num).BoundingBox(1), bounds(ad_num).BoundingBox(2)];
         corners = [corners, corners + bounds(ad_num).BoundingBox(3:4)]; %#ok<AGROW>
@@ -149,17 +85,17 @@ for j = 1:max_image_num
         if (corners(4) > bounding_matrix(i,4)), bounding_matrix(i,4) = corners(4); end
     end
 
-    if (mod(i_seen,10) == 0 || j == max_image_num)
-        disp(['Bounding image: ',num2str(i_seen)]);
-    end
+%     if (mod(i_num,10) == 0 || j == max_image_num)
+%         disp(['Bounding image: ',num2str(i_num)]);
+%     end
 end
 
-bounding_matrix(:,1:2) = bounding_matrix(:,1:2) - single_image_padding_min;
+bounding_matrix(:,1:2) = bounding_matrix(:,1:2) - image_padding_min;
 bounding_matrix(:,1:2) = floor(bounding_matrix(:,1:2));
 bounding_matrix(bounding_matrix(:,1) <= 0,1) = 1;
 bounding_matrix(bounding_matrix(:,2) <= 0,2) = 1;
 
-bounding_matrix(:,3:4) = bounding_matrix(:,3:4) + single_image_padding_min;
+bounding_matrix(:,3:4) = bounding_matrix(:,3:4) + image_padding_min;
 bounding_matrix(:,3:4) = ceil(bounding_matrix(:,3:4));
 bounding_matrix(bounding_matrix(:,3) > i_size(2),3) = i_size(2);
 bounding_matrix(bounding_matrix(:,4) > i_size(1),4) = i_size(1);
@@ -167,43 +103,29 @@ bounding_matrix(bounding_matrix(:,4) > i_size(1),4) = i_size(1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Build Single Ad Image Sequences
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-image_folders = dir(I_folder);
-image_folders = image_folders(3:end);
-image_set_min_max = csvread(fullfile(I_folder,image_folders(1).name,filenames.focal_image_min_max));
-
-%i_seen will keep track of the number of images that have actually been
-%read into the program, we need to keep track of this due to skipped
-%frames, which will show up as missing files in the following loop
-i_seen = 0;
+image_set_range = csvread(fullfile(individual_images_dir,image_folders(i_num).name,filenames.focal_image_min_max));
 
 %all_images will hold all the highlighted frames produced for the movies,
 %each row will hold the images from each lineages, where the columns will
 %hold all the frames from each time point
 all_images = cell(size(tracking_seq,1), 1);
 
-for j = 1:max_image_num
-    padded_i_num = sprintf(['%0',num2str(folder_char_length),'d'],j);
-
-    if (not(exist(fullfile(I_folder,padded_i_num,focal_image),'file'))), continue; end
-
-    i_seen = i_seen + 1;
-
+for i_num = 1:length(image_folders)
     %Gather and scale the input adhesion image
-    orig_i = double(imread(fullfile(I_folder,padded_i_num,focal_image)));
-    orig_i = (orig_i - image_set_min_max(1))/range(image_set_min_max);
+    orig_i = double(imread(fullfile(individual_images_dir,image_folders(i_num).name,filenames.focal_image)));
+    orig_i = (orig_i - image_set_range(1))/(image_set_range(2) - image_set_range(1));
     
     %Gather the ad label image
-    ad_label_perim = imread(fullfile(I_folder,padded_i_num,adhesions_perim_filename));
+    ad_label_perim = imread(fullfile(individual_images_dir,image_folders(i_num).name,filenames.adhesions_perim));
 
     %Gather the cell edge image if available
-    if (exist(fullfile(I_folder,padded_i_num,edge_filename),'file'))
-        cell_edge = bwperim(imread(fullfile(I_folder,padded_i_num,edge_filename)));
+    cell_mask_file = fullfile(individual_images_dir,image_folders(i_num).name,filenames.cell_mask);
+    if (exist(cell_mask_file,'file'))
+        cell_edge = bwperim(imread(cell_mask_file));
     end
     
     %cycle through each adhesion that we want to make a small multiple of
-    for i = 1:size(rows_to_examine,1)
-        row_num = rows_to_examine(i);
-        
+    for row_num = 1:size(tracking_seq,1)
         padded_num = sprintf(['%0',num2str(length(num2str(tracking_seq_size(1)))),'d'],row_num);
         
         tracking_row = tracking_seq(row_num,:);
@@ -211,12 +133,12 @@ for j = 1:max_image_num
         %now we do a check to see if there is an adhesion in the next
         %image or the image before, because we also want to render the
         %image immediately before birth and right after death
-        surrounding_entries = [0, tracking_row(i_seen), 0];
-        try surrounding_entries(1) = tracking_row(i_seen - 1); end %#ok<TRYNC>
-        try surrounding_entries(3) = tracking_row(i_seen + 1); end %#ok<TRYNC>
+        surrounding_entries = [0, tracking_row(i_num), 0];
+        try surrounding_entries(1) = tracking_row(i_num - 1); end %#ok<TRYNC>
+        try surrounding_entries(3) = tracking_row(i_num + 1); end %#ok<TRYNC>
         
         if (any(surrounding_entries > 0))
-            ad_num = tracking_row(i_seen);
+            ad_num = tracking_row(i_num);
             if (ad_num <= 0); ad_num = -Inf; end
             bounded_ad_label_perim = ad_label_perim(bounding_matrix(row_num,2):bounding_matrix(row_num,4), ...
                 bounding_matrix(row_num,1):bounding_matrix(row_num,3));
@@ -235,11 +157,11 @@ for j = 1:max_image_num
                 highlighted_image = create_highlighted_image(highlighted_image,bounded_edge,'color_map',[1,0,0]);
             end
             
-            all_images{row_num}{i_seen} = highlighted_image;
+            all_images{row_num}{i_num} = highlighted_image;
         end
         
         %check if this adhesion's small multiple set is complete
-        if (all(surrounding_entries <= 0) || j == max_image_num)
+        if (all(surrounding_entries <= 0) || i_num == length(image_folders))
             
             %if the current image set is empty, we haven't hit the adhesion
             %yet in the image set, so continue to the next adhesion
@@ -250,7 +172,7 @@ for j = 1:max_image_num
                 image_counts = ad_to_include(offset_row_num,2); %#ok<FNDSB>
                 if (isempty(all_images{row_num}{1}))
                     image_counts = image_counts + 1;
-                elseif (tracking_row(i_seen) <= 0)
+                elseif (tracking_row(i_num) <= 0)
                     image_counts = image_counts + 1;
                 end
                 
@@ -263,8 +185,7 @@ for j = 1:max_image_num
                     warning('FA:fileName','Expected to find either disassembly or assembly in adhesion_file parameter.')
                 end
                 
-                
-                output_file = fullfile(out_path_single, offset_type, [padded_num, '.png']);
+                output_file = fullfile(exp_dir,'visualizations', offset_type, [padded_num, '.png']);
                 %Draw the scale bar
                 if (exist('pixel_size','var'))
                     write_montage_image_set(all_images{row_num},output_file, ...
@@ -276,7 +197,7 @@ for j = 1:max_image_num
                 end 
             end
             
-            output_file = fullfile(out_path_single, 'overall', [padded_num, '.png']);
+            output_file = fullfile(exp_dir,'visualizations', 'overall', [padded_num, '.png']);
             if (exist('pixel_size','var'))
                 write_montage_image_set(all_images{row_num},output_file, ...
                     'pixel_size',pixel_size,'bar_size',5);
@@ -288,10 +209,9 @@ for j = 1:max_image_num
             continue;
         end
     end
-    if (mod(j,10) == 0)
-        disp(['Highlight image: ',num2str(i_seen)]);
+    if (mod(i_num,10) == 0)
+        disp(['Highlight image: ',num2str(i_num)]);
     end
 end
 
-profile off;
-if (i_p.Results.debug), profile viewer; end
+toc;
