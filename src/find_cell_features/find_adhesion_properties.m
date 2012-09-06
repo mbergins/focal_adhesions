@@ -72,12 +72,9 @@ else
 end
 
 if (exist('kinase','var'))
-    adhesion_properties(1).Kinase_mean_intensity = mean(kinase(adhesions > 0));
-    kinase_prop = regionprops(adhesions,kinase,'MeanIntensity');
-    [adhesion_properties.Kinase_intensity] = kinase_prop.MeanIntensity;
-    adhesion_properties(1).FA_Kinase_intensity_corr = ...
-        corr([adhesion_properties.Average_adhesion_signal]',[kinase_prop.MeanIntensity]');
+    adhesion_properties = collect_kinase_properties(kinase,adhesions,adhesion_properties);
 end
+
 if (i_p.Results.debug), disp('Done with gathering properties'); end
 
 %write the results to files
@@ -88,7 +85,23 @@ write_adhesion_data(adhesion_properties,'out_dir',fullfile(i_p.Results.output_di
 % Functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function adhesion_props = collect_adhesion_properties(orig_I,labeled_adhesions, ... 
+function adhesion_properties = collect_kinase_properties(kinase,adhesions,adhesion_properties)
+
+adhesion_properties(1).Kinase_mean_intensity = mean(kinase(adhesions > 0));
+kinase_prop = regionprops(adhesions,kinase,'MeanIntensity');
+[adhesion_properties.Kinase_intensity] = kinase_prop.MeanIntensity;
+adhesion_properties(1).FA_Kinase_intensity_corr = ...
+    corr([adhesion_properties.Average_adhesion_signal]',[kinase_prop.MeanIntensity]');
+
+for i=1:max(adhesions(:))
+    this_ad = adhesions == i;
+    
+    surrounding = imdilate(this_ad, strel('disk',4)) & not(adhesions);
+    adhesion_properties(i).Kinase_intensity_corrected = adhesion_properties(i).Kinase_intensity - ...
+        mean(kinase(surrounding));
+end
+
+function adhesion_props = collect_adhesion_properties(orig_I,labeled_adhesions, ...
     background_correction,varargin)
 % COLLECT_ADHESION_PROPERTIES    using the identified adhesions, various
 %                                properties are collected concerning the
@@ -164,7 +177,7 @@ for i=1:max(labeled_adhesions(:))
     
     centroid_rounded = round(adhesion_props(i).Centroid);
     adhesion_props(i).CHull_dist = convex_dists(centroid_rounded(2),centroid_rounded(1));
-
+    
     angle_to_FA_vector = [cosd(angle_to_ad_cent(i)),sind(angle_to_ad_cent(i))];
     FA_orientation_vector = [cosd(adhesion_props(i).Orientation),sind(adhesion_props(i).Orientation)];
     FA_orientation_vector_alt = [cosd(adhesion_props(i).Orientation + 180),
@@ -173,7 +186,7 @@ for i=1:max(labeled_adhesions(:))
     angle_between = acosd(dot(angle_to_FA_vector,FA_orientation_vector));
     angle_between_alt = acosd(dot(angle_to_FA_vector,FA_orientation_vector_alt));
     
-    if (abs(angle_between) < abs(angle_between_alt)) 
+    if (abs(angle_between) < abs(angle_between_alt))
         adhesion_props(i).Angle_diff_from_radial = angle_between;
     else
         adhesion_props(i).Angle_diff_from_radial = angle_between_alt;
@@ -305,7 +318,8 @@ print_strings = struct('PixelIdxList','%0.f','Angle_diff_from_radial','%0.2f',..
     'Orientation','%0.2f','Angle_to_FA_cent','%0.2f','MajorAxisLength','%0.2f',...
     'MinorAxisLength','%0.2f','Average_adhesion_signal','%0.2f', ...
     'Variance_adhesion_signal','%0.2f','Min_adhesion_signal','%0.2f', ...
-    'Max_adhesion_signal','%0.2f','Kinase_intensity','%0.2f');
+    'Max_adhesion_signal','%0.2f','Kinase_intensity','%0.2f', ...
+    'Kinase_intensity_corrected','%0.2f');
 
 for i = 1:size(field_names,1)
     
