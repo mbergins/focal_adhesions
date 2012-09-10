@@ -24,20 +24,19 @@ Full Instructions are at the bottom of the page.
 <h3 class="thin">
 	Adhesion Detection Threshold
 </h3>
-<input type="text" name="filter_thresh" value="2" size="50" onselect="validate_thresh(this.id)" onchange="validate_thresh(this.id)" id="thresh_field" />
+<input type="text" name="filter_thresh" value="2" size="50" onselect="validate_thresh(this.id)" onchange="validate_thresh(this.id)" id="thresh_field" /><br />
+
+<input type="checkbox" name="no_ad_splitting" />Don't Split Adjacent Adhesions<br />
+
+Min Adhesion Size (pixels): <input type="text" name="min_adhesion_size" value="2" size="20" id="min_adhesion_size" /><br />
+Max Adhesion Size (pixels): <input type="text" name="max_adhesion_size" value="" size="20" id="max_adhesion_size" />
 
 <div class="hide" id="thresh_help">
 	The threshold must be a number above 0, see instructions below for more help.
 </div>
 
-<TMPL_IF NAME="advanced_options">
-<h2>Advanced Options</h2>
+<h2>Miscellaneous Options</h2>
 <input type="checkbox" name="short_exp" />Just Setup the Experiment<br />
-<input type="checkbox" name="no_ad_splitting" />Don't Split Adjacent Adhesions<br />
-
-Min Adhesion Size (pixels): <input type="text" name="min_adhesion_size" value="" size="20" id="min_adhesion_size" /><br />
-Max Adhesion Size (pixels): <input type="text" name="max_adhesion_size" value="" size="20" id="max_adhesion_size" />
-</TMPL_IF>
 
 <h2>
 	Optional Settings

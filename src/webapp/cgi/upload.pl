@@ -110,9 +110,6 @@ if (defined $lightweight_fh) {
 	}
 } else {
 	my $template = HTML::Template->new(filename => 'template/upload_start.tmpl');
-	if ($q->param('advanced_options')) {
-		$template->param(advanced_options => 1);
-	}
 	print $q->header();
 	print $template->output;
 }
