@@ -6,6 +6,8 @@ function filenames = add_filenames_to_struct(filenames)
 %%Main Program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+filenames.individual_results_dir = 'individual_pictures';
+
 filenames.focal_image = 'focal_image.png';
 
 filenames.adhesions = 'adhesions.png';
@@ -17,6 +19,7 @@ filenames.cell_mask = 'cell_mask.png';
 filenames.kinase = 'kinase.png';
 
 filenames.photo_bleach_correction = 'photo_correct.txt';
+
 filenames.background_intensity = '../../adhesion_props/background_intensity.txt';
 
 filenames.focal_image_min_max = '../../adhesion_props/focal_min_max.csv';
@@ -31,3 +34,5 @@ filenames.centroid_x = '../../adhesion_props/lin_time_series/Centroid_x.csv';
 filenames.centroid_y = '../../adhesion_props/lin_time_series/Centroid_y.csv';
 
 filenames.max_intensity = '../../visualizations/max_intensity_projection.png';
+
+filenames.tracking = 'tracking_matrices/tracking_seq.csv';
