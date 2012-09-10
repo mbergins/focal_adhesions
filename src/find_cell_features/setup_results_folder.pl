@@ -72,9 +72,6 @@ foreach (@image_sets) {
     my @image_files = sort <$search_dir/*>;
     my @image_files = map { $_ =~ s/\'//g; $_; } @image_files;
 
-    #Move all the files with spaces in their names, MATLAB on emerald doesn't
-    #like them
-    @image_files = &remove_file_name_spaces(@image_files);
     $all_images_empty = 0 if (@image_files);
 
     if ($opt{debug}) {
@@ -185,28 +182,6 @@ sub create_matlab_code_single {
         $matlab_code[0] .= "write_normalized_image('$file_name','$final_out_file');\n";
     }
     return @matlab_code;
-}
-
-sub remove_file_name_spaces {
-	my @old_file_names = @_;
-    my @new_files;
-    for (@old_file_names) {
-        my $dir       = dirname($_);
-        my $file_name = basename($_);
-
-        if ($file_name =~ /\s/) {
-            if ($file_name =~ /(\d+\..*)/) {
-                if (move($_, catfile($dir, $1))) {
-                    push @new_files, catfile($dir, $1);
-                }
-            } else {
-                warn "Unable to determine image number for file: $_";
-            }
-        } else {
-            push @new_files, $_;
-        }
-    }
-    return @new_files;
 }
 
 ################################################################################
