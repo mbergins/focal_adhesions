@@ -197,7 +197,7 @@ for i_num = 1:length(image_folders)
                 end 
             end
             
-            output_file = fullfile(exp_dir,'visualizations', 'overall', [padded_num, '.png']);
+            output_file = fullfile(exp_dir,'visualizations','single_ad','overall', [padded_num, '.png']);
             if (exist('pixel_size','var'))
                 write_montage_image_set(all_images{row_num},output_file, ...
                     'pixel_size',pixel_size,'bar_size',5);

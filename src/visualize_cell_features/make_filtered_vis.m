@@ -92,7 +92,7 @@ switch i_p.Results.type
         highlight_decision(FA_dist_mean > max_val,:) = 0;
         
         output_dir = fullfile(exp_dir,'visualizations',['FA_CHull_dist_',num2str(p_tile)]);
-    case 'FA_angle'
+    case 'leading_vs_trailing'
         FA_angle = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','FA_angle_recentered.csv'));
         FA_angle_mean = nanmean(abs(FA_angle),2);
         
@@ -104,7 +104,7 @@ switch i_p.Results.type
         %mark adhesions above the maximum angle - on an average angle basis
 %         highlight_decision(FA_angle_mean < max_val,:) = 2;
         
-        output_dir = fullfile(exp_dir,'visualizations',['FA_angle_',num2str(max_val)]);
+        output_dir = fullfile(exp_dir,'visualizations',['leading_vs_trailing_',num2str(max_val)]);
     case 'FA_angle_outside'
         FA_angle = csvread(fullfile(exp_dir,'adhesion_props','lin_time_series','FA_angle_recentered.csv'));
         FA_angle_mean = nanmean(abs(FA_angle),2);
