@@ -8,7 +8,7 @@ use File::Copy;
 use File::Temp qw(tempfile);
 use POSIX;
 use CGI::Pretty;
-use CGI::Carp;
+use CGI::Carp "fatalsToBrowser";
 use IO::Handle;
 use Config::General;
 use HTML::Template;
@@ -21,6 +21,7 @@ $| = 1;
 # Main Program
 ###############################################################################
 
+# my $q = CGI->new(\&hook);
 my $q = CGI->new();
 
 #First check for a valid file handle, if so, present user with acknowledgement
@@ -30,15 +31,15 @@ if (defined $lightweight_fh) {
     # Upgrade the handle to one compatible with IO::Handle:
     my $io_handle = $lightweight_fh->handle();
     $q->param('uploaded_file') =~ /(.*)/;
-    
-    my $temp_output = catdir('upload');
-    if (! -e $temp_output) {
-        make_path($temp_output);
-		chmod 0777, $temp_output;
-    }
-
-    my ($output_handle, $output_file) = tempfile('FAAS_XXXXXX',DIR=>catdir('upload')) or die "$!";
 	
+	my $temp_output = catdir('upload');
+	if (! -e $temp_output) {
+		make_path($temp_output);
+		chmod 0777, $temp_output;
+	}
+
+	my ($output_handle, $output_file) = tempfile('FAAS_XXXXXX',DIR=>catdir('upload')) or die "$!";
+
     my $buffer;
     while (my $bytesread = $io_handle->read($buffer,1024)) {
         print $output_handle $buffer or die;
@@ -164,4 +165,9 @@ sub move_tiff_file {
 	
 	chmod 0777, "$file.zip" or die "$!";
 	chdir '..';
+}
+
+sub hook {
+        my ($filename, $buffer, $bytes_read, $data) = @_;
+		sleep 1;
 }

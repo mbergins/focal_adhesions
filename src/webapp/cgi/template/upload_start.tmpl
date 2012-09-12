@@ -13,27 +13,32 @@
 <h1>
 	Focal Adhesion Analysis Server - Experiment Upload
 </h1>
+<div id="upload_form">
 Full Instructions are at the bottom of the page.
 <form method="post" action="upload.pl" enctype="multipart/form-data" name="fa_upload">
-<h3 class="thin">
-	Adhesion Image File
-</h3>
-<input type="file" name="uploaded_file"  size="50" maxlength="80" /><h2>
-	Detection Settings
-</h2>
-<h3 class="thin">
-	Adhesion Detection Threshold
-</h3>
-<input type="text" name="filter_thresh" value="2" size="50" onselect="validate_thresh(this.id)" onchange="validate_thresh(this.id)" id="thresh_field" /><br />
 
-<input type="checkbox" name="no_ad_splitting" />Don't Split Adjacent Adhesions<br />
+	<h3 class="thin">Adhesion Image File</h3>
 
-Min Adhesion Size (pixels): <input type="text" name="min_adhesion_size" value="2" size="20" id="min_adhesion_size" /><br />
-Max Adhesion Size (pixels): <input type="text" name="max_adhesion_size" value="" size="20" id="max_adhesion_size" />
+	<input type="file" name="uploaded_file"  size="50" maxlength="80" />
+	<h2> Detection Settings </h2>
+		<h3 class="thin">Adhesion Detection Threshold</h3>
+		<input type="text" name="filter_thresh" value="2" size="50" onselect="validate_thresh(this.id)" onchange="validate_thresh(this.id)" id="thresh_field" /><br />
+		<div class="hide" id="thresh_help">
+			The threshold must be a number above zero, see instructions below for more help.
+		</div>
 
-<div class="hide" id="thresh_help">
-	The threshold must be a number above 0, see instructions below for more help.
-</div>
+		<input type="checkbox" name="no_ad_splitting" />Don't Split Adjacent Adhesions<br />
+
+		Min Adhesion Size (pixels): <input type="text" name="min_adhesion_size" value="2" size="20" id="min_adhesion_size" onselect="validate_min_ad_size(this.id)" onchange="validate_min_ad_size(this.id)"/><br />
+		<div class="hide" id="min_fa_size_help">
+			The minimum adhesion size threshold must be a number above zero. Set to one to allow adhesions of any size.
+		</div>
+
+		Max Adhesion Size (pixels): <input type="text" name="max_adhesion_size" value="" size="20" id="max_adhesion_size" onselect="validate_max_ad_size(this.id)" onchange="validate_max_ad_size(this.id)"/>
+		<div class="hide" id="max_fa_size_help">
+			The maximum adhesion size threshold must be a number above zero and above the minimum FA size if specified.
+		</div>
+
 
 <h2>Miscellaneous Options</h2>
 <input type="checkbox" name="short_exp" />Just Setup the Experiment<br />
@@ -44,14 +49,21 @@ Max Adhesion Size (pixels): <input type="text" name="max_adhesion_size" value=""
 <h3 class="thin">
 	Email Address
 </h3>
-<input type="text" name="email"  size="50" onselect="validate_email(this.id)" onchange="validate_email(this.id)" id="email_field" /><div class="hide" id="email_help">
-		Please input a valid email address.</div>
+<input type="text" name="email" size="50" onselect="validate_email(this.id)" onchange="validate_email(this.id)" id="email_field" />
+	<div class="hide" id="email_help">
+		Please input a valid email address.
+	</div>
 <h3 class="thin">
 	Note to Self About Experiment
 </h3>
 <input type="text" name="self_note" size="50" maxlength="80" /><br />
 <br />
-<input type="submit" name="Submit Data" value="Submit Data" id="submit_button" /></form><br />
+<input type="submit" name="Submit Data" value="Submit Data" id="submit_button" onclick="submit_activity()"/>
+</form>
+
+
+<br />
+
 <hr />
 <h1>
 	Instructions
@@ -107,6 +119,14 @@ submission needs to bookmarked in order to retrieve your results.
 <h2> Note to Self About Experiment</h2>
 Whatever you put in this box will be send back to you in any email the system
 sends concerning your experiment. It is limited to 80 characters.<br />
+
+</div>
+
+<div id="upload_working" class="hide">
+	Your file is being uploaded to the server. Depending on your upload rate, this may take some time.
+</div>
+
+<h1><div id="wheel_spin" class="hide">/</div></h1>
 
 </div>
 
