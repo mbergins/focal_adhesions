@@ -54,8 +54,8 @@ row_bounds = [row_bounds(1) - image_padding_min,row_bounds(end) + image_padding_
 
 if (col_bounds(1) < 1), col_bounds(1) = 1; end
 if (row_bounds(1) < 1), row_bounds(1) = 1; end
-if (col_bounds(2) > size(all_binary,1)), col_bounds(2) = size(all_binary,2); end
-if (row_bounds(2) > size(all_binary,2)), row_bounds(2) = size(all_binary,1); end
+if (col_bounds(2) > size(all_binary,2)), col_bounds(2) = size(all_binary,2); end
+if (row_bounds(2) > size(all_binary,1)), row_bounds(2) = size(all_binary,1); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Assign Each Adhesion a Unique Color
