@@ -1,14 +1,4 @@
 function make_movie_frames(exp_dir,varargin)
-%MAKE_MOVIE_FRAMES    Builds movie frames with the adhesions highlighted in
-%                     using various conventions
-%
-%   make_movie_frames(cfg_file,options) builds individual movie frames from
-%   raw experimental data, where files are placed and the movie config
-%   options are coded in cfg_file
-%
-%   Options:
-%
-%       -debug: set to 1 to output debugging information, defaults to 0
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Setup variables and parse command line
@@ -17,6 +7,10 @@ tic;
 i_p = inputParser;
 
 i_p.addRequired('exp_dir',@(x)exist(x,'dir') == 7);
+
+i_p.addParamValue('image_file','focal_image',@ischar);
+i_p.addParamValue('image_min_max_file','focal_image_min_max',@ischar);
+i_p.addParamValue('out_folder','tracking',@ischar);
 
 i_p.addParamValue('pixel_size',0,@(x)x == 1 || x == 0);
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
@@ -28,6 +22,9 @@ addpath(genpath('..'));
 filenames = add_filenames_to_struct(struct());
 
 image_padding_min = 10;
+
+image_file = i_p.Results.image_file;
+image_min_max_file = i_p.Results.image_min_max_file;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program
@@ -67,12 +64,12 @@ lineage_cmap = jet(max_live_adhesions);
 lineage_to_cmap = zeros(size(tracking_seq,1),1);
 edge_cmap = jet(size(tracking_seq,2));
 
-image_set_range = csvread(fullfile(individual_images_dir,image_folders(1).name,filenames.focal_image_min_max));
+image_set_range = csvread(fullfile(individual_images_dir,image_folders(1).name,filenames.(image_min_max_file)));
 for i_num = 1:length(image_folders)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %Gather and scale the input adhesion image
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    orig_i = double(imread(fullfile(individual_images_dir,image_folders(i_num).name,filenames.focal_image)));
+    orig_i = double(imread(fullfile(individual_images_dir,image_folders(i_num).name,filenames.(image_file))));
     orig_i = (orig_i - image_set_range(1))/(image_set_range(2) - image_set_range(1));
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -122,7 +119,7 @@ for i_num = 1:length(image_folders)
     %Build the unique lineage highlighted image
     cmap_nums = lineage_to_cmap(tracking_seq(:,i_num) > 0);
 %     this_cmap = zeros(max(ad_label_perim(:)),3);
-    this_cmap(ad_nums_lineage_order,:) = lineage_cmap(cmap_nums,:);
+    this_cmap(ad_nums_lineage_order,:) = lineage_cmap(cmap_nums,:); %#ok<AGROW>
     highlighted_all = create_highlighted_image(orig_i,ad_label_perim,'color_map',this_cmap);
 
     if (exist('cell_mask','var'))
@@ -143,7 +140,7 @@ for i_num = 1:length(image_folders)
         composite_image = draw_scale_bar(composite_image,pixel_size);
     end
     
-    out_folder = fullfile(exp_dir,'visualizations','tracking');
+    out_folder = fullfile(exp_dir,'visualizations',i_p.Results.out_folder);
     if (not(exist(out_folder,'dir')))
         mkdir(out_folder);
     end
