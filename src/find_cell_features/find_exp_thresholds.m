@@ -42,14 +42,13 @@ for i_num = 1:size(image_dirs,1)
     
     all_images(:,:,i_num) = puncta_image;
     all_high_passed(:,:,i_num) = high_passed_image;
-    if (mod(i_num,10) == 0)
-        disp([i_num,size(image_dirs,1)])
-    end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Determine min/max and identification thresholds
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Minimum/Maximum FA image values
 trimmed_pix_values = trim_data_set(all_images(:),1E-4);
 min_max = [trimmed_pix_values(1),trimmed_pix_values(end)];
 clear all_images;
@@ -100,7 +99,29 @@ set(gcf, 'PaperPositionMode', 'auto');
 print('-depsc2', fullfile(base_dir,image_dirs(1).name,filenames.per_image_threshold_plot));
 close;
 
+clear all_high_passed;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Kinase Min/Max
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+image_file_name = fullfile(base_dir,image_dirs(1).name,filenames.kinase);
+
+if (exist(image_file_name,'file') == 2)
+    all_images = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
+    for i_num = 1:size(image_dirs,1)
+        image_file_name = fullfile(base_dir,image_dirs(i_num).name,filenames.kinase);
+        all_images(:,:,i_num) = double(imread(image_file_name));
+    end
+    
+    trimmed_vals = trim_data_set(all_images(:),1E-4);
+    kinase_min_max = [trimmed_vals(1),trimmed_vals(end)];
+    
+    csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.kinase_min_max),...
+        kinase_min_max);    
+end
+
 toc;
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
