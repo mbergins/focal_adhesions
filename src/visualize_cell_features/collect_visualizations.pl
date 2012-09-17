@@ -41,7 +41,7 @@ my %cfg = ParseConfig(\%opt);
 #Main Program
 ###############################################################################
 my @matlab_code;
-push @matlab_code, "make_movie_frames('$cfg{exp_results_folder}')";
+push @matlab_code, "make_tracking_visualization('$cfg{exp_results_folder}')";
 push @matlab_code, "make_single_ad_frames('$cfg{exp_results_folder}','min_longevity',10)";
 
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'visualization');
