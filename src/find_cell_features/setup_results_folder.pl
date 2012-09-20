@@ -154,24 +154,9 @@ sub create_matlab_code_single {
 
     my @matlab_code;
 
+	my $i_num = 0;
     foreach my $file_name (@image_files) {
-        my $i_num;
-        my $original_i_num;
-
-        #Using basename here because folder names with .\digit will match this
-        #regular expression, but we only want to match the last part of the file
-        #name
-        if (basename($file_name) =~ /.*?(\d+)\./) {
-            $original_i_num = $1;
-            $i_num = (grep $file_name eq $image_files[ $_ - 1 ], (1 .. $#image_files + 1))[0];
-        } else {
-            warn "Unable to find image number in: $file_name, skipping this image.";
-            next;
-        }
-		
-        next if grep $i_num == $_,          @{ $cfg{exclude_image_nums} };
-        next if grep $original_i_num == $_, @{ $cfg{exclude_image_nums} };
-		
+		$i_num++;
         my $padded_num = sprintf("%0" . length(scalar(@image_files)) . "d", $i_num);
 
         my $output_path = catdir($cfg{individual_results_folder}, $padded_num);
