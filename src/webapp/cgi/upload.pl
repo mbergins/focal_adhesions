@@ -111,6 +111,9 @@ if (defined $lightweight_fh) {
 	}
 } else {
 	my $template = HTML::Template->new(filename => 'template/upload_start.tmpl');
+	if ($q->param('debug_options')) {
+		$template->param(debug_options => 1);
+	}
 	print $q->header();
 	print $template->output;
 }
