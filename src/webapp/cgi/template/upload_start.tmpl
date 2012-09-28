@@ -19,8 +19,11 @@ Full Instructions are at the bottom of the page.
 
 	<h2>Adhesion Image File</h3>
 	<input type="file" name="uploaded_file"  size="50" maxlength="80" />
+	
+	<h2>Experiment Configuration</h3>
+	Time Between Images (minutes): <input type="text" name="time_spacing" value="1" size="20"/><br />
 
-	<h2>Detection Settings</h2>
+	<h2>Adhesion Detection Settings</h2>
 		Adhesion Detection Threshold: <input type="text" name="filter_thresh" value="2" size="20" onselect="validate_thresh(this.id)" onchange="validate_thresh(this.id)" id="thresh_field" /><br />
 		<div class="hide" id="thresh_help">
 			The threshold must be a number above zero, see instructions below for more help.

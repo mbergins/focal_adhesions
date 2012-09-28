@@ -54,6 +54,7 @@ if (defined $lightweight_fh) {
 
 	#standard required parameters
     $new_cfg{stdev_thresh} = $q->param('filter_thresh');
+    $new_cfg{time_spacing} = $q->param('time_spacing');
     $new_cfg{min_independent_size} = 14;
     $new_cfg{upload_time} = $end-$start;
     $new_cfg{exp_ID} = basename($output_file);
