@@ -154,7 +154,7 @@ seg_start = tic;
 %in order to select a threshold for having adhesions remain as seperate
 %enties when touching, so we also check for that before using the watershed
 %segmentation
-if (i_p.Results.no_ad_splitting || any(strcmp('min_independent_size',i_p.UsingDefaults)))
+if (i_p.Results.no_ad_splitting)
     %if splitting is off, there is no need to use the fancy watershed based
     %segmentation methods, just identify the connected areas
     ad_segment = bwlabel(threshed_image,4);
@@ -256,6 +256,11 @@ if (i_p.Results.paper_figures)
     
     imwrite(highlighted_image(row_range,col_range,1:3),fullfile(output_dir,'highlights_cropped.png'));
     imwrite(focal_normed(row_range,col_range),fullfile(output_dir,'focal_cropped.png'));
+end
+
+if (i_p.Results.debug)
+    [~, name, ~] = fileparts(I_file);
+    movefile(fullfile(output_dir, 'highlights.png'),fullfile(output_dir,[name,'_highlights.png']));
 end
 
 %diagnostic diagram
