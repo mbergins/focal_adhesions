@@ -1,4 +1,4 @@
-function varargout = find_cell_mask(I_file,varargin)
+function find_cell_mask(I_file,varargin)
 %CREATE_CELL_MASK_IMAGE   Gather and write the cell mask from a
 %                         fluorescence image
 %
@@ -14,6 +14,8 @@ i_p.StructExpand = true;
 i_p.addRequired('I_file',@(x)exist(x,'file') == 2);
 i_p.addParamValue('mask_threshold',0,@(x)isnumeric(x) && x > 0);
 i_p.addParamValue('median_filter',0,@(x)x==1 || x==0);
+
+i_p.addParamValue('debug',0,@(x)x==1 || x==0);
 
 i_p.parse(I_file,varargin{:});
 
@@ -34,14 +36,13 @@ end
 
 if (not(any(strcmp(i_p.UsingDefaults,'mask_threshold'))))
     threshed_mask = mask_image > i_p.Results.mask_threshold;
-    varargout{1} = i_p.Results.mask_threshold;
 else
     %%Threshold identification
     
     [heights, intensity] = hist(mask_image(:),1000);
     
     smoothed_heights = smooth(heights,0.05,'loess');
-    [~,imax,~,imin]= extrema(smoothed_heights);
+    [zmax,imax,zmin,imin]= extrema(smoothed_heights);
     
     %keep in mind that the zmax is sorted by value, so the highest peak is
     %first and the corresponding index is also first in imax, the same pattern
@@ -56,8 +57,6 @@ else
     threshed_mask = mask_image > intensity(imin(min_index));
     
     hist(mask_image(:),1000);
-    xlim([0,10000]);
-    ylim([0,14000]);
     xlabel('Pixel Intensity');
     ylabel('Pixel Count');
     hold on;
@@ -65,9 +64,10 @@ else
     hold on;
     ylimits = ylim;
     plot([intensity(imin(min_index)),intensity(imin(min_index))],ylimits,'g','LineWidth',3);
+    plot(intensity(imax),zmax,'x');
     hold off;
     print('-dpng',fullfile(fileparts(I_file),'cell_mask_hist.png'))
-    varargout{1} = intensity(imin(min_index));
+%     varargout{1} = intensity(imin(min_index));
 end
 
 %%Mask Cleanup
@@ -85,4 +85,17 @@ threshed_mask = imfill(threshed_mask,'holes');
 
 out_file = fullfile(fileparts(I_file),filenames.cell_mask);
 
-imwrite(threshed_mask, out_file)
+imwrite(threshed_mask, out_file);
+
+if (i_p.Results.debug)
+    addpath('../visualize_cell_features/');
+    
+    mask_image = double(imread(I_file));
+    mask_image_norm = (mask_image - min(mask_image(:)))/range(mask_image(:));
+    
+    edge_highlight = create_highlighted_image(mask_image_norm,bwperim(threshed_mask),'color_map',[1,0,0]);
+    [pathstr,name, ext] = fileparts(I_file);
+    out_file = fullfile(pathstr,[name,'_edge.png']);
+    
+    imwrite(edge_highlight,out_file);
+end
