@@ -33,6 +33,10 @@ lowerright = [];
 for i_num = 1:size(image_dirs,1)
     focal_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
     
+    if (range(focal_image(:)) < 256)
+        disp(['Found 8 bit image: ',fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)]);
+    end
+    
     corner = focal_image(1:40,1:40);
     upperleft = [upperleft; corner(:)]; %#ok<AGROW>
     corner = focal_image((size(focal_image,1)-39):end,1:40);
