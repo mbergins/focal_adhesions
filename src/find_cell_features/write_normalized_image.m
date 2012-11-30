@@ -6,7 +6,7 @@ function write_normalized_image(I_file,out_file,varargin)
 %   write_grayscale_image(I,out) normalize the image file 'I', writing the
 %   result to the file 'out'
 %
-%   write_grayscale_image(I,out'I_num',num) normalize image number 'num' in the
+%   write_grayscale_image(I,out,'I_num',num) normalize image number 'num' in the
 %   stacked image file 'I', using the value in the file 'min_max', writing the
 %   result to the file 'out'
 
@@ -24,7 +24,6 @@ i_p.addRequired('out_file',@(x)exist(fileparts(x),'dir')==7);
 
 i_p.addParamValue('I_num',1,@(x)isnumeric(x) && x>0);
 i_p.addParamValue('debug',0,@(x)(isnumeric(x) && (x == 0 || x == 1) || islogical(x)));
-i_p.addParamValue('ir_norm',0,@(x)(isnumeric(x) && (x == 0 || x == 1) || islogical(x)));
 
 i_p.parse(I_file,out_file,varargin{:});
 
