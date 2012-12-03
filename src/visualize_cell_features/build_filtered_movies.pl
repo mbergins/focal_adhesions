@@ -44,7 +44,7 @@ foreach (@filtered_movie_folders) {
 
 		my $output_file = catfile($cfg{exp_results_folder}, "..",
 			$unfoldered_exp_name . "_" . $match_folder_name . ".mov");
-		my $command = "ffmpeg -v 0 -y -r $cfg{movie_frame_rate} -i  " . 
+		my $command = "ffmpeg -v 0 -y -r 10 -i  " . 
 			"$this_vis_folder/%04d.png -sameq $output_file > /dev/null 2>&1";
 
 		if ($opt{debug}) {

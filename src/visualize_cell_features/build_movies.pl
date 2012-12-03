@@ -42,7 +42,7 @@ my $unfoldered_exp_name = $cfg{exp_name};
 $unfoldered_exp_name =~ s#/#_#g;
 my $output_file = catdir($cfg{exp_results_folder},'..',"$unfoldered_exp_name.mov");
 
-my $command = "avconv -v 0 -y -r 15 -i $tracking_folder/%05d.png -qscale 5 $output_file > /dev/null 2>&1";
+my $command = "avconv -v 0 -y -r 15 -i $tracking_folder/%05d.png -qscale 0 $output_file > /dev/null 2>&1";
 if ($opt{debug}) {
 	print "$command\n";
 } else {
