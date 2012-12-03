@@ -42,6 +42,10 @@ my @colors = &build_jet_color_map(scalar(@files));
 my @hex_colors = &convert_rbg_to_hex(@colors);
 @files = sort @files;
 
+if (scalar(@files) == 0) {
+	die "Didn't find any files to use for the vector visualization, exiting.";
+}
+
 my @bmp_files = &build_bitmaps(@files);
 print "Done Converting to BMP\n" if $opt{debug};
 
