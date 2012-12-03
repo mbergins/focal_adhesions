@@ -159,11 +159,12 @@ sub build_full_svg_file {
     @svg_files = sort @svg_files;
 
     my @svg_path_data;
+	my $opacity_file_count = $#svg_files;
+	$opacity_file_count = 1 if $opacity_file_count == 0;
 
     for (0 .. $#svg_files) {
-    #for (0 .. 0) {
         my $file = $svg_files[$_];
-        my $opacity = ($#svg_files - $_)/$#svg_files;
+        my $opacity = ($#svg_files - $_)/$opacity_file_count;
         my $path_count = 0;
         my $out_of_path = 0;
         open SVG_FILE, $file;
