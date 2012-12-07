@@ -12,13 +12,11 @@ use File::Path;
 use File::Spec::Functions;
 use File::Basename;
 use File::Copy;
-use Image::ExifTool;
 use Math::Matlab::Local;
 use Getopt::Long;
 use Data::Dumper;
 
 use Config::Adhesions qw(ParseConfig);
-use Image::Stack;
 use Math::Matlab::Extra;
 use Emerald;
 use FA_job;
@@ -68,33 +66,21 @@ foreach (@image_sets) {
 		print "Searching: $cfg{exp_data_folder}/$folder/\n";
 	}
     my $search_dir = catdir($cfg{exp_data_folder},$folder);
-    $search_dir =~ s/ /\\ /g;
-    my @image_files = sort <$search_dir/*>;
-    my @image_files = map { $_ =~ s/\'//g; $_; } @image_files;
 
-    $all_images_empty = 0 if (@image_files);
-
-    if ($opt{debug}) {
-        print "For Config Variable: ", $_->[0], "\n";
-        if (scalar(@image_files) > 1) {
-            print "Image files found: $image_files[0] - $image_files[$#image_files]\n\n";
-        } elsif (scalar(@image_files) == 0) {
-            print "No image files found matching $cfg{exp_data_folder}/$folder, moving onto next image set.\n\n";
-            next;
-        } else {
-            print "Image file found: $image_files[0]\n\n";
-        }
+    if (-e $search_dir) {
+		$all_images_empty = 0;
+        print "For Config Variable: ", $_->[0], "\nFound $search_dir\n\n";
     } else {
-        next if (not @image_files);
+		print "\n";
+        next;
     }
 
-    push @matlab_code, &create_matlab_code(\@image_files, $folder, $out_file);
+    push @matlab_code, "setup_results_folder('$search_dir','$cfg{individual_results_folder}', '$out_file');";
 }
 die "Unable to find any images to include in the new experiment" if $all_images_empty;
 
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'setup');
 $opt{error_file} = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'setup', 'error.txt');
-$opt{runtime} = "0:5";
 if (defined $cfg{job_group}) {
     $opt{job_group} = $cfg{job_group};
 }
@@ -104,70 +90,6 @@ if (defined $cfg{job_group}) {
 ################################################################################
 #Functions
 ################################################################################
-
-sub create_matlab_code {
-    my @image_files = @{ $_[0] };
-    my $folder      = $_[1];
-    my $out_file    = $_[2];
-
-    my @image_stack_count = map { Image::Stack::get_image_stack_number($_) } @image_files;
-    
-    my @matlab_code;
-    if (grep { $_ > 1 } @image_stack_count) {
-        if (scalar(@image_files) > 1) {
-            die "Found more than one image stack in: ", join(", ", @image_files), "\n",
-              "Expected single image stack or multiple non-stacked files\n";
-        }
-        @matlab_code = &create_matlab_code_stack($image_files[0], $out_file);
-    } else {
-        @matlab_code = &create_matlab_code_single(\@image_files, $out_file);
-    }
-    return @matlab_code;
-}
-
-sub create_matlab_code_stack {
-    my $image_file = $_[0];
-    my $out_file   = $_[1];
-
-    my @matlab_code;
-
-    my $total_stack_images = Image::Stack::get_image_stack_number($image_file);
-    foreach my $i_num (1 .. $total_stack_images) {
-        next if grep $i_num == $_, @{ $cfg{exclude_image_nums} };
-
-        my $padded_num = sprintf("%0" . length($total_stack_images) . "d", $i_num);
-
-        my $output_path = catdir($cfg{individual_results_folder}, $padded_num);
-        if (! -e $output_path && not $opt{debug}) {
-            mkpath($output_path);
-        }
-		
-        my $final_out_file = catfile($output_path, $out_file);
-        $matlab_code[0] .= "write_normalized_image('$image_file','$final_out_file','I_num',$i_num);\n";
-    }
-    return @matlab_code;
-}
-
-sub create_matlab_code_single {
-    my @image_files = @{ $_[0] };
-    my $out_file    = $_[1];
-
-    my @matlab_code;
-
-	my $i_num = 0;
-    foreach my $file_name (@image_files) {
-		$i_num++;
-        my $padded_num = sprintf("%0" . length(scalar(@image_files)) . "d", $i_num);
-
-        my $output_path = catdir($cfg{individual_results_folder}, $padded_num);
-		if (not $opt{debug}) {
-        	mkpath($output_path);
-		}
-        my $final_out_file = catfile($output_path, $out_file);
-        $matlab_code[0] .= "write_normalized_image('$file_name','$final_out_file');\n";
-    }
-    return @matlab_code;
-}
 
 ################################################################################
 #Documentation
