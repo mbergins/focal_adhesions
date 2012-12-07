@@ -22,7 +22,7 @@ i_p.parse(I_source,out_folder,out_name,varargin{:});
 i_names = dir(i_p.Results.I_source); i_names = i_names(3:end);
 
 %Verify that multiple multi-frame images are present in the folder
-if (length(i_names) >= 1)
+if (length(i_names) > 1)
     for i_num = 1:length(i_names)
         i_full_file = fullfile(i_p.Results.I_source,i_names(i_num).name);
         i_count = length(imfinfo(i_full_file));
