@@ -71,7 +71,7 @@ foreach (@image_sets) {
 		$all_images_empty = 0;
         print "For Config Variable: ", $_->[0], "\nFound $search_dir\n\n" if $opt{debug};
     } else {
-		print "\n";
+		print "\n" if $opt{debug};
         next;
     }
 
