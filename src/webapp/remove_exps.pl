@@ -2,8 +2,15 @@
 
 use File::Basename;
 use Config::General qw(ParseConfig);
+use Getopt::Long;
 
-my $target_email = "mbergins\@unc.edu";
+my %opt;
+GetOptions(\%opt, "debug|d") or die;
+
+my %search_targets = (
+	email => "matthew.berginski\@gmail.com",
+	submitter_ip => "152.19.101.236",
+);
 
 ###############################################################################
 # Main
@@ -12,16 +19,20 @@ my $target_email = "mbergins\@unc.edu";
 my $find_results = `find /home/mbergins/Documents/Projects/focal_adhesions/trunk/data/FAAS_*/*.cfg`;
 my @cfgs = split("\n",$find_results);
 
-%emails = &get_email_addresses_and_counts(@cfgs);
-@cfg_files = @{$emails{$target_email}};
+my @cfg_hits = &search_targets(@cfgs);
 
-die "No Exps found for $target_email" if (scalar(@cfg_files) == 0);
+die "No Exps found." if (scalar(@cfg_hits) == 0);
 
 my @exp_ids;
-for (@cfg_files) {
+for (@cfg_hits) {
 	if (basename($_) =~ /(.*)\./) {
 		push @exp_ids, $1;
 	}
+}
+
+if ($opt{debug}) {
+	print "Found these configs:\n" . join("\n",@exp_ids) ;
+	die;
 }
 
 my $data_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/data/";
@@ -42,7 +53,7 @@ system("rm -rf $file_list");
 # Functions
 ###############################################################################
 
-sub get_email_addresses_and_counts {
+sub get_email_addresses_and_ids {
 	my @cfgs = @_;
 	my %emails;
 	foreach (@cfgs) {
@@ -53,4 +64,22 @@ sub get_email_addresses_and_counts {
 	}
 
 	return %emails;
+}
+
+sub search_targets {
+	my @cfgs = @_;
+
+	my %hits;
+	foreach (@cfgs) {
+		my %config = ParseConfig(-ConfigFile => $_, -IncludeRelative => 1);
+		foreach my $id (keys %search_targets) {
+			if (defined $config{$id} && 
+				$config{$id} =~ /$search_targets{$id}/) {
+				$hits{$_}++;
+			}
+		}
+	}
+	
+	my @hits = keys %hits;
+	return @hits;
 }
