@@ -48,7 +48,7 @@ for i = 1:length(thresholds)
 %     threshed_images{i} = remove_edge_adhesions(threshed_images{i});
     
     threshed_images_perims{i} = bwperim(threshed_images{i});
-    
+    1;
 %     threshed_image_overlay(find(threshed_images{i})) = c_map(i,1);
 %     threshed_image_overlay(find(threshed_images{i})+i_pix_count) = c_map(i,2);
 %     threshed_image_overlay(find(threshed_images{i})+i_pix_count*2) = c_map(i,3);    
@@ -70,13 +70,14 @@ for i=1:length(highlighted_images)
 end
 
 %image labeling
-command = ['convert ', fullfile(folder,[base_name,'_norm.png']), ' -font Ubuntu-B.ttf -pointsize 30 ' ...
-    '-gravity southwest -fill white -annotate 0 "Original Image" ', ... 
+font_size = num2str(round((30/520)*size(focal_image,1)));
+command = ['convert ', fullfile(folder,[base_name,'_norm.png']), ' -font Ubuntu-B.ttf -pointsize ', font_size, ...
+    ' -gravity southwest -fill white -annotate 0 "Original Image" ', ... 
     fullfile(folder,[base_name,'_norm.png'])];
 system(command);
 for i=1:length(highlighted_images)
-    command = ['convert ', output_files{i}, ' -font Ubuntu-B.ttf -pointsize 30 ' ... 
-        '-gravity southwest -fill white -annotate 0 "Stdev Threshold: ', ...
+    command = ['convert ', output_files{i}, ' -font Ubuntu-B.ttf -pointsize ', font_size, ... 
+        ' -gravity southwest -fill white -annotate 0 "Stdev Threshold: ', ...
         num2str(stdev_intervals(i)), '" ', output_files{i}];
     system(command);
 end
