@@ -547,22 +547,22 @@ plot_dual_hist <- function(data_set_1,data_set_2,
 plot_with_shading <- function(x,y,upper_conf,lower_conf,col,...) {
     col_light = c();
     for (i in 1:dim(y)[1]) {
-        col_light = c(col_light,rgb(t(col2rgb(col[i]))/255,alpha=0.5));
+        col_light = c(col_light,rgb(t(col2rgb(col[i]))/255,alpha=0.25));
     }
     
-    for (i in 1:dim(y)[1]) {
+    for (i in 1:dim(y)[2]) {
         if (i == 1) {
-            plot(x,y[i,],col=col[i],...);
+            plot(x,y[,i],col=col[i],...);
         } else {
-            lines(x,y[i,],col=col[i],...);
+            lines(x,y[,i],col=col[i],...);
         }
-        polygon(c(x,rev(x)), c(lower_conf[i,],rev(upper_conf[i,])),col=col_light[i],border=NA)
+        polygon(c(x,rev(x)), c(lower_conf[,i],rev(upper_conf[,i])),col=col_light[i],border=NA)
     }
     
     #re-draw each of the primary lines so that they stand out against the
     #transparency
-    for (i in 1:dim(y)[1]) {
-        lines(x,y[i,],col=col[i],...);
+    for (i in 1:dim(y)[2]) {
+        lines(x,y[,i],col=col[i],...);
     }
 }
 
@@ -588,7 +588,6 @@ determine_median_conf_int <- function(data, bootstrap.rep = 10000) {
 	require(boot);
 	
     boot_samp = boot(data, function(data,indexes) median(data[indexes],na.rm=T), bootstrap.rep);
-    browser()
     conf_int = boot.ci(boot_samp, type="bca", conf=0.95)$bca[4:5]
 
     return(conf_int)
@@ -704,10 +703,24 @@ bootstrap_overlap <- function(boot_one,boot_two,p_val, type="bca") {
 # Filtering
 #######################################
 filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 0.05, debug = FALSE,
-        pos.slope = TRUE,old.names=F,min.cent.dist=NA) {
+        pos.slope = TRUE,old.names=F,min.cent.dist=NA,min.birth.num=NA) {
 
     ad_data = list();
     
+    #######################################################
+    # Property Selection
+    #######################################################
+    props_to_select = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num',
+        'death_i_num','mean_area','longevity','Mean_FA_cent_dist',
+        'mean_edge_dist','drug_addition_time','Mean_FA_recentered_angle');
+    for (i in 1:length(results)) {
+		res = results[[i]]
+        props_to_select = intersect(props_to_select, names(res$exp_props))
+    }
+    
+    #######################################################
+    # Filtering and Data Collection
+    #######################################################
     for (i in 1:length(results)) {
         if (debug) {
             print(paste("Working on Experiment #:",i,'/',length(results)));
@@ -721,19 +734,13 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         disassembly_filt = filter_sets$disassembly;
         joint_filt = filter_sets$joint;
         
-        prop_set = c('largest_area','ad_sig','mean_axial_ratio','birth_i_num',
-            'death_i_num','mean_area','longevity','Mean_FA_cent_dist')
-        if (any(names(res$exp_props) == 'drug_addition_time')) {
-            prop_set = c(prop_set, 'drug_addition_time');
-        }
-        these_props = subset(res$exp_props, select = prop_set)
+        these_props = subset(res$exp_props, select = props_to_select);
         #######################################################################
         # Building the Assembly Data Set
         #######################################################################
 
         this_assem_data = list()
         this_assem_data = res$assembly[assembly_filt,]
-        # browser()
         this_assem_data = cbind(this_assem_data,these_props[assembly_filt,])
         this_assem_data$exp_num = c(this_assem_data$exp_num, rep(i,length(which(assembly_filt))));
         this_assem_data$lin_num = c(this_assem_data$lin_num, which(assembly_filt));
@@ -759,19 +766,22 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         ad_data$joint$lin_num = c(ad_data$joint$lin_num, which(joint_filt));
         ad_data$joint$assembly_length = c(ad_data$joint$assembly_length, res$assem$image_count[joint_filt]);
         ad_data$joint$assembly_slope = c(ad_data$joint$assembly_slope, res$assem$slope[joint_filt]);
+        ad_data$joint$assembly_r_sq = c(ad_data$joint$assembly_r_sq, res$assem$adj.r.squared[joint_filt]);
         ad_data$joint$disassembly_length = c(ad_data$joint$disassembly_length, res$dis$image_count[joint_filt]);
         ad_data$joint$disassembly_slope = c(ad_data$joint$disassembly_slope, res$dis$slope[joint_filt]);
+        ad_data$joint$disassembly_r_sq = c(ad_data$joint$disassembly_r_sq, res$dis$adj.r.squared[joint_filt]);
         ad_data$joint$longevity = c(ad_data$joint$longevity, res$exp_props$longevity[joint_filt]);
         
         # Figuring out the length of the stability phase is a bit complicated.
         # The assembly and disassembly phases can end and start on the same
         # image, so we need to ensure that our counts acknowledge that
-        # possiblity. The extra additions do that in the following code.
+        # possiblity.
         i_num_joint_longev = res$exp_props$death_i_num[joint_filt] - res$exp_props$birth_i_num[joint_filt] + 1;
-        ad_data$joint$stability_length = c(ad_data$joint$stability_length, 
-            i_num_joint_longev - res$assem$image_count[joint_filt] - res$dis$image_count[joint_filt] + 1);
+        # ad_data$joint$stability_length = c(ad_data$joint$stability_length, 
+        #     i_num_joint_longev - res$assem$image_count[joint_filt] - res$dis$image_count[joint_filt] + 1);
     }
     
+
     ad_data$assembly$exp_num = as.factor(ad_data$assembly$exp_num);
     ad_data$disassembly$exp_num = as.factor(ad_data$disassembly$exp_num);
     ad_data$joint$exp_num = as.factor(ad_data$joint$exp_num);
@@ -780,7 +790,7 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
     ad_data$disassembly = as.data.frame(ad_data$disassembly);
     ad_data$joint = as.data.frame(ad_data$joint);
 
-    ad_data
+    return(ad_data);
 }
 
 filter_results_by_drug_addition <- function(data_set) {
@@ -911,8 +921,21 @@ gather_global_exp_summary <- function(data_set) {
 
 gather_general_dynamic_props <- function(results, min.longevity=NA, max.longevity=NA, 
     max.FA.angle=NA,min.FA.angle=NA, max.CHull.percentile = NA, min.CHull.percentile=NA, 
-    debug=FALSE,class='no_class') {
-
+    debug=FALSE,class='no_class',max.edge.dist=NA) {
+    
+    #######################################################
+    # Property Selection
+    #######################################################
+    props_to_select = c('longevity','mean_area','mean_axial_ratio',
+                        'mean_edge_dist','ad_sig');
+    for (i in 1:length(results)) {
+		res = results[[i]]
+        props_to_select = intersect(props_to_select, names(res$exp_props))
+    }
+    
+    #######################################################
+    # Filtering and Data Set Building
+    #######################################################
 	points = list()
 	for (i in 1:length(results)) {
 		res = results[[i]]
@@ -920,7 +943,10 @@ gather_general_dynamic_props <- function(results, min.longevity=NA, max.longevit
         if (debug) {
             print(paste("Working on", i))
         }
-
+        
+        ###################################################
+        # Filtering Cascade
+        ###################################################
         filt = ! res$exp_props$split_birth_status & res$exp_props$death_status
         
         if (! is.na(min.longevity)) {
@@ -972,16 +998,19 @@ gather_general_dynamic_props <- function(results, min.longevity=NA, max.longevit
             filt = filt & (CHull_dists > max_dist |  
                 abs(res$exp_props$Mean_FA_recentered_angle) > 120)
         }
+            
+        if (! is.na(max.edge.dist)) {
+            filt = filt & res$exp_props$mean_edge_dist <= max.edge.dist;
+        }
+        
+        ###################################################
+        # Property Collection
+        ###################################################
+        this_data = subset(res$exp_props, filt, select=props_to_select);
+        for (prop in props_to_select) {
+            points[[prop]] = c(points[[prop]],this_data[[prop]]);
+        }
 
-		points$longevity = c(points$longevity, res$exp_props$longevity[filt])
-		points$mean_area = c(points$mean_area, res$exp_props$mean_area[filt])
-		points$mean_axial_ratio = c(points$mean_axial_ratio, res$exp_props$mean_axial_ratio[filt])
-		points$mean_major_axis = c(points$mean_major_axis, res$exp_props$mean_major_axis[filt])
-		points$mean_minor_axis = c(points$mean_minor_axis, res$exp_props$mean_minor_axis[filt])
-		points$mean_edge_dist = c(points$mean_edge_dist, res$exp_props$mean_edge_dist[filt])
-		points$largest_area = c(points$largest_area, res$exp_props$largest_area[filt])
-		points$ad_sig = c(points$ad_sig, res$exp_props$ad_sig[filt])
-		points$average_speed = c(points$average_speed, res$exp_props$average_speeds[filt])
 		points$exp_num = c(points$exp_num, rep(i,length(which(filt))))
 	}
     
@@ -1019,7 +1048,7 @@ gather_static_props <- function(ind_results, debug=FALSE) {
 count_births_per_point <- function(exp_data) {
     live_adhesions = !is.na(exp_data)
     
-    counts = c()
+    counts = c(NA)
     data_size = dim(live_adhesions)
     for (i in 2:data_size[2]) {
         before_col = live_adhesions[,i-1]
@@ -1068,6 +1097,28 @@ count_adhesions_per_image <- function(results,time.spacing=1,time.unit=10) {
     data = as.data.frame(data);
 
     return(data);
+}
+
+percent_adhesions_alive_from_time <- function(exp_data,census.time) {
+    live_adhesions = !is.na(exp_data)
+
+    census.rows = which(live_adhesions[,census.time]);
+    monitored_ads = live_adhesions[census.rows,];
+    
+    percent_alive = c()
+    for (col in 1:dim(live_adhesions)[[2]]) {
+        percent_alive = c(percent_alive, sum(monitored_ads[,col])/dim(monitored_ads)[[1]])
+    }
+    return(percent_alive);
+}
+
+lifetime_adhesions_alive_from_time <- function(exp_data,census.time) {
+    live_adhesions = !is.na(exp_data)
+
+    census.rows = which(live_adhesions[,census.time]);
+    monitored_ads = live_adhesions[census.rows,];
+    
+    return(rowSums(monitored_ads));
 }
 
 #######################################
@@ -1198,8 +1249,10 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,
         average_val = exp_data;
     }
     
-    average_val = rollmean(average_val,roll.length,na.pad=T);
-    
+    if (roll.length > 1) {
+        average_val = rollmean(average_val,roll.length,na.pad=T,na.rm=T);
+    }
+
     average_val_before = average_val[1:split.time]
     average_val_after = average_val[-1:-split.time]
 
@@ -1220,7 +1273,25 @@ count_roll_mean_with_split <- function(exp_data,split.time,exp.norm=T,
     return(averages)
 }
 
-summarize_split_matrix <- function(exp_data,debug=F) {
+gather_val_at_time_with_split <- function(property,drug_time,val_time) {
+    val_sets = list()
+    
+    for (i in 1:dim(property)[1]) {
+        if (is.na(val_time[i])) {
+            next
+        }
+
+        if (val_time[i] < drug_time) {
+            val_sets$before = c(val_sets$before, property[i,val_time[i]])
+        } else {
+            val_sets$after = c(val_sets$after, property[i,val_time[i]])
+        }
+        val_sets$all = c(val_sets$all,property[i,val_time[i]])
+    }
+    return(val_sets)
+}
+
+summarize_split_matrix <- function(exp_data,debug=F,conf.level=0.95) {
     before_temp = matrix_from_list(exp_data$before,lineup='end')
     before_temp = t(tail(t(before_temp),30))
     
@@ -1241,11 +1312,11 @@ summarize_split_matrix <- function(exp_data,debug=F) {
     results$SE$before = colSE(before_temp)
     results$SE$after = colSE(after_temp)
 
-    results$upper_conf$before = colConf(before_temp,'upper',conf.level=0.9)
-    results$upper_conf$after = colConf(after_temp,'upper',conf.level=0.9)
+    results$upper_conf$before = colConf(before_temp,'upper',conf.level=conf.level)
+    results$upper_conf$after = colConf(after_temp,'upper',conf.level=conf.level)
     
-    results$lower_conf$before = colConf(before_temp,'lower',conf.level=0.9)
-    results$lower_conf$after = colConf(after_temp,'lower',conf.level=0.9)
+    results$lower_conf$before = colConf(before_temp,'lower',conf.level=conf.level)
+    results$lower_conf$after = colConf(after_temp,'lower',conf.level=conf.level)
     return(results);
 }
 
@@ -1445,6 +1516,21 @@ ranges_overlap <- function(range_1, range_2) {
 		return(TRUE);
 	}
 	return(FALSE);
+}
+
+leading_trailing_value_averages <- function(data, leading_bool, trailing_bool) {
+    leading_vals = fa_intensity
+    leading_vals[! leading] = NA
+
+    trailing_vals = fa_intensity
+    trailing_vals[! trailing] = NA
+    
+    results = list()
+    results$leading = colMeans(leading_vals,na.rm=T)
+    results$trailing = colMeans(trailing_vals,na.rm=T)
+    results$diff = results$leading - results$trailing
+
+    return(results)
 }
 
 #######################################
