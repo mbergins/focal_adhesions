@@ -12,7 +12,6 @@ use File::Path;
 use File::Spec::Functions;
 use File::Basename;
 use File::Copy;
-use Image::ExifTool;
 use Math::Matlab::Local;
 use Getopt::Long;
 use Data::Dumper;
@@ -86,8 +85,6 @@ $opt{error_file} = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'edge_
 sub create_matlab_code {
     my @image_files = @{ $_[0] };
     my $out_file    = $_[1];
-
-    #my @image_stack_count = map { Image::Stack::get_image_stack_number($_) } @image_files;
 
     my @matlab_code;
     #if (grep { $_ > 1 } @image_stack_count) {

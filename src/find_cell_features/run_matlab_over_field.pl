@@ -12,7 +12,6 @@ use File::Path;
 use File::Spec::Functions;
 use File::Spec;
 use File::Basename;
-use Image::ExifTool;
 use Getopt::Long;
 use Data::Dumper;
 
