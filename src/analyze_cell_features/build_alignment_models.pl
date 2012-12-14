@@ -12,13 +12,11 @@ use File::Path;
 use File::Spec::Functions;
 use File::Basename;
 use File::Copy;
-use Image::ExifTool;
 use Math::Matlab::Local;
 use Getopt::Long;
 use Data::Dumper;
 
 use Config::Adhesions qw(ParseConfig);
-use Image::Stack;
 use Math::Matlab::Extra;
 use Emerald;
 use FA_job;
