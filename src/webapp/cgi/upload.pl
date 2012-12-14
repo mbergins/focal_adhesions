@@ -37,8 +37,12 @@ if (defined $lightweight_fh) {
 		make_path($temp_output);
 		chmod 0777, $temp_output;
 	}
-
+	
 	my ($output_handle, $output_file) = tempfile('FAAS_XXXXXX',DIR=>catdir('upload')) or die "$!";
+	
+	while ($output_file =~ /FAAS_.*_.*/) {
+		($output_handle, $output_file) = tempfile('FAAS_XXXXXX',DIR=>catdir('upload')) or die "$!";
+	}
 
     my $buffer;
     while (my $bytesread = $io_handle->read($buffer,1024)) {
