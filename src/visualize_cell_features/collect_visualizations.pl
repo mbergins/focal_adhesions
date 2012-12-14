@@ -10,7 +10,6 @@ use strict;
 use File::Path;
 use File::Basename;
 use File::Find;
-use Image::ExifTool;
 use Math::Matlab::Local;
 use Getopt::Long;
 use Data::Dumper;
@@ -19,7 +18,6 @@ use Benchmark;
 use POSIX;
 
 use Config::Adhesions qw(ParseConfig);
-use Image::Stack;
 use Math::Matlab::Extra;
 use Emerald;
 use FA_job;
@@ -43,6 +41,7 @@ my %cfg = ParseConfig(\%opt);
 my @matlab_code;
 push @matlab_code, "make_tracking_visualization('$cfg{exp_results_folder}')";
 push @matlab_code, "make_single_ad_frames('$cfg{exp_results_folder}','min_longevity',10)";
+push @matlab_code, "make_tracking_visualization('$cfg{exp_results_folder}','image_file','kinase','image_min_max_file','kinase_min_max','out_folder','tracking_kinase')";
 
 $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'visualization');
 $opt{error_file} = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'visualization', 'error.txt');

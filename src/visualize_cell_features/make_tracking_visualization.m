@@ -1,4 +1,4 @@
-function make_movie_frames(exp_dir,varargin)
+function make_tracking_visualization(exp_dir,varargin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Setup variables and parse command line
@@ -32,6 +32,13 @@ image_min_max_file = i_p.Results.image_min_max_file;
 individual_images_dir = fullfile(exp_dir,filenames.individual_results_dir);
 image_folders = dir(individual_images_dir);
 image_folders = image_folders(3:end);
+
+%checking for presence of first file for visualization, if it isn't
+%present, quit program
+test_file = fullfile(individual_images_dir,image_folders(1).name,filenames.(image_file));
+if (not(exist(test_file,'file')))
+    exit;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Find edges of image data in adhesion images
