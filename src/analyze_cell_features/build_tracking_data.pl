@@ -46,14 +46,19 @@ my %cfg = $ad_conf->get_cfg_hash;
 my %data_sets;
 if ($opt{lsf}) {
     my @image_nums = &Image::Data::Collection::gather_sorted_image_numbers(\%cfg);
-
+	@image_nums = (1..scalar(@image_nums));
     my @commands;
-    # foreach (@image_nums) {
-    #     #$0 - the name of the program currently running, used to protect against
-    #     #future file name changes
-    #     push @commands, "$0 -cfg $opt{cfg} -o $opt{output} -image_num $_";
-    # }
-	push @commands, "$0 -cfg $opt{cfg} -o $opt{output}";
+    while (@image_nums) {
+        #$0 - the name of the program currently running, used to protect against
+        #future file name changes
+		my @i_nums;
+		foreach (1..10) {
+			if (@image_nums) {
+				push @i_nums, shift @image_nums;
+			}
+		}
+        push @commands, "$0 -cfg $opt{cfg} -o $opt{output} -image_num " . join(",",@i_nums);
+    }
     
     $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'tracking_data');
     if (defined $cfg{job_group}) {
@@ -86,9 +91,16 @@ if ($opt{lsf}) {
 sub make_comp_matices {
     my @data_keys = sort { $a <=> $b } keys %data_sets;
     for (0 .. $#data_keys) {
-        if (exists $opt{image_num} && $data_keys[$_] != $opt{image_num}) {
-            next;
-        }
+		if (exists $opt{image_num}) {
+			my @image_nums = split(",",$opt{image_num});
+			
+			my $match = 0;
+			my $i_num = $data_keys[$_] - 0;
+			if (grep $i_num == $_, @image_nums) {
+				$match = 1;
+			}
+			next if not $match;
+		}
 
         #The last image can not be compared to a future image, so we skip
         #calculations on it, but still save the image data if the output
@@ -121,15 +133,6 @@ sub make_comp_matices {
         @{ $data_sets{$key_1}{Pix_sim} } = &calc_pix_sim(\@pix_id1, \@pix_id2, $data_sets{$key_1}{Cent_dist});
         @{ $data_sets{$key_1}{Recip_pix_sim} } = &calc_pix_sim(\@pix_id2, \@pix_id1);
        
-        if ($opt{debug}) {
-            @{ $data_sets{$key_1}{Pix_sim_f} } = &calc_pix_sim(\@pix_id1, \@pix_id2);
-            my $mat_1 = new Math::Matrix @{$data_sets{$key_1}{Pix_sim}};
-            my $mat_2 = new Math::Matrix @{$data_sets{$key_1}{Pix_sim_f}};
-            die "Problem with new pixel sim calc method\n", join(" ", $mat_1->size), 
-                "  ",join(" ", $mat_2->size) if not $mat_1->equal($mat_2);
-        }
-
-
         delete $data_sets{$key_1}{PixelIdxList};
         print "Pix_sim Collected" if $opt{debug};
         print "\r"                if $opt{debug};
