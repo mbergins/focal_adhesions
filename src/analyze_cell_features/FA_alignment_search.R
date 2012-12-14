@@ -63,7 +63,6 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     ###########################################################################
     # Diagnostic Figure
     ###########################################################################
-    
     if (! diagnostic.figure) {
         return(data_set);
     }
@@ -180,7 +179,6 @@ test_dom_angles <- function(orientation, search_resolution = 0.1) {
     angles_to_test = angles_to_test[-length(angles_to_test)];
     
     results = list(x = angles_to_test, test_angles = angles_to_test);
-
     new_angle_FAAI = c()
     mean_angle = c()
     median_angle = c()
@@ -238,6 +236,50 @@ find_best_FAAI <- function(orientations) {
     cor_orientation = apply_new_orientation(orientations,best_angle);
     best_FAAI = find_FAAI_from_orientation(cor_orientation);
     return(best_FAAI)
+}
+
+###########################################################
+# Adhesion Birth Direction Processing
+###########################################################
+
+apply_new_orientation_360 <- function(orientation_data,angle) {
+    orientation_data = orientation_data - angle;
+    
+    less_neg_180 = ! is.na(orientation_data) & orientation_data < -180;
+    orientation_data[less_neg_180] = orientation_data[less_neg_180] + 360;
+
+    return(orientation_data)
+}
+
+test_birth_directions <- function(orientation, search_resolution = 1) {
+    # I'll include and then discard the last angle because 360 is the same as 0
+    # degrees rotation in this case, but we need a consistant end point to allow
+    # the search resolution to vary
+    angles_to_test = seq(0,360,by=search_resolution)
+    angles_to_test = angles_to_test[-length(angles_to_test)];
+    
+    results = list(x = angles_to_test, test_angles = angles_to_test);
+
+    new_angle_FADI = c()
+    mean_angle = c()
+    median_angle = c()
+    for (angle in angles_to_test) {
+        new_orientation = apply_new_orientation_360(orientation,angle);
+        mean_angle = c(mean_angle,mean(new_orientation, na.rm=T));
+        median_angle = c(median_angle,median(new_orientation, na.rm=T));
+        new_angle_FADI = c(new_angle_FADI, find_FADI_from_orientation(new_orientation));
+    }
+        
+    results$y = new_angle_FADI;
+    results$mean_angle = mean_angle;
+    results$median_angle = median_angle;
+    results$angle_FADI = new_angle_FADI;
+    
+    return(results)
+}
+
+find_FADI_from_orientation <- function(orientation_data) {
+    return(180-sd(orientation_data, na.rm=T));
 }
 
 ###########################################################
