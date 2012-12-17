@@ -41,6 +41,7 @@ if (defined $lightweight_fh) {
 	my ($output_handle, $output_file) = tempfile('FAAS_XXXXXX',DIR=>catdir('upload')) or die "$!";
 	
 	while ($output_file =~ /FAAS_.*_.*/) {
+		unlink $output_file;
 		($output_handle, $output_file) = tempfile('FAAS_XXXXXX',DIR=>catdir('upload')) or die "$!";
 	}
 
