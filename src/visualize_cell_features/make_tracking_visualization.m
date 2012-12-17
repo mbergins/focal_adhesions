@@ -64,7 +64,17 @@ if (row_bounds(2) > size(all_binary,1)), row_bounds(2) = size(all_binary,1); end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Assign Each Adhesion a Unique Color
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-tracking_seq = csvread(fullfile(exp_dir,filenames.tracking)) + 1;
+
+%The tracking file won't exist in cases where a single image has been
+%sent into the system. We still want to see the multi-color tracking-like
+%visualization though, so build a dummy tracking_seq variable
+if (exist(fullfile(exp_dir,filenames.tracking),'file'))
+    tracking_seq = csvread(fullfile(exp_dir,filenames.tracking)) + 1;
+else
+    the_adhesions = imread(fullfile(individual_images_dir,image_folders(1).name,filenames.adhesions));
+    tracking_seq = (1:max(the_adhesions(:)))';
+end
+
 max_live_adhesions = max(sum(tracking_seq > 0));
 
 lineage_cmap = jet(max_live_adhesions);
