@@ -58,7 +58,8 @@ if ($opt{lsf}) {
 
 my $data_dir = catdir($cfg{exp_results_folder}, $cfg{adhesion_props_folder},'lin_time_series');
 if (! -e $data_dir) {
-	die "Unable to find lin time series dir ($data_dir).";
+	warn "Unable to find lin time series dir ($data_dir), exiting.";
+	exit;
 }
 
 $opt{error_folder} = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'alignment_models');

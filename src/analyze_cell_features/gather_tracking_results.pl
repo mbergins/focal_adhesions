@@ -55,16 +55,22 @@ if ($opt{lsf}) {
     exit;
 }
 
-print "Gathering/Converting Data Files\n" if $opt{debug};
+print "Collecting Tracking Matrix\n" if $opt{debug};
+my $tracking_file = catfile($cfg{exp_results_folder}, $cfg{tracking_folder}, $cfg{tracking_output_file});
+if (! -e $tracking_file) {
+	print "Didn't find a tracking matrix exiting" if $opt{debug};
+	exit;
+}
+my $parser = Text::CSV::Simple->new;
+my @tracking_mat = $parser->read_file($tracking_file);
+
+print "\n\nGathering/Converting Data Files\n" if $opt{debug};
 my @data_files;
 push @data_files, @{ $cfg{general_data_files} };
 push @data_files, @{ $cfg{lineage_analysis_data_files} };
 my %data_sets = &Image::Data::Collection::gather_data_sets(\%cfg, \%opt, \@data_files);
 %data_sets = &convert_data_to_units(\%data_sets, \%cfg);
 my @available_data_types = &gather_data_types;
-
-print "\n\nCollecting Tracking Matrix\n" if $opt{debug};
-my @tracking_mat = &Image::Data::Collection::read_in_tracking_mat(\%cfg, \%opt);
 
 print "\n\nCreating/Outputing Overall Cell Property Files\n" if $opt{debug};
 &gather_and_output_overall_cell_properties;

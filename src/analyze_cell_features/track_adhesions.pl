@@ -96,7 +96,17 @@ sub make_tracking_mat {
     } else {
         @data_keys = sort { $a <=> $b } keys %data_sets;
     }
-
+	
+	#Stop operation when there is only one image set, can't do any tracking in
+	#that case
+	if (scalar(@data_keys) == 1) {
+        if (not($opt{keep_data_files})) {
+            unlink(catfile($cfg{individual_results_folder}, $data_keys[0], $opt{input}));
+        }
+		print "Found only one image set for tracking, quitting." if $opt{debug};
+		exit;
+	}
+	
     #This loop contains all the commands used to create the tracking matrix.
     #During each loop another time point is added to all lineages. There are
     #four discrete steps in this process, each one addressing a specific
