@@ -12,7 +12,7 @@ use Math::Matrix;
 use Data::Dumper;
 use File::Spec::Functions;
 
-our @EXPORT = qw( read_in_tracking_mat gather_data_sets);
+our @EXPORT = qw(gather_data_sets);
 use base qw(Exporter);
 
 ###############################################################################
@@ -239,16 +239,6 @@ sub check_PixelIdxList_uniqueness {
 ########################################
 # Other
 #######################################
-sub read_in_tracking_mat {
-    my %cfg  = %{ $_[0] };
-    my %opt  = %{ $_[1] };
-    my $file = catfile($cfg{exp_results_folder}, $cfg{tracking_folder}, $cfg{tracking_output_file});
-
-    my $parser       = Text::CSV::Simple->new;
-    my @tracking_mat = $parser->read_file($file);
-
-    return @tracking_mat;
-}
 
 sub gather_sorted_image_numbers {
     my %cfg = %{ $_[0] };
