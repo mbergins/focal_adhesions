@@ -84,20 +84,21 @@ close;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Determine per image thresholds
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-per_image_threshold = zeros(size(image_dirs,1),2);
-for i_num = 1:size(image_dirs,1)
-    temp = all_high_passed(:,:,i_num);
-    per_image_threshold(i_num,:) = [mean(temp(:)), std(temp(:))];
+if (size(image_dirs,1) > 1)
+    per_image_threshold = zeros(size(image_dirs,1),2);
+    for i_num = 1:size(image_dirs,1)
+        temp = all_high_passed(:,:,i_num);
+        per_image_threshold(i_num,:) = [mean(temp(:)), std(temp(:))];
+    end
+    
+    plot((per_image_threshold(:,1)+2*per_image_threshold(:,2))/max(per_image_threshold(:,1)+2*per_image_threshold(:,2)))
+    xlabel('Image Number')
+    ylabel('Threshold Percent of Maximum')
+    set(gca, 'FontName','Helvetica','FontSize',16,'Box','off');
+    set(gcf, 'PaperPositionMode', 'auto');
+    print('-depsc2', fullfile(base_dir,image_dirs(1).name,filenames.per_image_threshold_plot));
+    close;
 end
-
-plot((per_image_threshold(:,1)+2*per_image_threshold(:,2))/max(per_image_threshold(:,1)+2*per_image_threshold(:,2)))
-xlabel('Image Number')
-ylabel('Threshold Percent of Maximum')
-set(gca, 'FontName','Helvetica','FontSize',16,'Box','off');
-set(gcf, 'PaperPositionMode', 'auto');
-print('-depsc2', fullfile(base_dir,image_dirs(1).name,filenames.per_image_threshold_plot));
-close;
 
 clear all_high_passed;
 
