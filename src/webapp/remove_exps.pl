@@ -5,7 +5,12 @@ use Config::General qw(ParseConfig);
 use Getopt::Long;
 
 my %opt;
-GetOptions(\%opt, "debug|d") or die;
+GetOptions(\%opt, "debug|d", "configs=s") or die;
+
+my @cfgs_to_remove;
+if (defined $opt{configs}) {
+	@cfgs_to_remove = split(",",$opt{configs});
+}
 
 my %search_targets = (
 	email => "matthew.berginski\@gmail.com",
@@ -19,7 +24,16 @@ my %search_targets = (
 my $find_results = `find /home/mbergins/Documents/Projects/focal_adhesions/trunk/data/FAAS_*/*.cfg`;
 my @cfgs = split("\n",$find_results);
 
-my @cfg_hits = &search_targets(@cfgs);
+my @cfg_hits;
+if (@cfgs_to_remove) {
+	foreach my $this_cfg (@cfgs) {
+		if (grep $this_cfg =~ /$_/, @cfgs_to_remove) {
+			push @cfg_hits, $this_cfg;
+		}
+	} 
+} else {
+	@cfg_hits = &search_targets(@cfgs);
+}
 
 die "No Exps found." if (scalar(@cfg_hits) == 0);
 
