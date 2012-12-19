@@ -31,7 +31,7 @@ sub gather_data_sets {
 
     my @folders = <$cfg{individual_results_folder}/*/$cfg{raw_data_folder}>;
 	my @image_nums = &gather_sorted_image_numbers(\%cfg);
-	die if (scalar(@folders) != scalar(@image_nums));
+	die "Found different number of raw data folders (" . scalar(@folders) . ") versus image numbers (" . scalar(@image_nums) . ")." if (scalar(@folders) != scalar(@image_nums));
 		
 	if (defined $opt{image_num}) {
 		my @process_nums = split(",",$opt{image_num});

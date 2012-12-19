@@ -8,6 +8,7 @@ package Math::Matlab::Extra;
 use strict;
 use warnings;
 use File::Path;
+use File::Spec;
 use File::Basename;
 use Math::Matlab::Local;
 use File::Temp;
@@ -38,15 +39,21 @@ sub execute_commands {
     unlink($error_file) if (-e $error_file);
 
     foreach my $command (@matlab_code) {
-        if (not($matlab_object->execute($command))) {
-            &File::Path::mkpath(&File::Basename::dirname($error_file));
-            open ERR_OUT, ">>$error_file" or die "Error in opening Matlab Error file: $error_file.";
-            print ERR_OUT $matlab_object->err_msg;
-            print ERR_OUT "\n\nMATLAB COMMANDS\n\n$command";
-            close ERR_OUT;
+        $matlab_object->execute($command);
+		
+		&File::Path::mkpath($opt{error_folder});
+		if (defined $matlab_object->err_msg) {
+			open ERR_OUT, ">$error_file" or die "Error in opening Matlab Error file: $error_file.";
+			print ERR_OUT $matlab_object->err_msg;
+			close ERR_OUT;
+		}
+		
+		my $cmd_file = File::Spec->catfile($opt{error_folder},"command.txt");
+		open CMD_OUT, ">>$cmd_file" or die $!;
+		print CMD_OUT "$command";
+		close CMD_OUT;
 
-            $matlab_object->remove_files;
-        }
+		$matlab_object->remove_files;
     }
 }
 
