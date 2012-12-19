@@ -14,9 +14,6 @@ use Config::General;
 use Data::Dumper;
 use HTML::Template;
 
-use lib './';
-use webserver_funcs qw(print_html_end);
-
 my $upload_start = time;
 
 $| = 1;

@@ -13,9 +13,6 @@ use IO::Handle;
 use Config::General;
 use HTML::Template;
 
-# use lib './';
-# use webserver_funcs qw(print_html_end);
-
 my $start = time;
 
 $| = 1;
