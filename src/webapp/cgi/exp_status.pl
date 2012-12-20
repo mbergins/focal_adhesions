@@ -46,7 +46,7 @@ if (not defined $q->param('exp_id')) {
 #in the final results directory. I'll check them in that order.
 my @final_results_files = <$final_results_dir/*.zip>;
 if (grep $_ =~ /$exp_id\.zip/, @final_results_files) {
-	$template->param(download_link => "/FA_webapp/results/$exp_id.zip",
+	$template->param(download_link => "/results/$exp_id.zip",
 					 exp_name => $exp_id,
 				 	 exp_finished => 1);
 	print $template->output;
