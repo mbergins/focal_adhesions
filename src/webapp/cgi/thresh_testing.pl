@@ -22,7 +22,7 @@ $| = 1;
 # Configuration
 ###############################################################################
 
-my $output_dir = "$ENV{DOCUMENT_ROOT}/FA_webapp/threshold_testing";
+my $output_dir = "$ENV{DOCUMENT_ROOT}/threshold_testing";
 $output_dir =~ /(.*)/;
 $output_dir = $1;
 if (! -e $output_dir) {
