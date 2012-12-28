@@ -28,7 +28,7 @@ if ($opt{fullnice}) {
 ###############################################################################
 my $start_time = time;
 
-my $hostname = "mimir.bme.unc.edu";
+my $hostname = "faas.bme.unc.edu";
 
 my $upload_dir = "/usr/lib/cgi-bin/FA_webapp/upload/";
 my $data_proc_dir = "../../data/";
@@ -303,13 +303,13 @@ sub send_done_email {
 	my %config = @_;
 	
 	my $striped_output = $public_output_folder;
-	$striped_output =~ s#/var/www/##;
+	$striped_output =~ s#/var/www/FA_webapp/##;
 	
 	my $body = "Your experiment ($config{name}) has finished processing. " . 
 		"You can download your results here:\n\n" .
 		"http://$hostname/$striped_output/$config{public_zip}\n\n" . 
 		"You can find help with understanding the results here:\n\n" .
-		"http://$hostname/FA_webapp/results_understanding/\n\n";
+		"http://$hostname/results_understanding/\n\n";
 
 	my %done_email = (
 		'address' => "$config{email}",
