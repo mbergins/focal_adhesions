@@ -109,10 +109,20 @@ if (defined $lightweight_fh) {
 	}
 	
 	if ($file_type ne 'unknown') {
+		my $old_exps = $q->cookie('exp_ids');
 		my $template = HTML::Template->new(filename => 'template/upload_success.tmpl');
 		$template->param(upload_time => $end - $start,
-						 status_link => "exp_status.pl?exp_id=$new_cfg{exp_ID}");
-		print $q->header();
+						 status_link => "exp_status.pl?exp_id=$new_cfg{exp_ID}",
+					 	 );
+		
+		if ($old_exps eq '') {
+			$old_exps = "$new_cfg{exp_ID}";
+		} else {
+			$old_exps .= ",$new_cfg{exp_ID}";
+		}
+
+		my $cookie = $q->cookie(-name=>"exp_ids",-value=>$old_exps,expires=>"+99y");
+		print $q->header(-cookie=>$cookie);
 		print $template->output;
 	}
 } else {

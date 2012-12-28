@@ -29,7 +29,6 @@ my $final_results_dir = '/var/www/FA_webapp/results/';
 ###############################################################################
 
 my $q = CGI->new();
-
 print $q->header();
 
 my $exp_id = $q->param('exp_id');
@@ -54,7 +53,6 @@ if (grep $_ =~ /$exp_id\.zip/, @final_results_files) {
 	my @running_results_files = <$running_results_dir/*>;
 	if (grep $_ =~ /$exp_id$/, @running_results_files) {
 		$template->param(exp_name => $exp_id,exp_running => 1);
-		print $template->output;
 	} else {
 		my @upload_zips = <$upload_dir/*.zip>;
 		if (grep $_ =~ /$exp_id\.zip/, @upload_zips) {
@@ -64,13 +62,13 @@ if (grep $_ =~ /$exp_id\.zip/, @final_results_files) {
 							 queue_count => scalar(@upload_zips), 
 							 queue_position => $queue_pos,
 						 	 exp_in_queue => 1);
-			print $template->output;
 		} else {
 			$template->param(exp_name => $exp_id,exp_wrong_id => 1);
-			print $template->output;
 		}
 	}
 }
+
+print $template->output;
 
 ###############################################################################
 # Functions
@@ -88,10 +86,6 @@ sub find_exp_position {
 		$upload_data{$name}{source} = $file;
 	}
 	my @sorted_zips = sort {$upload_data{$b}{age} <=> $upload_data{$a}{age}} keys %upload_data;
-
-	# for (@sorted_zips) {
-	# 	print "<BR>$_ - $upload_data{$_}{age}\n";
-	# }
 
 	my $position;
 	for (1..scalar(@sorted_zips)) {
