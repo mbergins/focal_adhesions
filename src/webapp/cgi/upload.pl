@@ -64,6 +64,11 @@ if (defined $lightweight_fh) {
     $new_cfg{upload_time} = $end-$start;
     $new_cfg{exp_ID} = basename($output_file);
     $new_cfg{submitter_ip} = $q->remote_addr();
+
+	$ENV{PATH} = '/bin/';
+    $new_cfg{sub_date} = `/bin/date`;
+
+	chomp $new_cfg{sub_date};
 	if ($q->param('self_note') ne '') {
 			$new_cfg{self_note} = $q->param('self_note');
 	}
