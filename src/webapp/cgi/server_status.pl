@@ -1,4 +1,4 @@
-#!/usr/bin/perl -wT
+#!/usr/bin/perl -w
 
 use strict;
 use CGI;
@@ -15,9 +15,13 @@ $| = 1;
 my $upload_dir = 'upload';
 my $run_exp_dir = '/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp/';
 
+my $uptime_file = "/home/mbergins/Documents/uptime_readings.txt";
 ###############################################################################
 # Main Program
 ###############################################################################
+
+&build_server_load_day_plot;
+&build_server_load_week_plot;
 
 my $q = CGI->new();
 
@@ -68,4 +72,22 @@ sub count_upload_workers {
 	@cron = grep $_ =~ /run_uploaded_exp/, @cron;
 
 	return(scalar(@cron));
+}
+
+sub build_server_load_day_plot {
+	system("tail -n 1440 $uptime_file > last_day_load.txt;");
+	system("sed -i \"s/.*average: //\" last_day_load.txt");
+
+	system("R --vanilla --silent -f plot_webapp_load.R \"--args data_file=last_day_load.txt plot_type=day target_dir=/var/www/FA_webapp/images/\" > /dev/null");
+
+	unlink("last_day_load.txt");
+}
+
+sub build_server_load_week_plot {
+	system("tail -n 10080 $uptime_file > last_week_load.txt;");
+	system("sed -i \"s/.*average: //\" last_week_load.txt");
+
+	system("R --vanilla --silent -f plot_webapp_load.R \"--args data_file=last_week_load.txt plot_type=week target_dir=/var/www/FA_webapp/images/\" > /dev/null");
+
+	unlink("last_week_load.txt");
 }
