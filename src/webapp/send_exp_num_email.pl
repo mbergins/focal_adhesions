@@ -4,6 +4,7 @@ use Config::General qw(ParseConfig);
 use Statistics::Descriptive;
 
 use Getopt::Long;
+use Geo::IP;
 
 my %opt;
 $opt{days} = 7;
@@ -47,6 +48,15 @@ sub get_email_addresses_and_counts {
 			$email_str = $config{email};
 		} else {
 			$email_str = "No Email";
+			# if (defined $config{submitter_ip}) {
+			# 	$email_str = "No Email ($config{submitter_ip})";
+			# } else {
+			# 	$email_str = "No Email (No IP)";
+			# }
+		}
+		
+		if (defined $config{submitter_ip}) {
+			$email_str .= " ($config{submitter_ip})";
 		}
 
 		$emails{$email_str}{count}++;

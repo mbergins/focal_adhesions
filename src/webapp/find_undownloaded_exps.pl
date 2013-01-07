@@ -31,8 +31,10 @@ foreach (@target_zips) {
 	# 		print "################### $_ ################\n";
 	# 		print $search_results, "\n";
 	# }
-
-	$hit_counts{$_} = scalar(@search_results);
+	
+	if (scalar(@search_results) == 0) {
+		$hit_counts{$_} = scalar(@search_results);
+	}
 }
 
 my @hit_sort = sort {$hit_counts{$a} <=> $hit_counts{$b}} keys %hit_counts;
