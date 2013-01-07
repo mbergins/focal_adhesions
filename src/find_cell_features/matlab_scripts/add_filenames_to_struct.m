@@ -16,6 +16,7 @@ filenames.adhesions_perim = 'adhesions_perim.png';
 
 filenames.raw_mask = 'raw_mask_file.png';
 filenames.cell_mask = 'cell_mask.png';
+filenames.raw_mask_min_max = '../../adhesion_props/cell_mask_min_max.csv';
 
 filenames.kinase = 'kinase.png';
 filenames.kinase_min_max = '../../adhesion_props/kinase_min_max.csv';
