@@ -97,6 +97,9 @@ if (defined $lightweight_fh) {
 	}
 	&output_config(\%new_cfg,"$output_file.cfg");
 	
+	##############################################################################
+    # Zipped Image Set Setup
+	##############################################################################
 	my $file_type = &determine_file_type($output_file);
 	if ($file_type eq 'TIFF') {
 		&move_tiff_file($output_file);
@@ -113,6 +116,8 @@ if (defined $lightweight_fh) {
 		print $template->output;
 	}
 	
+	#File type unknown was taken care of above, now we need to return the exp
+	#status page
 	if ($file_type ne 'unknown') {
 		my $old_exps = $q->cookie('exp_ids');
 		my $template = HTML::Template->new(filename => 'template/upload_success.tmpl');
