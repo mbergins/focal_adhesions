@@ -1,13 +1,6 @@
-<!DOCTYPE html
-	PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-	 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en-US" xml:lang="en-US">
-<head>
-<title>Focal Adhesion Analysis Server - Experiment Upload</title>
-<link rel="stylesheet" type="text/css" href="/css/screen.css" />
-<script src="/javascript/validation.js" type="text/javascript"></script>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-</head>
+
+<TMPL_INCLUDE NAME="html_start.tmpl">
+
 <body>
 <div class="container">
 <h1>
@@ -24,25 +17,25 @@ Full Instructions are at the bottom of the page.
 	Time Between Images (minutes): <input type="text" name="time_spacing" value="1" size="20"/><br />
 
 	<h2>Adhesion Detection Settings</h2>
-		Adhesion Detection Threshold: <input type="text" name="filter_thresh" value="2" size="20" onselect="validate_thresh(this.id)" onchange="validate_thresh(this.id)" id="thresh_field" /><br />
-		<div class="hide" id="thresh_help">
-			The threshold must be a number above zero, see instructions below for more help.
-		</div>
-		
-		<h3>Segmentation Options</h3>
-
-		<input type="checkbox" name="no_ad_splitting" />Don't Split Adjacent Adhesions<br />
+	Adhesion Detection Threshold: <input type="text" name="filter_thresh" value="2" size="20" onselect="validate_thresh(this.id)" onchange="validate_thresh(this.id)" id="thresh_field" /><br />
+	<div class="hide" id="thresh_help">
+		The threshold must be a number above zero, see instructions below for more help.
+	</div>
 	
-		<h3>Adhesion Size Options</h3>
-		Min Adhesion Size (pixels): <input type="text" name="min_adhesion_size" value="2" size="20" id="min_adhesion_size" onselect="validate_min_ad_size(this.id)" onchange="validate_min_ad_size(this.id)"/><br />
-		<div class="hide" id="min_fa_size_help">
-			The minimum adhesion size threshold must be a number above zero. Set to one to allow adhesions of any size.
-		</div>
+	<h3>Segmentation Options</h3>
 
-		Max Adhesion Size (pixels): <input type="text" name="max_adhesion_size" value="" size="20" id="max_adhesion_size" onselect="validate_max_ad_size(this.id)" onchange="validate_max_ad_size(this.id)"/>
-		<div class="hide" id="max_fa_size_help">
-			The maximum adhesion size threshold must be a number above zero and above the minimum FA size if specified.
-		</div>
+	<input type="checkbox" name="no_ad_splitting" />Don't Split Adjacent Adhesions<br />
+
+	<h3>Adhesion Size Options</h3>
+	Min Adhesion Size (pixels): <input type="text" name="min_adhesion_size" value="2" size="20" id="min_adhesion_size" onselect="validate_min_ad_size(this.id)" onchange="validate_min_ad_size(this.id)"/><br />
+	<div class="hide" id="min_fa_size_help">
+		The minimum adhesion size threshold must be a number above zero. Set to one to allow adhesions of any size.
+	</div>
+
+	Max Adhesion Size (pixels): <input type="text" name="max_adhesion_size" value="" size="20" id="max_adhesion_size" onselect="validate_max_ad_size(this.id)" onchange="validate_max_ad_size(this.id)"/>
+	<div class="hide" id="max_fa_size_help">
+		The maximum adhesion size threshold must be a number above zero and above the minimum FA size if specified.
+	</div>
 
 
 <TMPL_IF NAME="debug_options">
@@ -119,6 +112,8 @@ sends concerning your experiment. It is limited to 80 characters.
 <div id="uploading_notification" class="hide"></div>
 
 </div>
+
+<script src="/javascript/validation.js" type="text/javascript"></script>
 
 <TMPL_INCLUDE NAME="html_end.tmpl">
 
