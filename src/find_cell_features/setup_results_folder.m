@@ -54,6 +54,12 @@ for i_num = 1:length(i_names)
         image_out_folder = fullfile(i_p.Results.out_folder,sprintf('%05d',i_total));
         if (not(exist(image_out_folder,'dir'))), mkdir(image_out_folder); end
         
+        %check for images with more than 2 dimensions, in that case, cut it
+        %down to just the first dimension
+        if (length(size(input_image)) > 2)
+            input_image = input_image(:,:,1);
+        end
+        
         imwrite(input_image,fullfile(image_out_folder,i_p.Results.out_name),...
             'Bitdepth',16);
         
