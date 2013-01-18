@@ -103,15 +103,10 @@ if (defined $lightweight_fh) {
 	my $file_type = &determine_file_type($output_file);
 	if ($file_type eq 'TIFF') {
 		&move_tiff_file($output_file);
-	} elsif ($file_type eq 'zip') {
-		move($output_file, $output_file . ".zip");
-		chmod 0777, "$output_file.zip" or die "$!";
 	} else {
-		my $file_out = `/usr/bin/file $output_file`;
 		unlink $output_file, "$output_file.cfg";
 		
 		my $template = HTML::Template->new(filename => 'template/upload_problem.tmpl');
-		$template->param(file_type => $file_out);
 		print $q->header();
 		print $template->output;
 	}
@@ -170,8 +165,6 @@ sub determine_file_type {
 	my $file_type;
 	if ($file_out =~ /TIFF/) {
 		$file_type = 'TIFF';
-	} elsif ($file_out =~ /Zip/) {
-		$file_type = 'zip';
 	} else {
 		$file_type = 'unknown';
 	}
