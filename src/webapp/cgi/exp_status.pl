@@ -37,8 +37,6 @@ my $template = HTML::Template->new(filename => 'template/exp_status.tmpl');
 
 if (not defined $q->param('exp_id')) {
 	$template->param('no_id' => 1);
-	print $template->output;
-	exit;
 }
 
 #There are three places an experiment might be: in the queue, being processed or
@@ -48,7 +46,6 @@ if (grep $_ =~ /$exp_id\.zip/, @final_results_files) {
 	$template->param(download_link => "/results/$exp_id.zip",
 					 exp_name => $exp_id,
 				 	 exp_finished => 1);
-	print $template->output;
 } else {
 	my @running_results_files = <$running_results_dir/*>;
 	if (grep $_ =~ /$exp_id$/, @running_results_files) {
