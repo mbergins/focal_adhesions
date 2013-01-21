@@ -17,7 +17,7 @@ i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 
 i_p.parse(exp_dir,varargin{:});
 
-addpath(genpath('..'));
+addpath(genpath('../find_cell_features'));
 
 filenames = add_filenames_to_struct(struct());
 
@@ -26,9 +26,9 @@ image_padding_min = 10;
 image_file = i_p.Results.image_file;
 image_min_max_file = i_p.Results.image_min_max_file;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%Main Program
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Main Program
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 individual_images_dir = fullfile(exp_dir,filenames.individual_results_dir);
 image_folders = dir(individual_images_dir);
 image_folders = image_folders(3:end);
