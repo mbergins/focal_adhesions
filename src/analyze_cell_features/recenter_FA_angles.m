@@ -14,7 +14,7 @@ i_p.addOptional('by_hand_direction',NaN,@(x)isnumeric(x) && abs(x) <= 180 && abs
 i_p.parse(exp_dir,varargin{:});
 
 %Add the folder with all the scripts used in this master program
-addpath(genpath('..'));
+addpath(genpath('../find_cell_features'));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program

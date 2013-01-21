@@ -13,7 +13,7 @@ i_p.addParamValue('min_longevity',-Inf,@(x)isnumeric(x) && x > 0);
 
 i_p.parse(exp_dir,varargin{:});
 
-addpath(genpath('..'))
+addpath(genpath('../find_cell_features'))
 
 filenames = add_filenames_to_struct(struct());
 

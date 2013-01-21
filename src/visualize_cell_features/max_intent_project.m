@@ -13,7 +13,7 @@ i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 i_p.parse(exp_dir,varargin{:});
 
 %Add the folder with all the scripts used in this master program
-addpath(genpath('..'));
+addpath(genpath('../find_cell_features'));
 
 filenames = add_filenames_to_struct(struct());
 
