@@ -51,7 +51,6 @@ if (defined $lightweight_fh) {
     }
     close $output_handle;
 	my $end = time;
-	
 	##############################################################################
     # Config File Setup
 	##############################################################################
@@ -173,20 +172,20 @@ sub determine_file_type {
 
 sub move_tiff_file {
 	my $file = shift;
-
-	$file = basename($file);
-
-	chdir 'upload';
-	# move($file,"tmp_$file");
-	make_path("Images/FA_marker");
-
-	move($file,"Images/FA_marker/data.tif");
-	$ENV{PATH} = '/usr/bin/';
-	system("/usr/bin/zip -r -q -0 $file.zip Images");
-	remove_tree("Images");
 	
-	chmod 0777, "$file.zip" or die "$!";
-	chdir '..';
+	my $id = basename($file);
+
+	make_path("upload/temp_$id/Images/FA_marker");
+	move($file,"upload/temp_$id/Images/FA_marker/data.tif") or die $!;
+	
+	chdir "upload/temp_$id";
+	$ENV{PATH} = '/usr/bin/';
+	system("/usr/bin/zip -r -0 $id.zip Images");
+	chmod 0777, "$id.zip" or die "$!";
+	move("$id.zip","..") or die $!;
+	chdir '../../';
+	
+	remove_tree("upload/temp_$id");
 }
 
 sub hook {
