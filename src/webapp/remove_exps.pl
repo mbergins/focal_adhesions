@@ -37,12 +37,7 @@ if (@cfgs_to_remove) {
 
 die "No Exps found." if (scalar(@cfg_hits) == 0);
 
-my @exp_ids;
-for (@cfg_hits) {
-	if (basename($_) =~ /(.*)\./) {
-		push @exp_ids, $1;
-	}
-}
+my @exp_ids = map basename(dirname($_)), @cfg_hits;
 
 if ($opt{debug}) {
 	print "Found these configs:\n" . join("\n",@exp_ids) ;
