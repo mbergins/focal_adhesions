@@ -118,7 +118,7 @@
 				down to around one may be appropriate.  Also be aware that lower values will
 				lengthen the runtime.  If you want to see what one of your images looks like
 				when processed with a specific threshold try out the threshold <a
-					href=thresh_testing.pl>tester</a>.
+					href=thresh_testing>tester</a>.
 
 				<p/><b>Don't Split Adjacent Adhesions:</b> This option turns off the wateshed
 				segmentation method normally used to split adjacent adhesions. The watershed

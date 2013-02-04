@@ -3,7 +3,7 @@
 	<div class="page-header">
 		<div class="row">
 			<div class="span12">
-				<h1>Focal Adhesion Analysis Server Status</h1>
+				<h1>Focal Adhesion Analysis Server - Understanding Your Results</h1>
 			</div>
 		</div>
 	</div>
@@ -11,11 +11,11 @@
 	<div class="row">
 		<div class="span12">
 
-			<br /><b>Experiments in queue:</b> [% queue_count %]
-			<br /><b>Experiments being processed:</b> [% run_count %]
-			<br /><b>Number of Processing Workers:</b> [% worker_count %]
-			<br /><b>The server has been running for:</b> [% server_uptime %]
-			<br /><b>The server load levels are:</b> [% server_load %]
+			<p><b>Experiments in queue:</b> [% queue_count %]</p>
+			<p><b>Experiments being processed:</b> [% run_count %]</p>
+			<p><b>Number of Processing Workers:</b> [% worker_count %]</p>
+			<p><b>The server has been running for:</b> [% server_uptime %]</p>
+			<p><b>The server load levels are:</b> [% server_load %]</p>
 
 			<h2>Server Load Over the Last Day</h2>
 			<img src="/images/server_load_day.png" alt="Server Load - Over One Day">
