@@ -15,7 +15,7 @@ use Config::General;
 
 my $upload_dir = catdir('..','uploaded_experiments');
 
-my $run_exp_dir = '/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp_dancer/utilities/';
+my $run_exp_dir = '/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp/utilities/';
 
 my $uptime_file = "/home/mbergins/Documents/uptime_readings.txt";
 my $cron_file = "/home/mbergins/Documents/current_cron";
@@ -79,7 +79,7 @@ sub build_server_load_day_plot {
 	system("tail -n 1440 $uptime_file > last_day_load.txt;");
 	system("sed -i \"s/.*average: //\" last_day_load.txt");
 	
-	my $image_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp_dancer/public/images";
+	my $image_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp/public/images";
 
 	system("R --vanilla --silent -f plot_webapp_load.R \"--args data_file=last_day_load.txt plot_type=day target_dir=$image_dir\" > /dev/null");
 
@@ -90,7 +90,7 @@ sub build_server_load_week_plot {
 	system("tail -n 10080 $uptime_file > last_week_load.txt;");
 	system("sed -i \"s/.*average: //\" last_week_load.txt");
 
-	my $image_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp_dancer/public/images";
+	my $image_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp/public/images";
 	
 	system("R --vanilla --silent -f plot_webapp_load.R \"--args data_file=last_week_load.txt plot_type=week target_dir=$image_dir\" > /dev/null");
 
