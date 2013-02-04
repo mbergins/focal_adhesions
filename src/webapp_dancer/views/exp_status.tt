@@ -23,7 +23,7 @@
 
 				Your experiment is in the queue, in position [% queue_position %]. 
 
-				[% CASE 'running' %]
+				[% CASE 'processing' %]
 
 				Your experiment is running.
 
@@ -31,6 +31,8 @@
 
 				Your experiment is done, you can download your results <a href=[% download_url %]>here</a>.
 
+				[% CASE DEFAULT %]
+				[% exp_status %]
 				[% END %]
 			[% END %]
 		</div>
