@@ -51,7 +51,7 @@ $|  = 1;
 #commands in.
 my @overall_command_seq = (
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_background_intensity" ], ],
-	[ [ "../find_cell_features",      "./collect_mask_image_set.pl" ], ],
+	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_cell_mask_full_exp" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script apply_bleaching_correction" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_exp_thresholds"], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script register_with_nifty"], ],
