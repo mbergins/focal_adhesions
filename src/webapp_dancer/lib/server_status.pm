@@ -29,7 +29,7 @@ get '/server_status' => sub {
 	
 	my %template;
 
-	my @upload_zips = <$upload_dir/*.zip>;
+	my @upload_zips = <$upload_dir/*>;
 	$template{queue_count} = scalar(@upload_zips);
 
 	my @run_files = <$run_exp_dir/fa_webapp.*.run>;
