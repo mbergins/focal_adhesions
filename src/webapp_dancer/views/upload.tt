@@ -87,9 +87,8 @@
 
 						<!-- The Submit buttons -->
 						<div class="form-actions"> 
-							<button type="submit" class="btn btn-primary" data-toggle="collapse" data-target="#upload_form">Submit Experiment</button> 
+							<button type="submit" class="btn btn-primary" onclick="submit_activity()">Submit Experiment</button> 
 						</div> 
-
 					</fieldset>
 				</form>
 
@@ -141,7 +140,11 @@
 				Whatever you put in this box will be send back to you in any email the system
 				sends concerning your experiment. It is limited to 80 characters.
 			</div>
+			<div id="upload_running" class="collapse">
+			</div>
 		</div>
 	</div>
 </div>
 </div>
+
+<script src="[% request.uri_base %]/javascripts/upload.js"></script>
