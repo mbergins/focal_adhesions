@@ -8,7 +8,7 @@ use upload;
 use exp_status;
 use thresh_testing;
 use results_understanding;
-# use server_status;
+use server_status;
 
 our $VERSION = '0.1';
 

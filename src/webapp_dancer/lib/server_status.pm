@@ -30,11 +30,11 @@ get '/server_status' => sub {
 	my %template;
 
 	my @upload_zips = <$upload_dir/*.zip>;
-	$template{queue_count} = scalar(@upload_zips));
+	$template{queue_count} = scalar(@upload_zips);
 
 	my @run_files = <$run_exp_dir/fa_webapp.*.run>;
-	$template{run_count} = scalar(@run_files)
-	$template{worker_count} = &count_upload_workers;
+	$template{run_count} = scalar(@run_files);
+	$template{worker_count} = &count_upload_workers($cron_file);
 	
 	my %uptime_props = &process_uptime_reading;
 
@@ -49,7 +49,6 @@ get '/server_status' => sub {
 ###############################################################################
 
 sub process_uptime_reading {
-	$ENV{PATH} = '/usr/bin/';
 	my $uptime = `/usr/bin/uptime`;
 	
 	my %uptime_props;
@@ -66,10 +65,10 @@ sub process_uptime_reading {
 }
 
 sub count_upload_workers {
-	open INPUT, $cron_file;
+	open INPUT, $_[0] or die $!;
 	my @cron = <INPUT>;
 	close INPUT;
-
+	
 	@cron = grep !($_ =~ /^#/), @cron;
 	@cron = grep $_ =~ /run_uploaded_exp/, @cron;
 
@@ -79,8 +78,10 @@ sub count_upload_workers {
 sub build_server_load_day_plot {
 	system("tail -n 1440 $uptime_file > last_day_load.txt;");
 	system("sed -i \"s/.*average: //\" last_day_load.txt");
+	
+	my $image_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp_dancer/public/images";
 
-	system("R --vanilla --silent -f plot_webapp_load.R \"--args data_file=last_day_load.txt plot_type=day target_dir=/var/www/FA_webapp/images/\" > /dev/null");
+	system("R --vanilla --silent -f plot_webapp_load.R \"--args data_file=last_day_load.txt plot_type=day target_dir=$image_dir\" > /dev/null");
 
 	unlink("last_day_load.txt");
 }
@@ -89,7 +90,9 @@ sub build_server_load_week_plot {
 	system("tail -n 10080 $uptime_file > last_week_load.txt;");
 	system("sed -i \"s/.*average: //\" last_week_load.txt");
 
-	system("R --vanilla --silent -f plot_webapp_load.R \"--args data_file=last_week_load.txt plot_type=week target_dir=/var/www/FA_webapp/images/\" > /dev/null");
+	my $image_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp_dancer/public/images";
+	
+	system("R --vanilla --silent -f plot_webapp_load.R \"--args data_file=last_week_load.txt plot_type=week target_dir=$image_dir\" > /dev/null");
 
 	unlink("last_week_load.txt");
 }

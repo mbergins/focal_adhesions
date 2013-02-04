@@ -31,6 +31,17 @@ get '/exp_status/:exp_id' => sub {
 	template 'exp_status', \%template_cfg;
 };
 
+get '/exp_status/' => sub {
+	my %template_cfg;
+	$template_cfg{no_exp_id} = 1;
+	template 'exp_status', \%template_cfg;
+};
+
+get '/exp_status' => sub {
+	my %template_cfg;
+	$template_cfg{no_exp_id} = 1;
+	template 'exp_status', \%template_cfg;
+};
 ###############################################################################
 # Functions
 ###############################################################################
