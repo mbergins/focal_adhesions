@@ -12,6 +12,7 @@ use File::Copy qw/ move /;
 use File::Find;
 use File::Basename;
 use Config::General;
+use Data::Dumper;
 
 my $out_folder = catdir('..','uploaded_experiments');
 my $start_time = time;
@@ -53,11 +54,12 @@ post '/upload' => sub {
 		my %cfg;
 		$cfg{submitter_ip} = request->address();
 		$cfg{upload_time} = $upload_end - $start_time;
-		my @copy_if_defined = qw(thresh_field no_ad_splitting min_adhesion_size
+		my @copy_if_defined = qw(stdev_thresh no_ad_splitting min_adhesion_size
 		max_adhesion_size email note min_linear_model_length);
 		foreach (@copy_if_defined) {
-			if (params->{$_}) {
-				$cfg{$_} = params->{$_};
+			my $val = param $_;
+			if (defined $val && $val ne "") {
+				$cfg{$_} = param $_;
 			}
 		}
 
