@@ -1,0 +1,38 @@
+<!-- HEADER line -->
+<div class="container">
+	<div class="page-header">
+		<div class="row">
+			<div class="span12">
+				<h1>Focal Adhesion Analysis Server - Experiment Status</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="span12">
+
+			[% IF no_exp_id %]
+			No experimental ID was found in the URL. Please check the link you followed.
+			[% ELSE %]
+				[% SWITCH exp_status %]
+				[% CASE 'missing' %]
+
+				The experiment ID specified in the URL was not found. Please check the link you followed.
+
+				[% CASE 'queue' %]
+
+				Your experiment is in the queue, in position [% queue_position %]. 
+
+				[% CASE 'running' %]
+
+				Your experiment is running.
+
+				[% CASE 'done' %]
+
+				Your experiment is done, you can download your results <a href=[% download_url %]>here</a>.
+
+				[% END %]
+			[% END %]
+		</div>
+	</div>
+</div>

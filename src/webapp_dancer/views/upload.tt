@@ -1,0 +1,147 @@
+<!-- HEADER line -->
+<div class="container">
+	<div class="page-header">
+		<div class="row">
+			<div class="span12">
+				<h1>Focal Adhesion Analysis Server - Experiment Upload</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="span12">
+			<div id="upload_form" class="collapse in">
+				<form class="form-horizontal" enctype="multipart/form-data" method="post">
+					<fieldset>
+						<h2>Required Files</h2>
+						<div class="control-group">
+							<label class="control-label" for="adhesion_file">FA Image</label>
+							<div class="controls">
+								<input type="file" name="adhesion_file" />
+								<span class="help-inline">TIFF formatted image of the focal adhesions</span> 
+							</div>
+						</div>
+
+						<h2>Experiment Configuration</h2>
+						<div class="control-group">
+							<label class="control-label" for ="thresh_field">Detection Threshold</label>
+							<div class="controls">
+								<input type="text" class="input-xlarge" value="2" id="thresh_field" >
+								<span class="help-inline">Normally set to 2, see instructions below for more help</span> 
+							</div>
+						</div>
+
+						<h2>Segmentation Options</h2>
+
+						<div class="control-group">
+							<label class="control-label" for="no_ad_splitting">Don't Split Adjacent Adhesions</label>
+							<div class="controls">
+								<input type="checkbox" name="no_ad_splitting" />
+								<!-- <span class="help-inline"></span>  -->
+							</div>
+						</div>
+
+						<h3>Adhesion Size Options</h3>
+						<div class="control-group">
+							<label class="control-label" for ="min_adhesion_size">Min Adhesion Size (pixels)</label>
+							<div class="controls">
+								<input type="text" class="input-xlarge" value="2" id="min_adhesion_size" >
+								<span class="help-inline">Leave blank to remove the minimum adhesion size limit</span> 
+							</div>
+						</div>
+
+						<div class="control-group">
+							<label class="control-label" for ="max_adhesion_size">Max Adhesion Size (pixels)</label>
+							<div class="controls">
+								<input type="text" class="input-xlarge" value="" id="max_adhesion_size" >
+								<span class="help-inline">Leave blank to remove the maximum adhesion size limit</span> 
+							</div>
+						</div>
+
+						<h2>Optional</h2>
+						
+						<div class="control-group">
+							<label class="control-label" for="cell_mask_file">Cell Mask</label>
+							<div class="controls">
+								<input type="file" name="cell_mask_file" />
+								<span class="help-inline">TIFF formatted image to use to find the edge of the cell</span> 
+							</div>
+						</div>
+							
+						<h3>Notification Options</h3>
+						<div class="control-group">
+							<label class="control-label" for="email">Email Address</label>
+							<div class="controls">
+								<input type="text" class="input-xlarge" name="email">
+								<span class="help-inline">Your email address will only be used for notification purposes</span> 
+							</div>
+						</div>
+
+						<div class="control-group">
+							<label class="control-label" for="self_note">Note</label>
+							<div class="controls">
+								<input type="text" class="input-xlarge" name="self_note">
+								<span class="help-inline">Any in this box will be returned with the results email</span> 
+							</div>
+						</div>
+
+						<!-- The Submit buttons -->
+						<div class="form-actions"> 
+							<button type="submit" class="btn btn-primary" data-toggle="collapse" data-target="#upload_form">Submit Experiment</button> 
+						</div> 
+
+					</fieldset>
+				</form>
+
+				<hr />
+				<h1>Instructions</h1>
+				Thank you for helping to test the focal adhesion analysis webserver.  If you
+				encounter any problems, feel free to email me (matthew.berginski [AT]
+				gmail.com).
+				<h2>Required Options</h2>
+				<h3 class="thin">
+					Adhesion Image File
+				</h3>
+				The program expects that you will submit a grayscale stacked TIFF image set of
+				the Focal Adhesion marker protein. The analysis methods have been tested with a
+				wide range of Focal Adhesion markers including Paxillin, FAK and Vinculin. The
+				image set can be of any size, but keep in mind that a large image set can take
+				some time to upload.
+
+				<h2>Detection Settings</h2>
+				<p/><b>Adhesion Detection Threshold:</b>This number is used by the adhesion
+				detection script to determine when a pixel is or is not part of an adhesion.
+				After appling a high pass filter to the images, pixels above this level are
+				considered part of an adhesion, while the pixels below are classified as
+				background. The lower this number, the more pixels will be classified as part
+				of an adhesion.  The default value of two works well in most cases, but values
+				down to around one may be appropriate.  Also be aware that lower values will
+				lengthen the runtime.  If you want to see what one of your images looks like
+				when processed with a specific threshold try out the threshold <a
+					href=thresh_testing.pl>tester</a>.
+
+				<p/><b>Don't Split Adjacent Adhesions:</b> This option turns off the wateshed
+				segmentation method normally used to split adjacent adhesions. The watershed
+				segmentation is the slowest part of the image processing, if this option is
+				selected, processing runtimes decrease. You might want to turn on this option
+				if the adhesions in your experiments don't appear to touch one another.
+
+				<p/><b>Min/Max Adhesion Size:</b> These settings control the minimum or maximum
+				adhesion sizes allowed through the segmentation step, both are specified in
+				pixels.
+
+				<h2>Notification Options</h2>
+				<h3>Email Address</h3>
+				If an email address is provided, you will be notified via email when your job
+				finishes processing. Your email address will only be used for notification
+				purposes. If this is not provided, then the experiment status page returned on
+				submission needs to bookmarked in order to retrieve your results.
+
+				<h3>Note to Self About Experiment</h3>
+				Whatever you put in this box will be send back to you in any email the system
+				sends concerning your experiment. It is limited to 80 characters.
+			</div>
+		</div>
+	</div>
+</div>
+</div>

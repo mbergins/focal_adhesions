@@ -1,0 +1,22 @@
+<!-- HEADER line -->
+<div class="container">
+	<div class="page-header">
+		<div class="row">
+			<div class="span12">
+				<h1>Focal Adhesion Analysis Server - Upload Success</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="span12">
+
+			Thanks for the file. You can monitor your experiment's status 
+			<a href=[% exp_status_link %]>here</a>. Please note that if you didn't
+			provide an email address, this link will be the only way for you to
+			download your experiment after it is done processing.
+
+		</div>
+	</div>
+
+</div>

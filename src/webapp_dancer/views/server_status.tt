@@ -1,0 +1,27 @@
+<!-- HEADER line -->
+<div class="container">
+	<div class="page-header">
+		<div class="row">
+			<div class="span12">
+				<h1>Focal Adhesion Analysis Server Status</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="span12">
+
+			<br /><b>Experiments in queue:</b> [% queue_count %]
+			<br /><b>Experiments being processed:</b> [% run_count %]
+			<br /><b>Number of Processing Workers:</b> [% worker_count %]
+			<br /><b>The server has been running for:</b> [% server_uptime %]
+			<br /><b>The server load levels are:</b> [% server_load %]
+
+			<h2>Server Load Over the Last Day</h2>
+			<img src="/images/server_load_day.png" alt="Server Load - Over One Day">
+
+			<h2>Server Load Over the Last Week</h2>
+			<img src="/images/server_load_week.png" alt="Server Load - Over One Week">
+		</div>
+	</div>
+</div>

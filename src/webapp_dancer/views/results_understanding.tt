@@ -1,0 +1,128 @@
+<!-- HEADER line -->
+<div class="container">
+	<div class="page-header">
+		<div class="row">
+			<div class="span12">
+				<h1>Focal Adhesion Analysis Server - Understanding Your Results</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="span12">
+
+			All of the results from the image processing steps are saved in the zip
+			file you downloaded. Several different types of analyses are
+			automatically done on each image set, below you will find a few
+			instructions on how to find a few of the most common properties
+			measured in focal adhesion dynamics experiments.
+
+			<h2>I want to:</h2>
+
+			<ul>
+				<li><a href="#assem">Measure Focal Adhesion Assembly and Disassembly Rates</a></li>
+				<li><a href="#props">Measure Focal Adhesion Areas/Intensities</a></li>
+				<li><a href="#FAAI">Find the Focal Adhesion Alignment Index (FAAI)</a></li>
+				<li><a href="#vector_vis">See an Image Like the Front Page Logo</a></li>
+			</ul>
+			<br>
+
+			<hr>
+
+			<div id=assem>
+				<h2>Find Focal Adhesion Assembly and Disassembly Rates</h2>
+				<p>
+				The Focal Adhesion assembly and disassembly rates are stored in the
+				file named "ad_kinetics.csv" in the "adhesion_props" folder. These
+				results have been filtered to only include adhesions with positive
+				rates and p-values of less than 0.05. Four properties are reported
+				for each rate:
+				<ul> 
+					<li>class: Either assembly or disassembly </li> 
+					<li>ad_num: This is a unique number assigned to each adhesion
+					during the tracking process.</li> 
+					<li>slope: This is assembly or disassembly rate calculated
+					using the same method as Webb, et al. 2004.</li> 
+					<li>adj.r.squared: This is the value of R&sup2 adjusted for the
+					lenght of assembly or disassembly phase.</li>
+				</ul>
+
+				<p>
+				If you want to dig deeper into the results, visualizations of each
+				adhesion and the measurements of the intensity of the adhesion
+				marker at each image is also available. You can find the
+				visualizations in the "single_ad" folder in "visualizations", where
+				each file is named using the same number as appears in the ad_num
+				column of the results file. 
+
+				<p>
+				You can see a graph of the intensity measurments and the
+				corresponding assembly or disassembly phase in the
+				Average_adhesion_signal.pdf file in the models directory of
+				adhesion_props. In this file, the title of each graph is the same
+				number as in the ad_num column.  Finally, if you want the raw
+				intensity data, you can look at the Average_adhesion_signal.csv
+				file in lin_time_series.  . Each line of the CSV file corresponds
+				to a single adhesion, where the line number corresponds to the
+				ad_num column.
+			</div>
+
+			<div id=props>
+				<h2>Measure Focal Adhesion Areas/Intensities</h2>
+				<h3>Single Images</h3>
+				<p>
+				Several different properties are collected about each focal adhesion
+				identified by the system. These properites, such as area and intensity
+				are stored in two ways: as single measurements associated the adhesions
+				in each image and as measurements over time associated with the
+				adhesions tracked through time. The single measurements are all in the
+				sub-folders of the "individual_pictures" folder, specifically the
+				"raw_data" folder. There you will find various csv files such as
+				"Area.csv" and "Average_adhesion_signal.csv" which contain area values
+				and intensity values respectively. All of the units of distance or area
+				are in pixels or square pixels.
+
+				<h3>Time-lapse Image Sets</h3>
+				<p>
+				Several of sets of properties are also organzied into matrices that
+				represent the value of that property over the lifetime of each
+				adhesion. In general, the files are organized so that the data from
+				each adhesion is present on a single row, with the value of that
+				property for each image in the time-series in the columns.  Placeholds
+				of NaN are used when an adhesion isn't present in a specfic image.
+
+				<p>
+				As an example, consider an adhesion that is born in image 10 and dies
+				in frame 20. All the slots before frame 10 will be NaN, while all the
+				values after frame 20 will be NaN as well. Columns 10-20 will contain
+				the value for that adhesion in the image set.
+			</div>
+
+			<div id=FAAI>
+				<h2>Find the Focal Adhesion Alignment Index (FAAI)</h2>
+				<p>
+				You can lookup the value of the FAAI in the
+				"adhesion_orientation.pdf" file in the "adhesion_props" folder. The
+				value of the FAAI is reported in the title of the left hand plot in
+				the center row.
+			</div>
+
+			<div id=vector_vis>
+				<h2>See an Image Like the Front Page Logo</h2>
+				<p>
+				The same style of visualization for your experiment is available on in
+				the "visualizations" folder, look for the ghost files.
+
+				<p>
+				The visualization is produced by first converting the binary adhesion
+				mask from each image into a vector representation using <a
+					href="http://potrace.sourceforge.net/">potrace</a>. Next, each
+				vector mask file is colored based on how far into the time-lapse the
+				image was taken. The colors start in the blue range, then go up through
+				the rainbow color map to red. Finally, all the vector images are
+				overlayed and saved as "ghost.svg". This vector image is then converted
+				to a small and large png file.
+			</div>
+		</div>
+	</div>
+</div>

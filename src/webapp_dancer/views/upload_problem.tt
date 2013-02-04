@@ -1,0 +1,18 @@
+<!-- HEADER line -->
+<div class="container">
+	<div class="page-header">
+		<div class="row">
+			<div class="span12">
+				<h1>Focal Adhesion Analysis Server Upload Problem</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="span12">
+
+			One or both of the images you uploaded the server don't appear to be in TIFF format. Please return to the upload page and upload another set of images.
+
+		</div>
+	</div>
+</div>
