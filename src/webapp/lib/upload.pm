@@ -54,7 +54,7 @@ post '/upload' => sub {
 		$cfg{submitter_ip} = request->address();
 		$cfg{upload_time} = $upload_end - $start_time;
 		my @copy_if_defined = qw(thresh_field no_ad_splitting min_adhesion_size
-		max_adhesion_size email note);
+		max_adhesion_size email note min_linear_model_length);
 		foreach (@copy_if_defined) {
 			if (params->{$_}) {
 				$cfg{$_} = params->{$_};

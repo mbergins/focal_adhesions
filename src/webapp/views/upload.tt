@@ -40,6 +40,14 @@
 								<!-- <span class="help-inline"></span>  -->
 							</div>
 						</div>
+						
+						<div class="control-group">
+							<label class="control-label" for ="min_linear_model_length">Min FA Phase Length (Frames)</label>
+							<div class="controls">
+								<input type="text" class="input-xlarge" value="10" id="min_linear_model_length" >
+								<span class="help-inline">The minimum number of points in an assembly or disassembly phase</span> 
+							</div>
+						</div>
 
 						<h3>Adhesion Size Options</h3>
 						<div class="control-group">
@@ -124,10 +132,30 @@
 				segmentation is the slowest part of the image processing, if this option is
 				selected, processing runtimes decrease. You might want to turn on this option
 				if the adhesions in your experiments don't appear to touch one another.
+				
+				<p/><b>Min FA Phase Length:</b> When determining the assembly
+				and disassembly rates of the FAs in the image set, the analysis
+				methods use log-linear models to determine the value of the
+				rates. This setting specifies the minimum number of images that
+				the assembly and disassembly phases must be in order to attempt
+				to estimate the rates. Decreasing this value allows more
+				assembly and disassembly phases to be gathered, but at the cost
+				of those phases to potentially be built on fewer data points.
 
-				<p/><b>Min/Max Adhesion Size:</b> These settings control the minimum or maximum
-				adhesion sizes allowed through the segmentation step, both are specified in
-				pixels.
+				<p/><b>Min/Max Adhesion Size:</b> These settings control the
+				minimum or maximum adhesion sizes allowed through the
+				segmentation step, both are specified in pixels.
+				
+				<h2>Additional Image Sets</h2>
+
+				<p/><b>Cell Mask:</b> If a set of images are specified as the
+				cell mask set, the software will attempt to find the cell body
+				from these images. The methods work well in cases where the
+				entire body of the cell is expressing a marker and a substantial
+				portion of the background is also visible. If such a set of
+				images are provided, various properties concerning the adhesions
+				and their distance from the cell edge and cell centroid will be
+				calculated.
 
 				<h2>Notification Options</h2>
 				<h3>Email Address</h3>
