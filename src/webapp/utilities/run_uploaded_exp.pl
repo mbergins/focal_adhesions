@@ -29,7 +29,7 @@ my $start_time = time;
 
 my $hostname = "faas.bme.unc.edu";
 
-my $webapp_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp_dancer/";
+my $webapp_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp/";
 
 my $upload_dir = catdir($webapp_dir, "uploaded_experiments");
 my $data_proc_dir = "../../../data/";
