@@ -1,5 +1,0 @@
-http://faas.bme.unc.edu/
-http://faas.bme.unc.edu/cgi-bin/FA_webapp/upload.pl
-http://faas.bme.unc.edu/cgi-bin/FA_webapp/thresh_testing.pl
-http://faas.bme.unc.edu/cgi-bin/FA_webapp/server_status.pl
-http://faas.bme.unc.edu/results_understanding
