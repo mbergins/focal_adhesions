@@ -8,7 +8,6 @@ function submit_activity() {
 }
 
 function count_up_working(id_name, status_text) {
-	console.log(status_text + counter + " seconds.");
 	document.getElementById(id_name).innerHTML = status_text + counter + " seconds.";
 	counter = counter + 1;
 }

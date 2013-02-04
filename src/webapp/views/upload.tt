@@ -140,8 +140,7 @@
 				Whatever you put in this box will be send back to you in any email the system
 				sends concerning your experiment. It is limited to 80 characters.
 			</div>
-			<div id="upload_running" class="collapse">
-			</div>
+			<div id="upload_running" class="collapse">Starting Upload</div>
 		</div>
 	</div>
 </div>
