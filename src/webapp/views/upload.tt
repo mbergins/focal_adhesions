@@ -24,6 +24,14 @@
 
 						<h2>Experiment Configuration</h2>
 						<div class="control-group">
+							<label class="control-label" for ="time_spacing">Imaging Frequency (minutes)</label>
+							<div class="controls">
+								<input type="text" class="input-xlarge" value="1" name="time_spacing" >
+								<span class="help-inline">Amount of time, in minutes, between the images</span> 
+							</div>
+						</div>
+
+						<div class="control-group">
 							<label class="control-label" for ="stdev_thresh">Detection Threshold</label>
 							<div class="controls">
 								<input type="text" class="input-xlarge" value="2" name="stdev_thresh" >
@@ -42,7 +50,7 @@
 						</div>
 						
 						<div class="control-group">
-							<label class="control-label" for ="min_linear_model_length">Min FA Phase Length (Frames)</label>
+							<label class="control-label" for ="min_linear_model_length">Min FA Phase Length (images)</label>
 							<div class="controls">
 								<input type="text" class="input-xlarge" value="10" name="min_linear_model_length" >
 								<span class="help-inline">The minimum number of points in an assembly or disassembly phase</span> 
