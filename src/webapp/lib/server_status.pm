@@ -79,9 +79,9 @@ sub build_server_load_day_plot {
 	system("tail -n 1440 $uptime_file > last_day_load.txt;");
 	system("sed -i \"s/.*average: //\" last_day_load.txt");
 	
-	my $image_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp/public/images";
+	my $image_dir = "images";
 
-	system("R --vanilla --silent -f plot_webapp_load.R \"--args data_file=last_day_load.txt plot_type=day target_dir=$image_dir\" > /dev/null");
+	system("R --vanilla --silent -f ../misc_code/plot_webapp_load.R \"--args data_file=last_day_load.txt plot_type=day target_dir=$image_dir\" > /dev/null");
 
 	unlink("last_day_load.txt");
 }
@@ -90,9 +90,9 @@ sub build_server_load_week_plot {
 	system("tail -n 10080 $uptime_file > last_week_load.txt;");
 	system("sed -i \"s/.*average: //\" last_week_load.txt");
 
-	my $image_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp/public/images";
+	my $image_dir = "images";
 	
-	system("R --vanilla --silent -f plot_webapp_load.R \"--args data_file=last_week_load.txt plot_type=week target_dir=$image_dir\" > /dev/null");
+	system("R --vanilla --silent -f ../misc_code/plot_webapp_load.R \"--args data_file=last_week_load.txt plot_type=week target_dir=$image_dir\" > /dev/null");
 
 	unlink("last_week_load.txt");
 }
