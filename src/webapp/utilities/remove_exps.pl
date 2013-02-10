@@ -46,7 +46,7 @@ if ($opt{debug}) {
 
 my $data_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/data/";
 my $processing_results_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/results/";
-my $results_dir = "/var/www/FA_webapp/results/";
+my $results_dir = "../public/results/";
 
 my $file_list;
 
