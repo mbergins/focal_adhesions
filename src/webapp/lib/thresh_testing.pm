@@ -37,7 +37,7 @@ post '/thresh_testing' => sub {
 	my $end_upload = time;
 
 	my $start_process = time;
-	system("octave --eval \"build_thresholded_image_sets('$out_file')\" > /dev/null 2> /dev/null");
+	system("octave --eval \"cd ../misc_code; build_thresholded_image_sets('../public/$out_file')\" > /dev/null 2> /dev/null");
 	my $end_process = time;
 	
 	my %cfg = (upload_time => $end_upload - $start_upload, 
