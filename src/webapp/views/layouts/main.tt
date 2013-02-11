@@ -25,6 +25,7 @@
           <li id="fat-menu" class="dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">[% session.user_id | html %]<b class="caret"></b></a>
             <ul class="dropdown-menu">
+              <li><a href="all_exp_status">Submitted Experiments</a></li>
               <li><a href="logout">Log Out</a></li>
             </ul>
           </li>
