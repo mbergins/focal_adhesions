@@ -29,6 +29,15 @@
 				</fieldset>
 			</form>
 
+			<p>
+			After submitting an image above, the server will immediatly process the provided image and return the results of several different segmentation thresholds. These results will be similiar, but not identical to the results of segmentation.
+			
+			<p>
+			If you would like to test the server, try this <a href=sample/sample_image.png>image</a>.
+			
+			<p>
+			You can see some sample results <a href=sample/thresholding/index.html>here</a>.
+
 		</div>
 	</div>
 </div>
