@@ -10,7 +10,7 @@
 
 	<div class="row">
 		<div class="span12">
-
+			<p>
 			[% IF no_exp_id %]
 			No experimental ID was found in the URL. Please check the link you followed.
 			[% ELSE %]
@@ -34,6 +34,11 @@
 				[% CASE DEFAULT %]
 				[% exp_status %]
 				[% END %]
+			[% END %]
+			
+			[% IF session.user_id %]
+			<p>
+			You can see a list of all your submitted experiments <a href=/all_exp_status>here</a>.
 			[% END %]
 		</div>
 	</div>
