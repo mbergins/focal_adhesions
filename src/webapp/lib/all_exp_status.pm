@@ -23,7 +23,7 @@ get '/all_exp_status' => sub {
 	if (defined session('user_id')) {
 		if (-r $user_exp_info_file) {
 			my %user_exp_data = %{lock_retrieve($user_exp_info_file)};
-			@exp_ids = @{$user_exp_data{session('user_id')}};
+			@exp_ids = reverse @{$user_exp_data{session('user_id')}};
 		}
 	}
 	
