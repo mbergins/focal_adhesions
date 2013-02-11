@@ -17,6 +17,39 @@
 </head>
 <body>
 
+[% IF session.user_id %]
+<div class="navbar">
+  <div class="navbar-inner">
+    <div class="container">
+        <ul class="nav pull-right">
+          <li id="fat-menu" class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown">[% session.user_id | html %]<b class="caret"></b></a>
+            <ul class="dropdown-menu">
+              <li><a href="logout">Log Out</a></li>
+            </ul>
+          </li>
+        </ul>
+    </div>
+  </div>
+</div>
+[% ELSE %]
+<div class="navbar">
+  <div class="navbar-inner">
+    <div class="container">
+        <ul class="nav pull-right">
+          <li id="fat-menu" class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown">Not Logged In<b class="caret"></b></a>
+            <ul class="dropdown-menu">
+              <li><a href="login">Login/Create Account</a></li>
+            </ul>
+          </li>
+        </ul>
+    </div>
+  </div>
+</div>
+[% END %]
+
+
 [% content %]
 
 <footer class="footer">

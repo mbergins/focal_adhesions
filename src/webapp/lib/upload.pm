@@ -1,5 +1,6 @@
 package upload;
 use Dancer ':syntax';
+use Dancer::Session::YAML;
 use strict;
 use warnings;
 use Cwd;
@@ -13,9 +14,11 @@ use File::Find;
 use File::Basename;
 use Config::General;
 use Data::Dumper;
+use Storable qw(lock_store lock_nstore lock_retrieve);
 
 my $out_folder = catdir('..','uploaded_experiments');
 my $start_time = time;
+my $user_exp_info_file = '../user_exp_info.stor';
 
 ###############################################################################
 # Main
@@ -73,6 +76,15 @@ post '/upload' => sub {
 		chmod 0777, catfile($out_folder, "analysis.cfg");
 
 		my $exp_status_url = "/exp_status/" . basename($out_folder); 
+		
+		if (defined session('user_id')) {
+			my %user_exp_data;
+			if (-w $user_exp_info_file) {
+				%user_exp_data = %{lock_retrieve($user_exp_info_file)};
+			}
+			push @{$user_exp_data{session('user_id')}}, basename($out_folder);
+			lock_store \%user_exp_data, $user_exp_info_file;
+		}
 
 		template 'upload_success', { exp_status_link => $exp_status_url };
 	}

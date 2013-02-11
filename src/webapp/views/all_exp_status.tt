@@ -1,0 +1,32 @@
+<!-- HEADER line -->
+<div class="container">
+	<div class="page-header">
+		<div class="row">
+			<div class="span12">
+				<h1>Focal Adhesion Analysis Server - Submitted Experiments</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="span12">
+			<table class="table">
+				<thead>
+					<tr>
+						<td>Experiment ID</td>
+						<td>Status</td>
+					</tr>
+				</thead>
+				<tbody>
+					[% FOREACH exp IN exp_list %]
+					<tr class=[% exp.markup %]>
+						<td>[% exp.exp_id %]</td>
+						<td>[% exp.exp_status %]</td>
+					</tr>
+
+					[% END %]
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>

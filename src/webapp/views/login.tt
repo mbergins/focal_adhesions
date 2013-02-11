@@ -1,0 +1,52 @@
+<!-- HEADER line -->
+<div class="container">
+	<div class="page-header">
+		<div class="row">
+			<div class="span12">
+				<h1>Focal Adhesion Analysis Server - Login/Create Account</h1>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="span12">
+			[% IF bad_login %]
+			<div class="alert">
+				Tried to login as [% user_id %], but the passwords didn't match. Please try again.
+			</div>
+			[% END %]
+			<form class="form-horizontal" enctype="multipart/form-data" method="post">
+				<fieldset>
+
+					<div class="control-group">
+						<label class="control-label" for="email">Email</label>
+						<div class="controls">
+							<input type="text" class="input-xlarge" name="email" >
+							<span class="help-inline"></span> 
+						</div>
+					</div>
+
+					<div class="control-group">
+						<label class="control-label" for="password">Password</label>
+						<div class="controls">
+							<input type="text" class="input-xlarge" name="password" >
+							<span class="help-inline"></span> 
+						</div>
+					</div>
+
+					<!-- The Submit buttons -->
+					<div class="form-actions"> 
+						<button type="submit" class="btn btn-primary">Login/Create Account</button> 
+					</div> 
+
+				</fieldset>
+			</form>
+			
+			If you are logged in when an experiment is submitted, you will be
+			able to access a list of your submitted experiments and their status
+			in the system. Experiments can still be submitted without logging
+			in.
+
+		</div>
+	</div>
+</div>
