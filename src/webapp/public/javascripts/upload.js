@@ -3,6 +3,7 @@ var counter = 0;
 function submit_activity() {
 	$("#upload_form").collapse('hide');
 	$("#upload_running").collapse('show');
+	$("#upload_instructions").collapse('show');
 
 	setInterval("count_up_working('upload_running','Uploading for ')", 1000); 
 }

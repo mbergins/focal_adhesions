@@ -89,6 +89,7 @@
 							<label class="control-label" for="email">Email Address</label>
 							<div class="controls">
 								<input type="text" class="input-xlarge" name="email">
+
 								<span class="help-inline">Your email address will only be used for notification purposes</span> 
 							</div>
 						</div>
@@ -177,6 +178,15 @@
 				sends concerning your experiment. It is limited to 80 characters.
 			</div>
 			<div id="upload_running" class="collapse">Starting Upload</div>
+			<div id="upload_instructions" class="collapse">
+				<p>
+				Monitoring your upload:
+				<ul>
+					<li>Google Chrome: Look in the lower left hand corner, you should see a percentage count of how much of your upload has finished.</li>
+					<li>Firefox: In the tabs bar, there will be a rotating indicator and in the lower left hand corner a note about "Sending request to ..."</li>
+					<li>Internet Explorer: In the tabs bar, there will be a rotating indicator</li>
+				</ul>
+			</div>
 		</div>
 	</div>
 </div>
