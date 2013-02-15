@@ -68,6 +68,12 @@ post '/upload' => sub {
 			my $val = param $_;
 			if (defined $val && $val ne "") {
 				$cfg{$_} = param $_;
+				if ($cfg{$_} eq "on") {
+					$cfg{$_} = 1;
+				}
+				if ($cfg{$_} eq "off") {
+					$cfg{$_} = 0;
+				}
 			}
 		}
 

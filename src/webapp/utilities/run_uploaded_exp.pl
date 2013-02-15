@@ -29,15 +29,25 @@ my $start_time = time;
 
 my $hostname = "faas.bme.unc.edu";
 
-my $webapp_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp/";
+my $webapp_dir = "../";
 
-my $upload_dir = catdir($webapp_dir, "uploaded_experiments");
-my $data_proc_dir = "../../../data/";
-my $results_dir = "../../../results/";
+my %dir_locations = (
+	upload => catdir($webapp_dir, "uploaded_experiments"),
+	data_proc => "../../../data/",
+	results => "../../../results/",
+	public_output => catdir($webapp_dir,"public","results"),
+);
 
-my $public_output_folder = catdir($webapp_dir,"public","results");
-if (! -e $public_output_folder) {
-	make_path($public_output_folder);
+foreach (keys %dir_locations) {
+	$dir_locations{$_} = rel2abs($dir_locations{$_});
+}
+
+# my $upload_dir = catdir($webapp_dir, "uploaded_experiments");
+# my $data_proc_dir = "../../../data/";
+# my $results_dir = "../../../results/";
+# my $public_output_folder = catdir($webapp_dir,"public","results");
+if (! -e $dir_locations{public_output}) {
+	make_path($dir_locations{public_output});
 }
 
 my $run_file = "fa_webapp.$opt{ID}.run";
@@ -50,7 +60,7 @@ my $run_file = "fa_webapp.$opt{ID}.run";
 ###########################################################
 # Preliminary Setup
 ###########################################################
-my @uploaded_folders = <$upload_dir/*>;
+my @uploaded_folders = <$dir_locations{upload}/*>;
 if (scalar(@uploaded_folders) == 0) {
 	&delete_run_file($run_file);
 	if ($opt{debug}) {
@@ -87,7 +97,7 @@ if (basename($oldest_data{upload_folder}) =~ /FAAS_(.*)/) {
 # Processing
 ###########################################################
 
-$oldest_data{data_folder} = catdir($data_proc_dir,basename($oldest_data{upload_folder}));
+$oldest_data{data_folder} = catdir($dir_locations{data_proc},basename($oldest_data{upload_folder}));
 move($oldest_data{upload_folder}, $oldest_data{data_folder});
 $oldest_data{cfg_file} = rel2abs(catfile($oldest_data{data_folder},"analysis.cfg"));
 
@@ -98,7 +108,7 @@ my %temp = ParseConfig(
 );
 $oldest_data{cfg} = \%temp;
 
-$oldest_data{results_folder} = rel2abs(catdir($results_dir,basename($oldest_data{upload_folder})));
+$oldest_data{results_folder} = rel2abs(catdir($dir_locations{results},basename($oldest_data{upload_folder})));
 
 # &send_start_email(%oldest_file);
 
@@ -292,10 +302,10 @@ sub zip_results_folder {
 	my %oldest_data = @_;
 	
 	my $zip_filename = basename($oldest_data{upload_folder}).".zip";
-	my $output_zip = catfile($public_output_folder,$zip_filename);
+	my $output_zip = catfile(rel2abs($dir_locations{public_output}),$zip_filename);
 	
 	my $starting_dir = getcwd;
-	chdir $results_dir;
+	chdir $dir_locations{results};
 	my $command = "zip -q -r $output_zip " . basename($oldest_data{upload_folder});
 	if ($opt{debug}) {
 		print "Running: $command\n";
