@@ -60,6 +60,10 @@ post '/upload' => sub {
 
 		my $date_str = `date`;
 		chomp($date_str);
+		
+		if (defined session('user_id')) {
+			$cfg{session_user_id} = session('user_id');
+		}
 
 		$cfg{sub_date} = $date_str;
 		my @copy_if_defined = qw(stdev_thresh no_ad_splitting min_adhesion_size
@@ -85,9 +89,10 @@ post '/upload' => sub {
 		print CFG_OUT $out_cfg->save_string;
 		close CFG_OUT;
 		chmod 0777, catfile($out_folder, "analysis.cfg");
-
-		my $exp_status_url = "/exp_status/" . basename($out_folder); 
 		
+		#######################################################################
+		# Logged in user processing
+		#######################################################################
 		if (defined session('user_id')) {
 			my %user_exp_data;
 			if (-w $user_exp_info_file) {
@@ -96,7 +101,11 @@ post '/upload' => sub {
 			push @{$user_exp_data{session('user_id')}}, basename($out_folder);
 			lock_store \%user_exp_data, $user_exp_info_file;
 		}
-
+		
+		#######################################################################
+		# Return Page
+		#######################################################################
+		my $exp_status_url = "/exp_status/" . basename($out_folder); 
 		template 'upload_success', { exp_status_link => $exp_status_url };
 	}
 };
