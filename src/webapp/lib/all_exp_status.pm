@@ -30,10 +30,11 @@ get '/all_exp_status' => sub {
 	my @cfg_status;
 	
 	for my $this_id (@exp_ids) {
-		my %temp = (exp_id => $this_id, 
-			exp_status => &get_exp_status($this_id),
-			markup => "warning");
-		
+		my %temp;
+		if ($temp{exp_status} eq "processing") {
+			$temp{exp_status} = "Processing";
+			$temp{markup} = "warning";
+		}
 		if ($temp{exp_status} eq "queue") {
 			$temp{exp_status} = "In Queue, position ".&get_queue_position($this_id);
 			$temp{markup} = "info";
