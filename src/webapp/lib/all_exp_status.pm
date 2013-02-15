@@ -43,6 +43,10 @@ get '/all_exp_status' => sub {
 			$temp{exp_status} = "Done Processing, download <a href=$download_url>here</a>";
 			$temp{markup} = "success";
 		}
+		if ($temp{exp_status} eq "missing") {
+			$temp{exp_status} = "Experiment ID not found in data sets";
+			$temp{markup} = "warning";
+		}
 
 		push @cfg_status, \%temp;
 	}
