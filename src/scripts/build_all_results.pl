@@ -50,6 +50,7 @@ $|  = 1;
 #layer holds all of those commands with the appropriate directory to execute the
 #commands in.
 my @overall_command_seq = (
+	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_exp_min_max" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_background_intensity" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_cell_mask_full_exp" ], ],
 	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script apply_bleaching_correction" ], ],
