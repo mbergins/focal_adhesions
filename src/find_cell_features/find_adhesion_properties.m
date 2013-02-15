@@ -322,7 +322,6 @@ print_strings = struct('PixelIdxList','%0.f','Angle_diff_from_radial','%0.2f',..
     'Kinase_intensity_corrected','%0.2f','Area','%d');
 
 for i = 1:size(field_names,1)
-    
     if(strmatch(field_names(i),to_exclude))
         continue;
     end

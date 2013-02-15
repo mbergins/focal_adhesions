@@ -87,26 +87,3 @@ if (i_p.Results.single_threshold)
 end
 
 toc(overall_start);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Functions
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function threshold = find_middle_valley(pix_values)
-
-    [heights, intensity] = hist(double(pix_values),1000);
-    
-    smoothed_heights = smooth(heights,0.05,'loess');
-    [~,imax,~,imin]= extrema(smoothed_heights);
-    
-    %keep in mind that the zmax is sorted by value, so the highest peak is
-    %first and the corresponding index is also first in imax, the same pattern
-    %hold for zmin and imin
-    
-    sorted_max_indexes = sort(imax);
-    first_max_index = find(sorted_max_indexes == imax(1));
-    
-    %locate the index between the first two maximums
-    min_index = find(imin > sorted_max_indexes(first_max_index) & imin < sorted_max_indexes(first_max_index + 1));
-    assert(length(min_index) == 1, 'Error: expected to only find one minimum index between the first two max indexes, instead found %d', length(min_index));
-    threshold = intensity(imin(min_index));

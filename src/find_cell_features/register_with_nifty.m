@@ -33,13 +33,13 @@ image_dirs = image_dirs(3:end);
 %registration will go in a step-wise fashion, register image 2 to image 1,
 %then image 3 to 2, then image 4 to 3, ...
 for i_num = 1:(size(image_dirs,1)-1)
-% for i_num = 1:
+    % for i_num = 1:
     FA_file1 = fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image);
     FA_file2 = fullfile(base_dir,image_dirs(i_num+1).name,filenames.focal_image);
-
+    
     FA_img1 = imread(FA_file1);
     FA_img2 = imread(FA_file2);
-        
+    
     img1_nii = make_nii(FA_img1);
     img2_nii = make_nii(FA_img2);
     
@@ -73,7 +73,7 @@ end
 image_mask = [];
 for i_num = 2:size(image_dirs,1)
     FA_file = fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image);
-
+    
     FA_img = imread(FA_file);
     FA_img_binary = FA_img >= 5;
     if (size(image_mask,1) == 0)
@@ -88,14 +88,13 @@ lims = [find(sum(image_mask,2),1,'first')+1,find(sum(image_mask,2),1,'last')-1;
 %Now we apply the mask to the images in the set
 for i_num = 1:size(image_dirs,1)
     FA_file = fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image);
-
+    
     FA_img = imread(FA_file);
     
     FA_img = FA_img(lims(1,1):lims(1,2),lims(2,1):lims(2,2));
     
     imwrite(FA_img,FA_file);
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Functions

@@ -27,42 +27,28 @@ assert(str2num(image_dirs(3).name) == 1, 'Error: expected the third string to be
 image_dirs = image_dirs(3:end);
 
 temp_image = imread(fullfile(base_dir,image_dirs(1).name,filenames.focal_image));
-all_images = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
 all_high_passed = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Collect all the images
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i_num = 1:size(image_dirs,1)
-    puncta_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
+    fa_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
     
     I_filt = fspecial('disk',11);
-    blurred_image = imfilter(puncta_image,I_filt,'same',mean(puncta_image(:)));
-    high_passed_image = puncta_image - blurred_image;
+    blurred_image = imfilter(fa_image,I_filt,'same',mean(fa_image(:)));
+    high_passed_image = fa_image - blurred_image;
     
-    all_images(:,:,i_num) = puncta_image;
     all_high_passed(:,:,i_num) = high_passed_image;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Determine min/max and identification thresholds
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%Minimum/Maximum FA image values
-trimmed_pix_values = trim_data_set(all_images(:),1E-4);
-min_max = [trimmed_pix_values(1),trimmed_pix_values(end)];
-clear all_images;
-
-output_file = fullfile(base_dir,image_dirs(1).name,filenames.focal_image_min_max);
-[output_folder,~,~] = fileparts(output_file);
-if (not(exist(output_folder,'dir')))
-    mkdir(output_folder);
-end
-csvwrite(output_file,min_max);
-
 high_pass_mean = mean(all_high_passed(:));
 high_pass_std = std(all_high_passed(:));
-csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),...
+
+csvwrite_with_folder_creation(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_threshold),...
     [high_pass_mean,high_pass_std]);
 
 %diagnostic diagram
@@ -98,46 +84,6 @@ if (size(image_dirs,1) > 1)
     set(gcf, 'PaperPositionMode', 'auto');
     print('-depsc2', fullfile(base_dir,image_dirs(1).name,filenames.per_image_threshold_plot));
     close;
-end
-
-clear all_high_passed;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Kinase Min/Max
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-image_file_name = fullfile(base_dir,image_dirs(1).name,filenames.kinase);
-
-if (exist(image_file_name,'file') == 2)
-    all_images = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
-    for i_num = 1:size(image_dirs,1)
-        image_file_name = fullfile(base_dir,image_dirs(i_num).name,filenames.kinase);
-        all_images(:,:,i_num) = double(imread(image_file_name));
-    end
-    
-    trimmed_vals = trim_data_set(all_images(:),1E-4);
-    kinase_min_max = [trimmed_vals(1),trimmed_vals(end)];
-    
-    csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.kinase_min_max),...
-        kinase_min_max);    
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Cell Mask Min/Max
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-image_file_name = fullfile(base_dir,image_dirs(1).name,filenames.raw_mask);
-
-if (exist(image_file_name,'file') == 2)
-    all_images = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1));
-    for i_num = 1:size(image_dirs,1)
-        image_file_name = fullfile(base_dir,image_dirs(i_num).name,filenames.raw_mask);
-        all_images(:,:,i_num) = double(imread(image_file_name));
-    end
-    
-    trimmed_vals = trim_data_set(all_images(:),1E-4);
-    raw_mask_min_max = [trimmed_vals(1),trimmed_vals(end)];
-    
-    csvwrite(fullfile(base_dir,image_dirs(1).name,filenames.raw_mask_min_max),...
-        raw_mask_min_max);    
 end
 
 toc;
