@@ -42,10 +42,6 @@ foreach (keys %dir_locations) {
 	$dir_locations{$_} = rel2abs($dir_locations{$_});
 }
 
-# my $upload_dir = catdir($webapp_dir, "uploaded_experiments");
-# my $data_proc_dir = "../../../data/";
-# my $results_dir = "../../../results/";
-# my $public_output_folder = catdir($webapp_dir,"public","results");
 if (! -e $dir_locations{public_output}) {
 	make_path($dir_locations{public_output});
 }
