@@ -50,6 +50,11 @@ for i_num = 1:length(image_folders)
         all_binary = zeros(size(this_binary));
     end
     all_binary = all_binary | this_binary;
+    cell_mask_file = fullfile(individual_images_dir,image_folders(i_num).name,filenames.cell_mask);
+    if (exist(cell_mask_file,'file'))
+        cell_mask = imread(cell_mask_file);
+        all_binary = all_binary | cell_mask;
+    end
 end
 col_bounds = find(sum(all_binary));
 col_bounds = [col_bounds(1) - image_padding_min,col_bounds(end) + image_padding_min];
@@ -139,7 +144,7 @@ for i_num = 1:length(image_folders)
     this_cmap(ad_nums_lineage_order,:) = lineage_cmap(cmap_nums,:); %#ok<AGROW>
     highlighted_all = create_highlighted_image(orig_i,ad_label_perim,'color_map',this_cmap);
 
-    if (exist('cell_mask','var'))
+    if (exist('cell_edge','var'))
         highlighted_all = create_highlighted_image(highlighted_all,cell_edge,'color_map',edge_cmap(i_num,:));
     end
     
