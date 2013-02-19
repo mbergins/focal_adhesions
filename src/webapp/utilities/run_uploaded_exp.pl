@@ -10,6 +10,7 @@ use File::Spec::Functions qw(catdir catfile rel2abs);
 use Getopt::Long;
 use Cwd;
 use Config::General qw(ParseConfig);
+use Time::localtime;
 
 my %opt;
 $opt{ID} = 1;
@@ -83,6 +84,10 @@ for my $folder (@uploaded_folders) {
 
 if ($opt{debug}) {
 	print "Found oldest upload file: $oldest_data{upload_folder}\n";
+}
+
+if (localtime->hour() > 9 && localtime->hour() < 20) {
+	system("textme \"New exp submitted.\"");
 }
 
 if (basename($oldest_data{upload_folder}) =~ /FAAS_(.*)/) {
