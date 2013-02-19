@@ -27,7 +27,7 @@ $| = 1;
 
 my %opt;
 $opt{debug} = 0;
-GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l")
+GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l","convert_to_png")
   or die;
 
 die "Can't find cfg file specified on the command line" if not exists $opt{cfg};
@@ -74,6 +74,10 @@ foreach (@image_sets) {
 		print "\n" if $opt{debug};
         next;
     }
+	
+	if ($opt{convert_to_png}) {
+		&convert_data_file_to_png($search_dir);
+	}
 
     push @matlab_code, "setup_results_folder('$search_dir','$cfg{individual_results_folder}', '$out_file');";
 }
@@ -90,6 +94,22 @@ if (defined $cfg{job_group}) {
 ################################################################################
 #Functions
 ################################################################################
+
+sub convert_data_file_to_png {
+	my $data_dir = $_[0];
+	my @data_files = <$data_dir/*>;
+	
+	#Only run this if there is a single file in the data directory
+	if (scalar(@data_files) == 1) {
+		my $command = "convert $data_files[0] " . catdir($data_dir,"data_%05d.png") . ";";
+		if ($opt{debug}) {
+			print "$command\n";
+		} else {
+			system($command);
+			unlink $data_files[0];
+		}
+	}
+}
 
 ################################################################################
 #Documentation
