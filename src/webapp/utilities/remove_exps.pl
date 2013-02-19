@@ -14,7 +14,9 @@ if (defined $opt{configs}) {
 
 my %search_targets = (
 	email => "matthew.berginski\@gmail.com",
+	session_user_id => "matthew.berginski\@gmail.com",
 	submitter_ip => "152.19.101.236",
+	# submitter_ip => "98.69.225.143",
 );
 
 ###############################################################################

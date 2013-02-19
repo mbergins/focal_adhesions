@@ -86,9 +86,6 @@ if ($opt{debug}) {
 	print "Found oldest upload file: $oldest_data{upload_folder}\n";
 }
 
-if (localtime->hour() > 9 && localtime->hour() < 20) {
-	system("textme \"New exp submitted.\"");
-}
 
 if (basename($oldest_data{upload_folder}) =~ /FAAS_(.*)/) {
 	$oldest_data{ID} = $1;
@@ -108,6 +105,18 @@ my %temp = ParseConfig(
 	-IncludeRelative       => 1,
 );
 $oldest_data{cfg} = \%temp;
+
+if (localtime->hour() > 9 && localtime->hour() < 20) {
+	my $send_text = "New exp";
+	if (defined $temp{session_user_id}) {
+		$send_text = "New exp: $temp{session_user_id}";
+	} elsif (defined $temp{email}) {
+		$send_text = "New exp: $temp{email}";
+	} else {
+		$send_text = "New exp: $temp{submitter_ip}";
+	}
+	system("textme \"$send_text\" > /dev/null");
+}
 
 $oldest_data{results_folder} = rel2abs(catdir($dir_locations{results},basename($oldest_data{upload_folder})));
 
@@ -273,7 +282,7 @@ sub setup_exp {
 		
 	my $starting_dir = getcwd;
 	chdir "../../find_cell_features";
-	my $command = "./setup_results_folder.pl -cfg $oldest_data{cfg_file}";
+	my $command = "./setup_results_folder.pl -convert_to_png -cfg $oldest_data{cfg_file}";
 	
 	if ($opt{debug}) {
 		print "Running: $command\n";
