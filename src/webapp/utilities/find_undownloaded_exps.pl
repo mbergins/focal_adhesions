@@ -20,7 +20,7 @@ my @target_zips = map {
 	$cfg_file
 } @cfgs;
 
-my $search_location = "/var/log/apache2/access*";
+my $search_location = "/var/log/apache2/access* /var/log/apache2/faas*";
 
 my %hit_counts;
 foreach (@target_zips) {

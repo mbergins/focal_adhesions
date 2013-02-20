@@ -30,7 +30,8 @@ get '/all_exp_status' => sub {
 	my @cfg_status;
 	
 	for my $this_id (@exp_ids) {
-		my %temp;
+		my %temp = (exp_status => &get_exp_status($this_id),
+			exp_id => $this_id);
 		if ($temp{exp_status} eq "processing") {
 			$temp{exp_status} = "Processing";
 			$temp{markup} = "warning";
@@ -46,7 +47,7 @@ get '/all_exp_status' => sub {
 		}
 		if ($temp{exp_status} eq "missing") {
 			$temp{exp_status} = "Experiment ID not found in data sets";
-			$temp{markup} = "warning";
+			$temp{markup} = "error";
 		}
 
 		push @cfg_status, \%temp;

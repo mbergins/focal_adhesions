@@ -15,6 +15,7 @@ use File::Basename;
 use Config::General;
 use Data::Dumper;
 use Storable qw(lock_store lock_nstore lock_retrieve);
+use Time::localtime;
 
 my $out_folder = catdir('..','uploaded_experiments');
 my $start_time = time;
@@ -89,7 +90,8 @@ post '/upload' => sub {
 		print CFG_OUT $out_cfg->save_string;
 		close CFG_OUT;
 		chmod 0777, catfile($out_folder, "analysis.cfg");
-		
+		&textme_on_upload(%cfg);
+
 		#######################################################################
 		# Logged in user processing
 		#######################################################################
@@ -161,5 +163,20 @@ sub add_cell_mask_to_exp {
 	chmod 0777, $out_folder;
 	find(\&change_file_perm, $out_folder);
 }
+
+sub textme_on_upload {
+	my %cfg = @_;
+	if (localtime->hour() > 9 && localtime->hour() < 20) {
+		my $send_text = "New exp";
+		if (defined $cfg{session_user_id}) {
+			$send_text = "New exp: $cfg{session_user_id}";
+		} elsif (defined $cfg{email}) {
+			$send_text = "New exp: $cfg{email}";
+		} else {
+			$send_text = "New exp: $cfg{submitter_ip}";
+		}
+		system("curl -u l490C7fX0y:CzO9k6JVFAauVOaN2w81 -d email=airgram\@berginski.com --data-urlencode msg=\"$send_text\" https://api.airgramapp.com/1/send > /dev/null 2>/dev/null");
+	}
+}	
 
 true;
