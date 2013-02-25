@@ -18,7 +18,6 @@ use Storable qw(lock_store lock_nstore lock_retrieve);
 use Time::localtime;
 
 my $out_folder = catdir('..','uploaded_experiments');
-my $start_time = time;
 my $user_exp_info_file = '../user_exp_info.stor';
 
 ###############################################################################
@@ -42,7 +41,6 @@ post '/upload' => sub {
 		($fa_fh, $fa_filename) = tempfile("FAAS_XXXXXX",DIR=>$out_folder);
 	}
 	$fa_file->copy_to($fa_filename);
-	my $upload_end = time;
 
 	if (! &is_file_TIFF($fa_filename)) {
 		template 'upload_problem';
@@ -57,7 +55,6 @@ post '/upload' => sub {
 		#######################################################################
 		my %cfg;
 		$cfg{submitter_ip} = request->address();
-		$cfg{upload_time} = $upload_end - $start_time;
 
 		my $date_str = `date`;
 		chomp($date_str);
@@ -167,13 +164,13 @@ sub add_cell_mask_to_exp {
 sub textme_on_upload {
 	my %cfg = @_;
 	if (localtime->hour() > 9 && localtime->hour() < 20) {
-		my $send_text = "New exp";
+		my $send_text = "";
 		if (defined $cfg{session_user_id}) {
-			$send_text = "New exp: $cfg{session_user_id}";
+			$send_text = "$cfg{session_user_id}";
 		} elsif (defined $cfg{email}) {
-			$send_text = "New exp: $cfg{email}";
+			$send_text = "$cfg{email}";
 		} else {
-			$send_text = "New exp: $cfg{submitter_ip}";
+			$send_text = "$cfg{submitter_ip}";
 		}
 		system("curl -u l490C7fX0y:CzO9k6JVFAauVOaN2w81 -d email=airgram\@berginski.com --data-urlencode msg=\"$send_text\" https://api.airgramapp.com/1/send > /dev/null 2>/dev/null");
 	}
