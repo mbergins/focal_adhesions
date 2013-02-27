@@ -123,7 +123,6 @@ fit_all_possible_log_models <- function(time.series,min.phase.length=10) {
     time.series$value = time.series$value/time.series$value[1];
     time.series$value[time.series$value < 0] = 1E-5;
 
-
     for (i in min.phase.length:length(time.series$value)) {
         this_model = lm(log(time.series$value[1:i]) ~ time.series$time[1:i]);
         model_summary = summary(this_model);
@@ -156,14 +155,15 @@ find_optimum_model_indexes <- function(assembly=NULL,disassembly=NULL) {
         
         best_indexes = c();
         
-        max_total_length = max(assembly$time_length);
+        max_image_count = max(assembly$image_count);
 
         for (as_index in 1:dim(r_sums)[1]) {
             for (dis_index in 1:dim(r_sums)[2]) {
                 #skip calculating R sum if the total length of the combination
                 #is greater than the length of the time series set
-                total_length = assembly$time_length[as_index] + disassembly$time_length[dis_index];
-                if (total_length > max_total_length) {
+                total_images_in_models = assembly$image_count[as_index] + 
+                                         disassembly$image_count[dis_index];
+                if (total_images_in_models > max_image_count) {
                     next;
                 }
 
@@ -361,28 +361,55 @@ if (length(args) != 0) {
         source('FA_analysis_lib.R')
         draw_diagnostic_traces(model,output_file,time.spacing=time_spacing);
         
-        #Write out simple CSV file with assembly/disassembly data
+        #######################################################################
+        # Simple CSV File Output
+        #######################################################################
+        
+        #Assembly Models Extraction
         assembly_models = model$assembly;
         assembly_models$ad_num = seq(1,dim(assembly_models)[1]);
         assembly_models$class = rep('Assembly',dim(assembly_models)[1]);
         assembly_adhesions = subset(assembly_models, 
             !is.na(p.value) & p.value < 0.05 & slope > 0, 
-            select = c('class','ad_num','slope','p.value','adj.r.squared'));
+            select = c('class','ad_num','slope','p.value','adj.r.squared','image_count'));
         assembly_adhesions$slope = round(assembly_adhesions$slope,4);
         assembly_adhesions$adj.r.squared = round(assembly_adhesions$adj.r.squared,3);
+        assembly_adhesions$phase_length = assembly_adhesions$image_count * time_spacing;
+        assembly_adhesions$image_count <- NULL;
 
+        #Disassembly Models Extraction
         disassembly_models = model$disassembly;
         disassembly_models$ad_num = seq(1,dim(disassembly_models)[1]);
         disassembly_models$class = rep('Disassembly',dim(disassembly_models)[1]);
         disassembly_adhesions = subset(disassembly_models, 
             !is.na(p.value) & p.value < 0.05 & slope > 0, 
-            select = c('class','ad_num','slope','p.value','adj.r.squared'));
+            select = c('class','ad_num','slope','p.value','adj.r.squared','image_count'));
         disassembly_adhesions$slope = round(disassembly_adhesions$slope,4);
         disassembly_adhesions$adj.r.squared = round(disassembly_adhesions$adj.r.squared,3);
-    
-        write.csv(rbind(assembly_adhesions,disassembly_adhesions),
-            file=file.path(data_dir,'ad_kinetics.csv'),row.names=F)
+        disassembly_adhesions$phase_length = disassembly_adhesions$image_count * time_spacing;
+        disassembly_adhesions$image_count <- NULL;
         
+        #Stability Data Set Extraction
+        stability_FA_nums = intersect(assembly_adhesions$ad_num,disassembly_adhesions$ad_num);
+        stability_adhesions = list(class=rep('Stabilty',length(stability_FA_nums)),
+                                 ad_num=stability_FA_nums,
+                                 slope = rep(NA,length(stability_FA_nums)),
+                                 p.value = rep(NA,length(stability_FA_nums)),
+                                 adj.r.squared = rep(NA,length(stability_FA_nums)),
+                                 image_count = rep(NA,length(stability_FA_nums)))
+        data_set_longevities = rowSums(!is.na(data_set));
+        for (i in 1:length(stability_FA_nums)) {
+            ad_num = stability_FA_nums[i];
+            stability_adhesions$image_count[i] = data_set_longevities[ad_num] - 
+                model$assembly$image_count[ad_num] - 
+                model$disassembly$image_count[ad_num];
+        }
+        stability_adhesions$phase_length = stability_adhesions$image_count * time_spacing;
+        stability_adhesions$image_count <- NULL;
+
+        write.csv(rbind(assembly_adhesions,disassembly_adhesions,stability_adhesions),
+            file=file.path(data_dir,'ad_kinetics.csv'),row.names=F)
+
         write_assembly_disassembly_periods(model,data_dir);
     }
 }
