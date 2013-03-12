@@ -35,16 +35,17 @@ post '/upload' => sub {
 	}
 
 	my $fa_file = upload('adhesion_file') or die $!;
-	my ($fa_fh, $fa_filename) = tempfile("FAAS_XXXXXX",DIR=>$out_folder);
-	while ($fa_filename =~ /FAAS_.*_.*/) {
-		unlink $fa_filename;
-		($fa_fh, $fa_filename) = tempfile("FAAS_XXXXXX",DIR=>$out_folder);
-	}
-	$fa_file->copy_to($fa_filename);
 
-	if (! &is_file_TIFF($fa_filename)) {
+	if (! &is_file_TIFF($fa_file->tempname)) {
 		template 'upload_problem';
 	} else {
+		my ($fa_fh, $fa_filename) = tempfile("FAAS_XXXXXX",DIR=>$out_folder);
+		while ($fa_filename =~ /FAAS_.*_.*/) {
+			unlink $fa_filename;
+			($fa_fh, $fa_filename) = tempfile("FAAS_XXXXXX",DIR=>$out_folder);
+		}
+		$fa_file->copy_to($fa_filename);
+
 		my $out_folder = &organize_uploaded_files($fa_filename);
 		if (params->{cell_mask_file}) {
 			&add_cell_mask_to_exp($out_folder);
