@@ -13,7 +13,7 @@ i_p.addRequired('exp_folder',@(x)exist(x,'dir') == 7);
 i_p.addParamValue('i_nums',@(x)isnumeric(x));
 
 i_p.addParamValue('max_adhesion_size',Inf,@(x)isnumeric(x) && x > 0);
-i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x) && x > 0);
+i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x));
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
 i_p.addParamValue('min_independent_size',14,@(x)isnumeric(x) && x > 0);
 
