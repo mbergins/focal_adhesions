@@ -215,7 +215,7 @@ sub print_svg_file {
 	my $target_png = $target_file;
 	$target_png =~ s/\.svg/\.png/;
 
-	system "inkscape -z -d 100 $target_file --export-png $target_png --export-background-opacity=1.0";
+	system "inkscape -z -d 300 $target_file --export-png $target_png --export-background-opacity=1.0";
 }
 
 sub build_jet_color_map {
