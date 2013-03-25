@@ -51,7 +51,6 @@
 </div>
 [% END %]
 
-
 [% content %]
 
 <footer class="footer">
