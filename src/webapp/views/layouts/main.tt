@@ -25,6 +25,7 @@
           <li id="fat-menu" class="dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">[% session.user_id | html %]<b class="caret"></b></a>
             <ul class="dropdown-menu">
+              <li><a href="/">Return to Home Page</a></li>
               <li><a href="/upload">Upload an Experiment</a></li>
               <li><a href="/all_exp_status">Submitted Experiments</a></li>
               <li><a href="/logout">Log Out</a></li>
@@ -42,6 +43,8 @@
           <li id="fat-menu" class="dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">Not Logged In<b class="caret"></b></a>
             <ul class="dropdown-menu">
+              <li><a href="/">Return to Home Page</a></li>
+              <li><a href="/upload">Upload an Experiment</a></li>
               <li><a href="/login">Login/Create Account</a></li>
             </ul>
           </li>
