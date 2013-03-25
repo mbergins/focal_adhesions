@@ -56,15 +56,15 @@ post '/upload' => sub {
 		#######################################################################
 		my %cfg;
 		$cfg{submitter_ip} = request->address();
-
-		my $date_str = `date`;
-		chomp($date_str);
 		
 		if (defined session('user_id')) {
 			$cfg{session_user_id} = session('user_id');
 		}
 
+		my $date_str = `date`;
+		chomp($date_str);
 		$cfg{sub_date} = $date_str;
+
 		my @copy_if_defined = qw(stdev_thresh no_ad_splitting min_adhesion_size
 		max_adhesion_size email note min_linear_model_length time_spacing);
 		foreach (@copy_if_defined) {
@@ -105,8 +105,14 @@ post '/upload' => sub {
 		#######################################################################
 		# Return Page
 		#######################################################################
-		my $exp_status_url = "/exp_status/" . basename($out_folder); 
-		template 'upload_success', { exp_status_link => $exp_status_url };
+		my $exp_status_url = "/exp_status/" . basename($out_folder);
+		my $email = param 'email';
+		if ($email =~ /gmail/) {
+			template 'upload_success', { exp_status_link => $exp_status_url,
+				gmail => 1};
+		} else {
+			template 'upload_success', { exp_status_link => $exp_status_url };
+		}
 	}
 };
 
