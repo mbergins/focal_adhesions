@@ -78,8 +78,8 @@ $exp_name =~ s/\//_/g;
 my $output_png = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost.png");
 my $output_png_small = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost_small.png");
 
-system "convert -density 300 -resample 300 $output_file -trim $output_png";
-system "convert -density 100 $output_file -trim $output_png_small";
+system "convert -density 300 -resample 300 $output_file $output_png";
+system "convert -density 100 $output_file $output_png_small";
 
 ###############################################################################
 #Functions
