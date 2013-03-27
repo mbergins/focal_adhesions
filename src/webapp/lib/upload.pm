@@ -161,7 +161,7 @@ sub add_cell_mask_to_exp {
 	
 	my $cm_filename = catfile($cell_mask_folder,'data.tif');
 
-	my $cm_file = upload('adhesion_file') or die $!;
+	my $cm_file = upload('cell_mask_file') or die $!;
 	$cm_file->copy_to($cm_filename);
 	
 	chmod 0777, $out_folder;
