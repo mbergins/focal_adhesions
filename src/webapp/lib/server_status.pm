@@ -13,9 +13,10 @@ use File::Find;
 use File::Basename;
 use Config::General;
 
+#the running directory is the public dir under CGI
 my $upload_dir = catdir('..','uploaded_experiments');
 
-my $run_exp_dir = '/home/mbergins/Documents/Projects/focal_adhesions/trunk/src/webapp/utilities/';
+my $run_exp_dir = catdir('..','utilities');
 
 my $uptime_file = "/home/mbergins/Documents/uptime_readings.txt";
 my $cron_file = "/home/mbergins/Documents/current_cron";
@@ -69,6 +70,7 @@ sub count_upload_workers {
 	my @cron = <INPUT>;
 	close INPUT;
 	
+	#toss out commented lines
 	@cron = grep !($_ =~ /^#/), @cron;
 	@cron = grep $_ =~ /run_uploaded_exp/, @cron;
 

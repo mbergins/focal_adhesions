@@ -88,7 +88,7 @@ post '/upload' => sub {
 		print CFG_OUT $out_cfg->save_string;
 		close CFG_OUT;
 		chmod 0777, catfile($out_folder, "analysis.cfg");
-		&textme_on_upload(%cfg);
+		# &textme_on_upload(%cfg);
 
 		#######################################################################
 		# Logged in user processing
