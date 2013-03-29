@@ -5,6 +5,7 @@ use lib "../lib";
 use Data::Dumper;
 use File::Basename;
 use File::Copy;
+use File::Copy::Recursive qw(dircopy);
 use File::Path qw(make_path);
 use File::Spec::Functions qw(catdir catfile rel2abs);
 use Getopt::Long;
@@ -86,7 +87,6 @@ if ($opt{debug}) {
 	print "Found oldest upload file: $oldest_data{upload_folder}\n";
 }
 
-
 if (basename($oldest_data{upload_folder}) =~ /FAAS_(.*)/) {
 	$oldest_data{ID} = $1;
 }
@@ -97,6 +97,7 @@ if (basename($oldest_data{upload_folder}) =~ /FAAS_(.*)/) {
 
 $oldest_data{data_folder} = catdir($dir_locations{data_proc},basename($oldest_data{upload_folder}));
 move($oldest_data{upload_folder}, $oldest_data{data_folder});
+# dircopy($oldest_data{upload_folder}, $oldest_data{data_folder});
 $oldest_data{cfg_file} = rel2abs(catfile($oldest_data{data_folder},"analysis.cfg"));
 
 my %temp = ParseConfig(
@@ -108,12 +109,12 @@ $oldest_data{cfg} = \%temp;
 
 $oldest_data{results_folder} = rel2abs(catdir($dir_locations{results},basename($oldest_data{upload_folder})));
 
-# &send_start_email(%oldest_file);
-
 &setup_exp(%oldest_data);
 &run_processing_pipeline(%oldest_data);
 &build_vector_vis(%oldest_data);
 $oldest_data{public_zip} = &zip_results_folder(%oldest_data);
+
+File::Path::rmtree($oldest_data{results_folder});
 
 ###########################################################
 # Notifications, Cleanup
@@ -122,8 +123,8 @@ if (defined $oldest_data{cfg}{email}) {
 	&send_done_email(%oldest_data);
 }
 
-&delete_run_file($run_file);
 &add_runtime_to_config(\%oldest_data,$start_time);
+&delete_run_file($run_file);
 
 ###############################################################################
 # Functions
