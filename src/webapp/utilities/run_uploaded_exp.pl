@@ -187,7 +187,7 @@ sub send_email {
 			"Your note to yourself about this experiment:\n\n$email_data{self_note}";
 	}
 	
-	my $from_str = "\"From: noreply\@mimir.bme.unc.edu (FAAS Notification)\"";
+	my $from_str = "\"From: noreply\@$hostname (FAAS Notification)\"";
 
 	my $command = "echo \"$email_data{body}\" | mail -a $from_str -s \"$email_data{subject}\" $email_data{address}";
 	# print $command;

@@ -14,7 +14,11 @@ GetOptions(\%opt, "days=s") or die;
 # Main
 ###############################################################################
 
-my $find_results = `find /home/mbergins/Documents/Projects/focal_adhesions/trunk/data/FAAS_*/*.cfg -ctime -$opt{days}`;
+my $find_results = `find /home/mbergins/Documents/Projects/focal_adhesions/trunk/data/FAAS_*/*.cfg`;
+my @all_cfgs = split("\n",$find_results);
+my $all_cfg_count = scalar(@all_cfgs);
+
+$find_results = `find /home/mbergins/Documents/Projects/focal_adhesions/trunk/data/FAAS_*/*.cfg -ctime -$opt{days}`;
 my @last_7_day_cfgs = split("\n",$find_results);
 my $cfg_count = scalar(@last_7_day_cfgs);
 
@@ -30,7 +34,7 @@ for (@count_sort) {
 	$email_text .= sprintf("%s => %d mean (%0.1f)\n", $_, $emails{$_}{count}, $stat->mean());
 }
 
-my $subject = "The FAAS server processed $cfg_count experiments in the past $opt{days} days";
+my $subject = "The FAAS server processed $cfg_count experiments in the past $opt{days} days and $all_cfg_count overall";
 
 system("echo \"$email_text\" | mail -s \"$subject\" matthew.berginski\@gmail.com");
 
