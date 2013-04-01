@@ -72,7 +72,7 @@ sub count_upload_workers {
 	
 	#toss out commented lines
 	@cron = grep !($_ =~ /^#/), @cron;
-	@cron = grep $_ =~ /run_uploaded_exp/, @cron;
+	@cron = grep $_ =~ /focal_adhesions.*run_uploaded_exp/, @cron;
 
 	return(scalar(@cron));
 }
