@@ -182,9 +182,9 @@ sub delete_run_file {
 sub send_email {
 	my %email_data = @_;
 	
-	if (defined $email_data{self_note}) {
+	if (defined $email_data{exp_note}) {
 		$email_data{body} = "$email_data{body}\n" . 
-			"Your note to yourself about this experiment:\n\n$email_data{self_note}";
+			"Your note to yourself about this experiment:\n\n$email_data{exp_note}";
 	}
 	
 	my $from_str = "\"From: noreply\@$hostname (FAAS Notification)\"";
@@ -201,11 +201,10 @@ sub send_start_email {
 		'address' => "$config{email}",
 		'body' => "Your experiment ($config{name}) has started processing. You will receive an email later with a link to download your results.",
 		'subject' => "Your experiment has started processing ($config{name})",
-		'self_note' => "$config{self_note}",
 	);
 
-	if (defined $config{self_note}) {
-		$start_email{self_note} = $config{self_note};
+	if (defined $config{exp_note}) {
+		$start_email{exp_note} = $config{exp_note};
 	}
 
 	&send_email(%start_email);
@@ -214,54 +213,54 @@ sub send_start_email {
 sub send_done_email {
 	my %config = @_;
 	
-	my $full_id = basename($oldest_data{upload_folder});
+	my $full_id = basename($config{upload_folder});
 	
 	my $body = "Your experiment ($full_id) has finished processing. " . 
 		"You can download your results here:\n\n" .
-		"http://$hostname/results/$oldest_data{public_zip}\n\n" . 
+		"http://$hostname/results/$config{public_zip}\n\n" . 
 		"You can find help with understanding the results here:\n\n" .
 		"http://$hostname/results_understanding/\n\n";
 
 	my %done_email = (
-		'address' => "$oldest_data{cfg}{email}",
+		'address' => "$config{cfg}{email}",
 		'body' => $body,
 		'subject' => "Your experiment has finished processing ($full_id)",
 	);
 
-	if (defined $oldest_data{cfg}{note}) {
-		$done_email{self_note} = $oldest_data{cfg}{note};
+	if (defined $config{cfg}{exp_note}) {
+		$done_email{exp_note} = $config{cfg}{exp_note};
 	}
 
 	&send_email(%done_email);
 }
 
-sub send_done_text {
-	my %config = @_;
-	
-	my $provider_email;
-	if (defined $config{provider}) {
-		if ($config{provider} eq "AT&T") {
-			$provider_email = 'txt.att.net';
-		} elsif ($config{provider} eq "Verizon") {
-			$provider_email = 'vtext.com';
-		} elsif ($config{provider} eq "Sprint") {
-			$provider_email = 'messaging.nextel.com';
-		} else {
-			print "Unrecognized provider code: $config{provider}\n" if $opt{debug};
-			return;
-		}
-	}
-
-	if (defined $config{phone} && $config{phone} =~ /\d+/) {
-		my %text_email = (
-			'address' => $config{phone} . "\@$provider_email",
-			'body' => "Your exp ($config{name}) has finished. Self note: $config{self_note}",
-			'subject' => "",
-			'self_note' => undef,
-		);
-		&send_email(%text_email);
-	}
-}
+# sub send_done_text {
+# 	my %config = @_;
+# 	
+# 	my $provider_email;
+# 	if (defined $config{provider}) {
+# 		if ($config{provider} eq "AT&T") {
+# 			$provider_email = 'txt.att.net';
+# 		} elsif ($config{provider} eq "Verizon") {
+# 			$provider_email = 'vtext.com';
+# 		} elsif ($config{provider} eq "Sprint") {
+# 			$provider_email = 'messaging.nextel.com';
+# 		} else {
+# 			print "Unrecognized provider code: $config{provider}\n" if $opt{debug};
+# 			return;
+# 		}
+# 	}
+# 
+# 	if (defined $config{phone} && $config{phone} =~ /\d+/) {
+# 		my %text_email = (
+# 			'address' => $config{phone} . "\@$provider_email",
+# 			'body' => "Your exp ($config{name}) has finished. Self note: $config{self_note}",
+# 			'subject' => "",
+# 			'self_note' => undef,
+# 		);
+# 		&send_email(%text_email);
+# 	}
+# }
 
 ###########################################################
 # Experiment Processing
