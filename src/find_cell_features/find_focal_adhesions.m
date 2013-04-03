@@ -118,9 +118,9 @@ if (i_p.Results.min_adhesion_size > 1 || i_p.Results.max_adhesion_size < Inf)
     labeled_thresh = bwlabel(threshed_image,4);
     
     props = regionprops(labeled_thresh,'Area'); %#ok<MRPBW>
-	areas = [props.Area];
-	filter_result = areas >= i_p.Results.min_adhesion_size & areas <= i_p.Results.max_adhesion_size;
-	labeled_thresh = ismember(labeled_thresh, find(filter_result));
+    areas = [props.Area];
+    filter_result = areas >= i_p.Results.min_adhesion_size & areas <= i_p.Results.max_adhesion_size;
+    labeled_thresh = ismember(labeled_thresh, find(filter_result));
     
     threshed_image = labeled_thresh > 0;
 end
@@ -138,7 +138,7 @@ end
 %adding a check for finding adhesions, if didn't find any, output error
 %file and die
 if (sum(sum(threshed_image)) == 0)
-    no_ad_found_file = fullfile(output_dir, 'no_ads_found.txt');
+    no_ad_found_file = fullfile(output_dir, 'no_FAs_found.txt');
     system(['touch ', no_ad_found_file]);
     disp('Didn''t find any adhesions');
 end
@@ -174,9 +174,9 @@ if ((length(ad_nums) - 1) > i_p.Results.max_adhesion_count)
     highlighted_image = create_highlighted_image(focal_normed, im2bw(ad_segment,0), ...
         'color_map',[1,1,0]);
     imwrite(highlighted_image,fullfile(output_dir, 'highlights.png'));
-    system(['touch ', fullfile(output_dir, 'Found_too_many_adhesions')]);
-    error(['Found more (',num2str(max(ad_segment(:))),') adhesions than', ...
-        ' max adhesion count (',num2str(i_p.Results.max_adhesion_count),').']);
+    print_too_many_FA_error(output_dir);
+%     error(['Found more (',num2str(max(ad_segment(:))),') adhesions than', ...
+%         ' max adhesion count (',num2str(i_p.Results.max_adhesion_count),').']);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -211,7 +211,6 @@ for i = 2:length(ad_nums)
 end
 if(i_p.Results.status_messages), disp('Done renumbering adhesion regions'); end
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Build adhesion perimeters image
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -237,12 +236,6 @@ if (exist('cell_mask','var'))
     highlighted_image = create_highlighted_image(highlighted_image, bwperim(cell_mask),'color_map',[1,0,0]);
 end
 imwrite(highlighted_image,fullfile(output_dir, 'highlights.png'));
-
-%Color Highlights
-% c_map = jet(max(ad_segment_perim(:)));
-% c_map = c_map(randsample(size(c_map,1),size(c_map,1)),:);
-% highlighted_image = create_highlighted_image(focal_normed, ad_segment_perim,'color_map',c_map);
-% imwrite(highlighted_image,fullfile(output_dir, 'color_highlights.png'));
 
 if (i_p.Results.paper_figures)
     col_range = (find(sum(ad_segment),1,'first')-5):(find(sum(ad_segment),1,'last')+5);
@@ -278,6 +271,7 @@ if (nargout > 0)
     varargout{1} = struct('adhesions',im2bw(ad_segment,0),'ad_segment',ad_segment);
 end
 toc;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Functions
@@ -310,4 +304,20 @@ else
     
     threshed_image = ismember(low_thresh_bwlabel,overlap_labels);
 end
-1;
+end
+
+function print_too_many_FA_error(target_folder)
+
+fileID = fopen(fullfile(target_folder,'Found_too_many_FAs.txt'),'w');
+
+fprintf(fileID,'Looks like the system found too many adhesions in this image\n');
+fprintf(fileID,'to continue with processing. You should see a file in the same\n');
+fprintf(fileID,'folder with highlights showing where the adhesions were identified\n');
+fprintf(fileID,'in this image. If you think all the regions identified in this image\n');
+fprintf(fileID,'are adhesions, then please contact me (email on home page)\n');
+fprintf(fileID,'about this image set. Otherwise, please resubmit your image set\n');
+fprintf(fileID,'with a higher threshold filter or minimum adhesion size requirement.');
+
+fclose(fileID);
+
+end
