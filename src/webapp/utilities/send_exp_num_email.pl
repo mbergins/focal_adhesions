@@ -8,7 +8,8 @@ use Geo::IP;
 
 my %opt;
 $opt{days} = 7;
-GetOptions(\%opt, "days=s") or die;
+$opt{email} = "matthew.berginski\@gmail.com";
+GetOptions(\%opt, "days=s", "email=s") or die;
 
 ###############################################################################
 # Main
@@ -34,9 +35,9 @@ for (@count_sort) {
 	$email_text .= sprintf("%s => %d mean (%0.1f)\n", $_, $emails{$_}{count}, $stat->mean());
 }
 
-my $subject = "The FAAS server processed $cfg_count experiments in the past $opt{days} days and $all_cfg_count overall";
+my $subject = "The FAAS processed $cfg_count experiments in the past $opt{days} days and $all_cfg_count overall";
 
-system("echo \"$email_text\" | mail -s \"$subject\" matthew.berginski\@gmail.com");
+system("echo \"$email_text\" | mail -s \"$subject\" $opt{email}");
 
 ###############################################################################
 # Functions
