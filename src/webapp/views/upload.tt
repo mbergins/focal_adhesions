@@ -15,10 +15,10 @@
 					<fieldset>
 						<h2>Required Files</h2>
 						<div class="control-group">
-							<label class="control-label" for="adhesion_file">FA Image</label>
+							<label class="control-label" for="adhesion_file">FA Time-lapse</label>
 							<div class="controls">
 								<input type="file" name="adhesion_file" />
-								<span class="help-inline">TIFF formatted image of the focal adhesions</span> 
+								<span class="help-inline">TIFF formatted time-lapse image set of the focal adhesions</span> 
 							</div>
 						</div>
 
@@ -111,10 +111,10 @@
 
 				<hr />
 				<h1>Instructions</h1>
-				Thank you for helping to test the focal adhesion analysis webserver.  If you
-				encounter any problems, feel free to email me (matthew.berginski [AT]
+				If you encounter any problems or find any of these instructions
+				confusing, feel free to email me (matthew.berginski [AT]
 				gmail.com).
-				<h2>Required Options</h2>
+				<h2>Required Files</h2>
 				<h3 class="thin">
 					Adhesion Image File
 				</h3>
