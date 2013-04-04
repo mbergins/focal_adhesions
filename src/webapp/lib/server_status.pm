@@ -78,7 +78,7 @@ sub count_upload_workers {
 }
 
 sub build_server_load_day_plot {
-	system("tail -n 1440 $uptime_file > last_day_load.txt;");
+	system("tail -n 1440 $uptime_file | tac > last_day_load.txt;");
 	system("sed -i \"s/.*average: //\" last_day_load.txt");
 	
 	my $image_dir = "images";
@@ -89,7 +89,7 @@ sub build_server_load_day_plot {
 }
 
 sub build_server_load_week_plot {
-	system("tail -n 10080 $uptime_file > last_week_load.txt;");
+	system("tail -n 10080 $uptime_file  | tac> last_week_load.txt;");
 	system("sed -i \"s/.*average: //\" last_week_load.txt");
 
 	my $image_dir = "images";
