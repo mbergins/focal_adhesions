@@ -10,7 +10,7 @@ plot_server_load_day <- function(data.set,file.name) {
 plot_server_load_week <- function(data.set,file.name) {
     png(file.name,width=900,height=450,pointsize=24);
     par(bty='n',mar=c(2.8,2.5,0.25,0), mgp=c(1.6,0.5,0),xpd=T,lwd=3)
-    plot(data.set,typ='l',ylim=c(0,100),ylab='% Load of Server Max',axes=F,xlab='Time (Days)')
+    plot(data.set,typ='l',ylim=c(0,100),ylab='% Load of Server Max',axes=F,xlab='Time (days)')
     axis(2);
     axis(1,at=seq(0,7*24*60,by=24*60),labels=seq(0,7))
     graphics.off();
