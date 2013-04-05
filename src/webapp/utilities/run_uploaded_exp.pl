@@ -203,7 +203,7 @@ sub send_start_email {
 		'subject' => "Your experiment has started processing ($config{name})",
 	);
 
-	if (defined $config{exp_note}) {
+	if (defined $config{cfg}{exp_note}) {
 		$start_email{exp_note} = $config{exp_note};
 	}
 
