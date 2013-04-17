@@ -19,8 +19,8 @@
 			</ul>
 
 			<hr>
-			<p>
-			Welcome to the focal adhesion analysis webserver, hosted from Shawn
+			
+			<p>Welcome to the focal adhesion analysis webserver, hosted from Shawn
 			Gomez's <a href="http://gomezlab.bme.unc.edu/">lab</a> at the
 			University of North Carolina at Chapel Hill. This website implements a
 			set of computer vision algorithms designed to automatically process
@@ -29,22 +29,31 @@
 			published in <a
 				href="http://dx.doi.org/10.1371/journal.pone.0022025">PLOS One</a>
 			and <a
-				href="http://dx.doi.org/10.1016/j.cell.2011.12.034">Cell</a>.
+				href="http://dx.doi.org/10.1016/j.cell.2011.12.034">Cell</a>.</p>
 
-			<p>
-			If you have any problems with the website, questions about the
+			
+			<p>If you have any problems with the website, questions about the
 			results or suggestions for improvements, please email me
-			(matthew.berginski [AT] gmail.com).
+			(matthew.berginski [AT] gmail.com).</p>
 
-			<p>
-			Need an image set for testing? Download a set <a
-				href='sample/Paxillin_test_set.tif'>here</a>.
+			<p>Need an image set for testing? Download a set <a
+				href='sample/Paxillin_test_set.tif'>here</a>.</p>
 
-			<p>
-			Want to see what the processed results are like? Download this <a
+			<p>Want to see what the processed results are like? Download this <a
 				href='sample/FAAS_sample_results.zip'>file</a> and take a look
 			at the results interpretation <a
-				href="results_understanding">page</a>.
+				href="results_understanding">page</a>.</p>
+
+			<h3>How To Cite the FAAS</h3>
+			<p>The FAAS has been published in <a
+				href="http://dx.doi.org/10.3410/f1000research.2-68.v1">F1000
+				Research</a>.</p>
+			<ul>
+				<li>Berginski ME, Gomez SM. (2013) The Focal Adhesion Analysis
+				Server: a web tool for analyzing focal adhesion dynamics [v1;
+				ref status: indexed, http://f1000r.es/yc] F1000Research 2013,
+				2:68 (doi: 10.3410/f1000research.2-68.v1)</li>
+			</ul>
 		</div>
 	</div>
 </div>
