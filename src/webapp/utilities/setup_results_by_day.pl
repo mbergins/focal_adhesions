@@ -7,11 +7,15 @@ use Config::General;
 
 my $target_folder;
 
+###############################################################################
+# Main
+###############################################################################
+
 $target_folder = "results_by_day";
 
 File::Path::remove_tree($target_folder);
 
-my @results_folders = <../../../results/*>;
+my @results_folders = <../public/results/*>;
 
 foreach (@results_folders) {
 	my $date = &POSIX::strftime("%Y-%m-%d", localtime( ( stat $_ )[9]));
@@ -58,6 +62,16 @@ foreach (@data_folders) {
 ###########################################################
 &make_data_links_by_config_var("submitter_ip");
 
+###########################################################
+# Email Address Folder Organization
+###########################################################
+&make_data_links_by_config_var("email");
+
+###########################################################
+# Email Address Folder Organization
+###########################################################
+&make_data_links_by_config_var("session_user_id");
+
 ###############################################################################
 # Functions
 ###############################################################################
@@ -77,9 +91,10 @@ sub make_data_links_by_config_var {
 		$conf = new Config::General((-ConfigFile => $cfg[0],
 				-IncludeRelative => 1));
 		my %config = $conf->getall;
-
+		
 		my $abs_target = &File::Spec::Functions::rel2abs($_);
 		if (defined $config{$cfg_var}) {
+			$config{$cfg_var} =~ s/^\s+//;
 			mkpath("$target_folder/$config{$cfg_var}");
 			system("ln -s $abs_target $target_folder/$config{$cfg_var}");
 		} else {

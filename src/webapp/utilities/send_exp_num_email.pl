@@ -23,10 +23,14 @@ $find_results = `find /home/mbergins/Documents/Projects/focal_adhesions/trunk/da
 my @last_7_day_cfgs = split("\n",$find_results);
 my $cfg_count = scalar(@last_7_day_cfgs);
 
+my $image_count_line = `find /home/mbergins/Documents/Projects/focal_adhesions/trunk/data/ -iregex .*png.* | wc`;
+my @image_count = split(/\s+/,$image_count_line);
+my $total_images = $image_count[1];
+
 %emails = &get_email_addresses_and_counts(@last_7_day_cfgs);
 my @count_sort = sort {$emails{$b}{count} <=> $emails{$a}{count}} keys %emails;
 
-my $email_text = "";
+my $email_text = "In total $total_images images have been processed in $all_cfg_count experiments.\n\n";
 
 for (@count_sort) {
 	$stat = Statistics::Descriptive::Full->new();
