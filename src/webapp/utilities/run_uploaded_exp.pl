@@ -111,7 +111,9 @@ $oldest_data{results_folder} = rel2abs(catdir($dir_locations{results},basename($
 
 &setup_exp(%oldest_data);
 &run_processing_pipeline(%oldest_data);
-&build_vector_vis(%oldest_data);
+if (not $oldest_data{cfg}{static}) {
+	&build_vector_vis(%oldest_data);
+}
 $oldest_data{public_zip} = &zip_results_folder(%oldest_data);
 
 File::Path::rmtree($oldest_data{results_folder});
