@@ -23,7 +23,7 @@ use Config::Adhesions qw(ParseConfig);
 my %opt;
 $opt{debug} = 0;
 GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l", "exp_filter=s", "no_email",
-	"text|txt", "sync=s") or die;
+	"text|txt", "sync=s","static") or die;
 
 my $lsf_return = system("which bsub > /dev/null 2> /dev/null");
 
@@ -50,20 +50,20 @@ $|  = 1;
 #layer holds all of those commands with the appropriate directory to execute the
 #commands in.
 my @overall_command_seq = (
-	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_exp_min_max" ], ],
-	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_background_intensity" ], ],
-	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_cell_mask_full_exp" ], ],
-	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script apply_bleaching_correction" ], ],
-	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script find_exp_thresholds"], ],
-	[ [ "../find_cell_features",      "./run_matlab_over_field.pl -script register_with_nifty"], ],
-	[ [ "../find_cell_features",      "./collect_fa_image_set.pl" ], ],
-	[ [ "../find_cell_features",      "./collect_fa_properties.pl" ], ],
-	[ [ "../analyze_cell_features",   "./build_tracking_data.pl" ], ],
-	[ [ "../analyze_cell_features",   "./track_adhesions.pl" ], ],
-	[ [ "../analyze_cell_features",   "./gather_tracking_results.pl" ], ],
-	[ [ "../analyze_cell_features",   "./build_rate_models.pl" ], ],
-	[ [ "../analyze_cell_features",   "./build_alignment_models.pl" ], ],
-	[ [ "../visualize_cell_features", "./collect_visualizations.pl" ], ],
+	[ "../find_cell_features",      "./run_matlab_over_field.pl -script find_exp_min_max" ],
+	[ "../find_cell_features",      "./run_matlab_over_field.pl -script find_background_intensity" ],
+	[ "../find_cell_features",      "./run_matlab_over_field.pl -script find_cell_mask_full_exp" ],
+	[ "../find_cell_features",      "./run_matlab_over_field.pl -script apply_bleaching_correction" ],
+	[ "../find_cell_features",      "./run_matlab_over_field.pl -script find_exp_thresholds"],
+	[ "../find_cell_features",      "./run_matlab_over_field.pl -script register_with_nifty"],
+	[ "../find_cell_features",      "./collect_fa_image_set.pl" ],
+	[ "../find_cell_features",      "./collect_fa_properties.pl" ],
+	[ "../analyze_cell_features",   "./build_tracking_data.pl" ],
+	[ "../analyze_cell_features",   "./track_adhesions.pl" ],
+	[ "../analyze_cell_features",   "./gather_tracking_results.pl" ],
+	[ "../analyze_cell_features",   "./build_rate_models.pl" ],
+	[ "../analyze_cell_features",   "./build_alignment_models.pl" ],
+	[ "../visualize_cell_features", "./collect_visualizations.pl" ],
 	# [ [ "../find_cell_features",      "./run_matlab_over_field.pl -script ../visualize_cell_features/max_intent_project" ], ],
 );
 
@@ -87,6 +87,13 @@ if (exists($opt{exp_filter})) {
 }
 die "No config files left after filtering." if (scalar(@config_files) == 0);
 
+#removing commands past FA property collection
+if ($opt{static}) {
+	my @tracking_index = grep $overall_command_seq[$_]->[1] =~ /build_tracking/, 0..$#overall_command_seq;
+	
+	@overall_command_seq = @overall_command_seq[1..($tracking_index[0]-1)];
+}
+
 my @run_once_configs = $config_files[0];
 
 #######################################
@@ -99,7 +106,7 @@ for (@overall_command_seq) {
 	my $command_start_bench = new Benchmark;
 	my @command_seq = @{$_};
 	@command_seq = map { [ $_->[0], $_->[1] . " -lsf" ] } @command_seq if $opt{lsf};
-	print "Starting on $command_seq[0][1]\n";
+	print "Starting on $command_seq[1]\n";
 	if (grep $command_seq[0][1] =~ /$_/, @run_only_once) {
 		&execute_command_seq(\@command_seq, $starting_dir,\@run_once_configs);
 	} else {
@@ -191,44 +198,42 @@ sub execute_command_seq {
     my @these_config_files = @config_files;
     if (scalar(@_) > 2) {
         @these_config_files = @{$_[2]};
-    }
-	
-    foreach my $set (@command_seq) {
-        my $dir     = $set->[0];
-        my $command = $set->[1];
-        my $executed_scripts_count = 0;
-        foreach my $cfg_file (@these_config_files) {
-            my $config_command = "$command -cfg $cfg_file";
-            chdir $dir;
-            my $return_code = 0;
-			$executed_scripts_count++;
-			print "Done submitting: " if $executed_scripts_count == 1;
-            
-			if ($opt{debug}) {
-				# print "Working in directory: $dir\n";
-                print $config_command, "\n";
-            } else {
-                $return_code = system($config_command);
-				if ($return_code) {
-                	print "PROBLEM WITH: $config_command\n";
-					print "RETURN CODE: $return_code\n";
-				}
-				if ($executed_scripts_count % ceil(scalar(@these_config_files)/10) == 0) {
-					print sprintf('%.0f%% ',100*($executed_scripts_count/scalar(@these_config_files)));
-				}
-            }
-            chdir $starting_dir;
+	}
 
-            #if the return code was any number beside zero, indicating a problem
-            #with the program exit, remove that config file from the run and
-            #continue
-            if ($return_code) {
-				print "REMOVING: $cfg_file\n";
-                @config_files = grep $cfg_file ne $_, @config_files;
-            }
-        }
-		print "\n";
-    }
+	my $dir     = $command_seq[0];
+	my $command = $command_seq[1];
+	my $executed_scripts_count = 0;
+	foreach my $cfg_file (@these_config_files) {
+		my $config_command = "$command -cfg $cfg_file";
+		chdir $dir;
+		my $return_code = 0;
+		$executed_scripts_count++;
+		print "Done submitting: " if $executed_scripts_count == 1;
+
+		if ($opt{debug}) {
+			# print "Working in directory: $dir\n";
+			print $config_command, "\n";
+		} else {
+			$return_code = system($config_command);
+			if ($return_code) {
+				print "PROBLEM WITH: $config_command\n";
+				print "RETURN CODE: $return_code\n";
+			}
+			if ($executed_scripts_count % ceil(scalar(@these_config_files)/10) == 0) {
+				print sprintf('%.0f%% ',100*($executed_scripts_count/scalar(@these_config_files)));
+			}
+		}
+		chdir $starting_dir;
+
+		#if the return code was any number beside zero, indicating a problem
+		#with the program exit, remove that config file from the run and
+		#continue
+		if ($return_code) {
+			print "REMOVING: $cfg_file\n";
+			@config_files = grep $cfg_file ne $_, @config_files;
+		}
+	}
+	print "\n";
 }
 
 #######################################
