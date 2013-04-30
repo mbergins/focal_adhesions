@@ -23,7 +23,7 @@ use Config::Adhesions qw(ParseConfig);
 my %opt;
 $opt{debug} = 0;
 GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l", "exp_filter=s", "no_email",
-	"text|txt", "sync=s","static") or die;
+	"text|txt", "sync=s") or die;
 
 my $lsf_return = system("which bsub > /dev/null 2> /dev/null");
 
@@ -88,9 +88,8 @@ if (exists($opt{exp_filter})) {
 die "No config files left after filtering." if (scalar(@config_files) == 0);
 
 #removing commands past FA property collection
-if ($opt{static}) {
+if ($cfg{static}) {
 	my @tracking_index = grep $overall_command_seq[$_]->[1] =~ /build_tracking/, 0..$#overall_command_seq;
-	
 	@overall_command_seq = @overall_command_seq[1..($tracking_index[0]-1)];
 }
 
