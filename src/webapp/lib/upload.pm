@@ -16,6 +16,8 @@ use Config::General;
 use Data::Dumper;
 use Storable qw(lock_store lock_nstore lock_retrieve);
 use Time::localtime;
+use Archive::Extract;
+
 
 my $out_folder = catdir('..','uploaded_experiments');
 my $user_exp_info_file = '../user_exp_info.stor';
@@ -66,7 +68,8 @@ post '/upload' => sub {
 		$cfg{sub_date} = $date_str;
 
 		my @copy_if_defined = qw(stdev_thresh no_ad_splitting min_adhesion_size
-		max_adhesion_size email exp_note min_linear_model_length time_spacing);
+		max_adhesion_size email exp_note min_linear_model_length time_spacing
+		static);
 		foreach (@copy_if_defined) {
 			my $val = param $_;
 			if (defined $val && $val ne "") {
