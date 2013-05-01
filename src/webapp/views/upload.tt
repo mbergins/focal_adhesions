@@ -112,7 +112,6 @@
 						<!-- The Submit buttons -->
 						<div class="form-actions"> 
 							<button type="submit" class="btn btn-primary" onclick="submit_activity()">Submit Experiment</button> 
-							<button type="submit" class="btn btn-primary">Submit Experiment</button> 
 						</div> 
 					</fieldset>
 				</form>
