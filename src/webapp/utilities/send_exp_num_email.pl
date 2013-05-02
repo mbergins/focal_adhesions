@@ -27,10 +27,14 @@ my $image_count_line = `find /home/mbergins/Documents/Projects/focal_adhesions/t
 my @image_count = split(/\s+/,$image_count_line);
 my $total_images = $image_count[1];
 
+my $IP_count_line  = `grep -h ip /home/mbergins/Documents/Projects/focal_adhesions/trunk/data/*/*.cfg | sort | uniq | wc`;
+my @IP_count = split(/\s+/,$IP_count_line);
+my $total_IPs = $IP_count[1];
+
 %emails = &get_email_addresses_and_counts(@last_7_day_cfgs);
 my @count_sort = sort {$emails{$b}{count} <=> $emails{$a}{count}} keys %emails;
 
-my $email_text = "In total $total_images images have been processed in $all_cfg_count experiments.\n\n";
+my $email_text = "In total $total_images images have been processed in $all_cfg_count experiments from $total_IPs IP adresses.\n\n";
 
 for (@count_sort) {
 	$stat = Statistics::Descriptive::Full->new();
