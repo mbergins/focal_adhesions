@@ -1,5 +1,51 @@
-<!-- HEADER line -->
+<script type="text/javascript" src="http://jzaefferer.github.com/jquery-validation/jquery.validate.js"></script>
+<script>
+	var counter = 0;
+	function submit_activity() {
+		if ($("#upload_form").valid()) {
+			$("#upload_form_and_instructions").collapse('hide');
+			$("#upload_status").collapse('show');
+			$("#following_upload_instructions").collapse('show');
+
+			setInterval("count_up_working('upload_status','Uploading for ')", 1000); 
+		}
+	}
+
+	function count_up_working(id_name, status_text) {
+		document.getElementById(id_name).innerHTML = status_text + counter + " seconds.";
+		counter = counter + 1;
+	}
+
+	$(document).ready(function(){
+		$("#upload_form").validate({
+			rules: {
+				time_spacing: {
+					required: true,
+					min: 0
+				},
+				stdev_thresh: {
+					required: true,
+					min: 0.1
+				},
+				min_linear_model_length: {
+					required: true,
+					min: 5
+				},
+				min_adhesion_size: {
+					min: 0
+				},
+				max_adhesion_size: {
+					min: 1
+				},
+			},
+		});
+	});
+
+</script>
+
 <div class="container">
+	
+	<!-- HEADER line -->
 	<div class="page-header">
 		<div class="row">
 			<div class="span12">
@@ -10,14 +56,14 @@
 
 	<div class="row">
 		<div class="span12">
-			<div id="upload_form" class="collapse in">
+			<div id="upload_form_and_instructions" class="collapse in">
 				<form id="upload_form" class="form-horizontal" enctype="multipart/form-data" method="post">
 					<fieldset>
 						<h2>Required Files</h2>
 						<div class="control-group">
 							<label class="control-label" for="adhesion_file">FA Time-lapse</label>
 							<div class="controls">
-								<input type="file" name="adhesion_file" class="requried" />
+								<input type="file" name="adhesion_file" class="required" />
 								<span class="help-inline">TIFF formatted time-lapse image set of the focal adhesions</span> 
 							</div>
 						</div>
@@ -26,7 +72,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="time_spacing">Imaging Frequency (minutes)</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge required" value="1" name="time_spacing" />
+								<input type="text" class="input-xlarge" value="1" name="time_spacing" />
 								<span class="help-inline">Amount of time, in minutes, between the images</span> 
 							</div>
 						</div>
@@ -43,7 +89,6 @@
 							<label class="control-label" for="static">Only Calculate Static Properties</label>
 							<div class="controls">
 								<input type="checkbox" name="static" />
-								<!-- <span class="help-inline">Limit the properties to only static values</span>  -->
 							</div>
 						</div>
 
@@ -52,7 +97,6 @@
 							<label class="control-label" for="no_ad_splitting">Don't Split Adjacent Adhesions</label>
 							<div class="controls">
 								<input type="checkbox" name="no_ad_splitting" />
-								<!-- <span class="help-inline"></span>  -->
 							</div>
 						</div>
 						
@@ -95,7 +139,7 @@
 						<div class="control-group">
 							<label class="control-label" for="email">Email Address</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" name="email">
+								<input type="text" class="input-xlarge email" name="email">
 
 								<span class="help-inline">Your email address will only be used for notification purposes</span> 
 							</div>
@@ -189,8 +233,8 @@
 				Whatever you put in this box will be send back to you in any email the system
 				sends concerning your experiment. It is limited to 80 characters.
 			</div>
-			<div id="upload_running" class="collapse">Starting Upload</div>
-			<div id="upload_instructions" class="collapse">
+			<div id="upload_status" class="collapse">Starting Upload</div>
+			<div id="following_upload_instructions" class="collapse">
 				<p>
 				Monitoring your upload:
 				<ul>
@@ -203,5 +247,3 @@
 	</div>
 </div>
 </div>
-
-<script src="[% request.uri_base %]/javascripts/upload.js"></script>
