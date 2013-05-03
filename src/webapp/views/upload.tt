@@ -201,11 +201,11 @@
 				<p/><b>Min FA Phase Length:</b> When determining the assembly
 				and disassembly rates of the FAs in the image set, the analysis
 				methods use log-linear models to determine the value of the
-				rates. This setting specifies the minimum number of images that
-				the assembly and disassembly phases must be in order to attempt
-				to estimate the rates. Decreasing this value allows more
-				assembly and disassembly phases to be gathered, but at the cost
-				of those phases to potentially be built on fewer data points.
+				rates. This setting specifies the minimum number of data points
+				that will be included in the assembly and disassembly phases.
+				Decreasing this value allows more assembly and disassembly
+				phases to be gathered, but at the cost of those phases to
+				potentially be built on fewer data points.
 
 				<p/><b>Min/Max Adhesion Size:</b> These settings control the
 				minimum or maximum adhesion sizes allowed through the
