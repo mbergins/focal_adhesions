@@ -238,7 +238,7 @@
 				<p>
 				Monitoring your upload:
 				<ul>
-					<li>Google Chrome: Look in the lower left hand corner, you should see a percentage of how much of your upload has finished.</li>
+					<li>Google Chrome: In the lower left hand corner, you should see a percentage of how much of your upload has finished.</li>
 					<li>Firefox: In the tabs bar, there will be a rotating indicator and in the lower left hand corner a note about "Sending request to ..."</li>
 					<li>Internet Explorer: In the tabs bar, there will be a rotating indicator</li>
 				</ul>
