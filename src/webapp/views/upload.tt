@@ -131,7 +131,7 @@
 							<label class="control-label" for="cell_mask_file">Cell Mask</label>
 							<div class="controls">
 								<input type="file" name="cell_mask_file" />
-								<span class="help-inline">TIFF formatted image to use to find the edge of the cell</span> 
+								<span class="help-inline">TIFF formatted image to used to find the edge of the cell</span> 
 							</div>
 						</div>
 							
