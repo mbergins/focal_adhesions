@@ -75,23 +75,23 @@ plot_ad_seq <- function (results,index,type='assembly',log.trans = TRUE, time.sp
 	}
 }
 
-plot_ad_intensity <- function (results,index,phase_lengths,R_sq,y_limits,slope,time.spacing=1, ...) {
+plot_ad_intensity <- function (results,FA_number,phase_lengths,R_sq,y_limits,slope,time.spacing=1, ...) {
     
     #pull out the intensity signal of interest and build the time vector for
     #plotting
-	ad_seq = as.vector(results$exp_data[index,])
+	ad_seq = as.vector(results$exp_data[FA_number,])
     time_points = which(!is.nan(ad_seq))*time.spacing - time.spacing
     ad_seq = na.omit(ad_seq)
     
     plot(time_points, ad_seq, xlab='Time (minutes)', ylab='Average Intensity',type="o", 
-        main=index,ylim=y_limits);
+        main=FA_number,ylim=y_limits);
     
     #add bars at the first point of the movie and the last, to indicate why a
     #slope value wasn't calculated
     plot_limits = par("usr")
     segments(0,par("usr")[3],0,par("usr")[4])
-    segments((length(results$exp_data[index,])-1)*time.spacing,par("usr")[3],
-        (length(results$exp_data[index,])-1)*time.spacing,par("usr")[4])
+    segments((length(results$exp_data[FA_number,])-1)*time.spacing,par("usr")[3],
+        (length(results$exp_data[FA_number,])-1)*time.spacing,par("usr")[4])
     
     if (is.finite(phase_lengths[1])) {
         assemb_time = time_points[1:phase_lengths[1]]

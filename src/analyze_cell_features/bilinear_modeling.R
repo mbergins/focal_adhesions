@@ -5,113 +5,79 @@
 build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacing=1,
     diagnostic.figure = NA) {
     
-    #get a blank result to make sure we can add the proper number of blank
-    #entries for adhesions which dont meet analysis criteria
-    sample_model_results = fit_all_possible_log_models(list(values = 1:10,time = 1:10));
-    
     models = list()
     
-    start_elapse = proc.time()[3];
+    FA_longevity = rowSums(is.finite(data));
+    meets_longev = FA_longevity >= 2*min.phase.length;
 
-    for (i in 1:dim(data)[1]) {
-        #assembly rate gathering
-        only.data = na.omit(data[i,]);
-        time.series = list(value=only.data,
-            time=seq(0,along.with=only.data,by=time.spacing));
-        if (! is.finite(data[i,1]) && 
-            ! exp_props$split_birth_status[i] && 
-            length(only.data) >= (2*min.phase.length)) {
+    birth_filter = is.nan(data[,1]) & ! as.logical(exp_props$split_birth_status) & meets_longev; 
+    
+    death_filter = is.nan(data[,dim(data)[2]]) & as.logical(exp_props$death_status) & meets_longev; 
+    
+    stability_filter = birth_filter & death_filter;
+    
+    lineages_to_analyze = which(birth_filter | death_filter);
+    
+    for (FA_number in lineages_to_analyze) {
+        #find the models where the birth or death filter properties are met
+        if (birth_filter[FA_number]) {
+            only.data = na.omit(data[FA_number,]);
+            time.series = list(value=only.data,
+                time=seq(0,along.with=only.data,by=time.spacing));
 
             assembly_model_results = fit_all_possible_log_models(time.series, 
                 min.phase.length=min.phase.length);
-        } else {
-            assembly_model_results = rep(NA,dim(sample_model_results)[2]);
-            names(assembly_model_results) <- names(sample_model_results);
         }
+        if (death_filter[FA_number]) {
+            only.data.reverse = na.omit(rev(data[FA_number,]));
+            time.series.reverse = list(value=only.data.reverse,
+                time=seq(0,along.with=only.data.reverse,by=time.spacing));
 
-        #disassembly rate gathering
-        data.reverse = rev(data[i,]);
-        only.data.reverse = na.omit(data.reverse);
-        time.series.reverse = list(value=only.data.reverse,
-            time=seq(0,along.with=only.data.reverse,by=time.spacing));
-
-        if (! is.finite(data.reverse[1]) && 
-            exp_props$death_status[i] && 
-            length(only.data.reverse) >= (2*min.phase.length)) {
- 
             disassembly_model_results = fit_all_possible_log_models(time.series.reverse, 
                 min.phase.length=min.phase.length);
-        } else {
-            disassembly_model_results = rep(NA,dim(sample_model_results)[2]);
-            names(disassembly_model_results) <- names(sample_model_results);
         }
         
-        # if (is.na(assembly_model_results[1])) browser()
-        
-        # now to determine the best model fits, if either model set is all NA's,
-        # that means that models were not built, so we pass along the appropriate
-        # set to the best model determination function
-        if (all(is.na(assembly_model_results)) && all(is.na(disassembly_model_results))) {
-            best_assembly_model = assembly_model_results;
-            best_disassembly_model = disassembly_model_results;
-        } else if (all(is.na(assembly_model_results))) {
-            best_assembly_model = assembly_model_results;
-           
-            best_indexes = find_optimum_model_indexes(disassembly=disassembly_model_results);
-            best_disassembly_model = disassembly_model_results[best_indexes[2],];
-        } else if (all(is.na(disassembly_model_results))) {
-            best_disassembly_model = disassembly_model_results;
-            
-            best_indexes = find_optimum_model_indexes(assembly=assembly_model_results);
-            best_assembly_model = assembly_model_results[best_indexes[1],];
-        } else {
-            best_indexes = find_optimum_model_indexes(assembly=assembly_model_results, 
-                disassembly=disassembly_model_results);
+        #find the best models
+        if (birth_filter[FA_number] && death_filter[FA_number]) {
+            best_indexes = find_optimum_model_indexes(assembly_model_results,disassembly_model_results);
             
             best_assembly_model = assembly_model_results[best_indexes[1],];
-            best_disassembly_model = disassembly_model_results[best_indexes[2],];
-        }
-
-        models$assembly = rbind(models$assembly, best_assembly_model);
-        models$disassembly = rbind(models$disassembly, best_disassembly_model);
-        
-        if (i %% round(dim(data)[1]/10) == 0) {
-            current_elapse = proc.time()[3];
-            elapsed_time = current_elapse - start_elapse;
+            best_assembly_model$FA_number = FA_number;
+            models$assembly = rbind(models$assembly, best_assembly_model);
             
-            time_left = round(elapsed_time*((dim(data)[1]-i)/i))
+            best_disassembly_model = disassembly_model_results[best_indexes[2],];
+            best_disassembly_model$FA_number = FA_number;
+            models$disassembly = rbind(models$disassembly, best_disassembly_model);
 
-            print(paste('Done with ', i, '/', dim(data)[1], ' adhesions (', 
-                round(100*(i/dim(data)[1])), '%) ', time_left, ' seconds left',sep=''))
+            stability_model = find_stability_properties(time.series,best_assembly_model,best_disassembly_model);
+            stability_model$FA_number = FA_number;
+            models$stability = rbind(models$stability, stability_model);
+        } else if (birth_filter[FA_number]) {
+            best_indexes = find_optimum_model_indexes(assembly=assembly_model_results,disassembly=NULL);
+            
+            best_assembly_model = assembly_model_results[best_indexes[1],];
+            best_assembly_model$FA_number = FA_number;
+            models$assembly = rbind(models$assembly, best_assembly_model);
+        } else if (death_filter[FA_number]) {
+            best_indexes = find_optimum_model_indexes(assembly=NULL,disassembly=disassembly_model_results);
+            
+            best_disassembly_model = disassembly_model_results[best_indexes[2],];
+            best_disassembly_model$FA_number = FA_number;
+            models$disassembly = rbind(models$disassembly, best_disassembly_model);
         }
     }
-
+    
     models$assembly = as.data.frame(models$assembly);
     models$disassembly = as.data.frame(models$disassembly);
+    models$stability = as.data.frame(models$stability);
     models$exp_data = data;
+    models$exp_props = exp_props;
     
     print(paste('Built ', length(which(!is.na(models$assembly$slope))), 
         ' assembly models, built ', length(which(!is.na(models$disassembly$slope))), 
         ' disassembly models',sep=''))
 
     return(models)
-}
-
-draw_diagnostic_traces <- function(models,file.name,time.spacing=1) {
-    ad_nums = sort(union(which(!is.na(models$assembly$slope)),
-        which(!is.na(models$disassembly$slope))));
-    
-    y_limits = c(min(models$assembly$min,models$disassembly$min,na.rm=T),
-        max(models$assembly$max,models$disassembly$max,na.rm=T));
-
-    pdf(file.name)
-    for (i in ad_nums) {
-        phase_lengths = c(models$assembly$image_count[i],models$disassembly$image_count[i])
-        R_sq = c(models$assembly$adj.r.squared[i],models$disassembly$adj.r.squared[i])
-        slopes = c(models$assembly$slope[i],models$disassembly$slope[i])
-        plot_ad_intensity(models,i,phase_lengths,R_sq,y_limits,slopes,time.spacing);
-    }
-    graphics.off()
 }
 
 fit_all_possible_log_models <- function(time.series,min.phase.length=10) {
@@ -128,6 +94,7 @@ fit_all_possible_log_models <- function(time.series,min.phase.length=10) {
         model_summary = summary(this_model);
         
         data_summary$adj.r.squared = c(data_summary$adj.r.squared, model_summary$adj.r.squared);
+        data_summary$r.squared = c(data_summary$r.squared, model_summary$r.squared);
         data_summary$p.value = c(data_summary$p.value, model_summary$coefficients[2,4]);
         data_summary$slope = c(data_summary$slope, coef(this_model)[2]);
         data_summary$time_length = c(data_summary$time_length, time.series$time[i]);
@@ -139,11 +106,7 @@ fit_all_possible_log_models <- function(time.series,min.phase.length=10) {
 
 find_optimum_model_indexes <- function(assembly=NULL,disassembly=NULL) {
     best_fit_indexes = c(NA, NA);
-    
-    if (is.null(disassembly) && is.null(assembly)) {
-        return(best_fit_indexes);
-    }
-
+   
     if (is.null(disassembly)) {
         best_index = min(which(assembly$adj.r.squared == max(assembly$adj.r.squared)))
         best_fit_indexes[1] = best_index
@@ -182,7 +145,65 @@ find_optimum_model_indexes <- function(assembly=NULL,disassembly=NULL) {
         }
     }
 
-    best_fit_indexes
+    return(best_fit_indexes);
+}
+
+find_stability_properties <- function(time.series,best_assembly,best_disassembly) {
+    stability_props = list();
+    stability_props$image_count = length(time.series$value) - 
+        best_assembly$image_count - 
+        best_disassembly$image_count;
+    
+    # If there aren't any images included in the stability phase, then we can't
+    # calculate these variables, so set them as NA. They will be reset if there
+    # is a stability phase.
+    stability_props$mean_intensity = NA;
+    stability_props$mean_fold_change = NA;
+
+    if (length(stability_props$image_count >= 1)) {
+        stability_indexes = seq(best_assembly$image_count+1, length=stability_props$image_count);
+        stability_values = time.series$value[stability_indexes];
+        stability_fold_change = stability_values/mean(c(time.series$value[1],tail(time.series$value,n=1)));
+        stability_props$mean_intensity = mean(stability_values);
+        stability_props$mean_fold_change = mean(stability_fold_change);
+    }
+    
+    stability_props = as.data.frame(stability_props);
+    return(stability_props);
+}
+
+###########################################################
+# Plotting
+###########################################################
+
+draw_diagnostic_traces <- function(models,file.name,time.spacing=1) {
+    ad_nums = sort(union(models$assembly$FA_number,models$disassembly$FA_number));
+    
+    y_limits = c(min(models$assembly$min,models$disassembly$min,na.rm=T),
+        max(models$assembly$max,models$disassembly$max,na.rm=T));
+
+    pdf(file.name)
+    for (this_FA_num in ad_nums) {
+        phase_lengths = c(NA,NA);
+        R_sq = c(NA,NA);
+        slopes = c(NA,NA);
+
+        if (any(this_FA_num == models$assembly$FA_number)) {
+            this_assemb = subset(models$assembly, FA_number == this_FA_num);
+            phase_lengths[1] = this_assemb$image_count;
+            R_sq[1] = this_assemb$r.squared;
+            slopes[1] = this_assemb$slope;
+        }
+        if (any(this_FA_num == models$disassembly$FA_number)) {
+            this_disassemb = subset(models$disassembly, FA_number == this_FA_num);
+            phase_lengths[2] = this_disassemb$image_count;
+            R_sq[2] = this_disassemb$r.squared;
+            slopes[2] = this_disassemb$slope;
+        }
+            
+        plot_ad_intensity(models,this_FA_num,phase_lengths,R_sq,y_limits,slopes,time.spacing);
+    }
+    graphics.off()
 }
 
 produce_rate_filters <- function(single.exp.data, model_count, min.r.sq=-Inf, 
@@ -272,24 +293,72 @@ find_number_of_models <- function(model_set) {
     return(count)
 }
 
-write_assembly_disassembly_periods <- function(result, dir) {
+write_assembly_disassembly_periods <- function(ad_kinetics, dir) {
 	if (! file.exists(dir)) {
 		dir.create(dir,recursive=TRUE)
 	}
 	
-    rate_filters = produce_rate_filters(result,NA);
+    just_assemb = subset(ad_kinetics,class=="Assembly");
+    rows_and_length = cbind(just_assemb$FA_number,just_assemb$image_count);
+    write.table(rows_and_length,file=file.path(dir,'assembly_rows_lengths.csv'), 
+                sep=',', row.names=FALSE, col.names=FALSE)
     
-	ad_nums = which(rate_filters$assembly)
-	if (! is.null(ad_nums)) {
-		rows_and_length = cbind(ad_nums, result$assembly$image_count[ad_nums]);
-		write.table(rows_and_length,file=file.path(dir,'assembly_rows_lengths.csv'), sep=',', row.names=FALSE, col.names=FALSE)
-	}
-	
-	ad_nums = which(rate_filters$disassembly)
-	if (! is.null(ad_nums)) {
-		rows_and_length = cbind(ad_nums, result$disassembly$image_count[ad_nums]);
-		write.table(rows_and_length,file=file.path(dir,'disassembly_rows_lengths.csv'), sep=',', row.names=FALSE, col.names=FALSE)
-	}
+    just_dis = subset(ad_kinetics,class=="Disassembly");
+    rows_and_length = cbind(just_dis$FA_number,just_dis$image_count);
+    write.table(rows_and_length,file=file.path(dir,'disassembly_rows_lengths.csv'), 
+                sep=',', row.names=FALSE, col.names=FALSE)
+}
+
+produce_simple_CSV_output_set <- function(models,time_spacing) {
+    output_properties = c('class','FA_number','slope','p.value','r.squared',
+                          'adj.r.squared','image_count');
+
+    #Assembly Models Extraction
+    assembly_models = models$assembly;
+    assembly_models$class = rep('Assembly',dim(assembly_models)[1]);
+    assembly_adhesions = subset(assembly_models, 
+                                !is.na(p.value) & p.value < 0.05 & slope > 0, 
+                                select = output_properties);
+    assembly_adhesions$slope = round(assembly_adhesions$slope,4);
+    assembly_adhesions$adj.r.squared = round(assembly_adhesions$adj.r.squared,3);
+    # assembly_adhesions$phase_length = assembly_adhesions$image_count * time_spacing;
+    # assembly_adhesions$image_count <- NULL;
+
+    #Disassembly Models Extraction
+    disassembly_models = models$disassembly;
+    disassembly_models$class = rep('Disassembly',dim(disassembly_models)[1]);
+    disassembly_adhesions = subset(disassembly_models, 
+                                   !is.na(p.value) & p.value < 0.05 & slope > 0, 
+                                   select = output_properties);
+    disassembly_adhesions$slope = round(disassembly_adhesions$slope,4);
+    disassembly_adhesions$adj.r.squared = round(disassembly_adhesions$adj.r.squared,3);
+    # disassembly_adhesions$phase_length = disassembly_adhesions$image_count * time_spacing;
+    # disassembly_adhesions$image_count <- NULL;
+        
+    #Stability Data Set Extraction
+    valid_stability_nums = intersect(assembly_adhesions$FA_number,disassembly_adhesions$FA_number);
+    stability_adhesions = models$stability[match(valid_stability_nums,models$stability$FA_number),];
+    stability_adhesions_full_data = stability_adhesions;
+    
+    stability_adhesions$mean_intensity <- NULL;
+    stability_adhesions$mean_fold_change <- NULL;
+    stability_adhesions$class = rep('Stability',length(valid_stability_nums));
+
+    for (prop in output_properties) {
+        if (! any(names(stability_adhesions) == prop)) {
+            stability_adhesions[[prop]] = rep(NA,length(valid_stability_nums));
+        }
+    }
+    
+    stability_adhesions = stability_adhesions[names(assembly_adhesions)];
+
+    output_sets = list();
+    output_sets$ad_kinetics = rbind(assembly_adhesions,disassembly_adhesions,stability_adhesions);
+    output_sets$ad_kinetics$phase_length = output_sets$ad_kinetics$image_count * time_spacing;
+
+    output_sets$stability_props = stability_adhesions_full_data;
+    
+    return(output_sets);
 }
 
 ################################################################################
@@ -315,14 +384,14 @@ if (length(args) != 0) {
 	
     class(min_length) <- "numeric";
     class(time_spacing) <- "numeric";
-    if (exists('data_dir') & exists('model_file')) {
+    if (exists('data_dir') & exists('data_file')) {
         #######################################################################
         # Reading in data files
         #######################################################################
-        if (file.exists(file.path(data_dir,'lin_time_series',model_file))) {
-            data_set = as.matrix(read.csv(file.path(data_dir,'lin_time_series',model_file),header=F));
+        if (file.exists(file.path(data_dir,'lin_time_series',data_file))) {
+            data_set = as.matrix(read.csv(file.path(data_dir,'lin_time_series',data_file),header=F));
         } else {
-            print(paste('Could not find model data file: ', file.path(data_dir,'lin_time_series',model_file)))
+            print(paste('Could not find data file: ', file.path(data_dir,'lin_time_series',data_file)))
             stop()
         }
 
@@ -346,70 +415,28 @@ if (length(args) != 0) {
         #######################################################################
         # Model Building and Output
         #######################################################################
-        model = build_bilinear_models(data_set,exp_props, min.phase.length = min_length, 
+        models = build_bilinear_models(data_set,exp_props, min.phase.length = min_length, 
             time.spacing = time_spacing);
-        model$exp_props = exp_props;
-        model$exp_dir = data_dir;
-        model$exp_data = data_set;
+        models$exp_dir = data_dir;
+
+		R_models_file = sub("\\..*",".Rdata",data_file,perl=T)
+        output_file = file.path(output_folder,R_models_file);
+        save(models,file = output_file)
         
-		R_model_file = sub("\\..*",".Rdata",model_file,perl=T)
-        output_file = file.path(output_folder,R_model_file);
-        save(model,file = output_file)
-        
-        diagnostic_diagrams_file = sub("\\..*",".pdf",model_file,perl=T)
+        diagnostic_diagrams_file = sub("\\..*",".pdf",data_file,perl=T)
 		output_file = file.path(output_folder,diagnostic_diagrams_file);
         source('FA_analysis_lib.R')
-        draw_diagnostic_traces(model,output_file,time.spacing=time_spacing);
+        draw_diagnostic_traces(models,output_file,time.spacing=time_spacing);
         
         #######################################################################
         # Simple CSV File Output
         #######################################################################
-        
-        #Assembly Models Extraction
-        assembly_models = model$assembly;
-        assembly_models$ad_num = seq(1,dim(assembly_models)[1]);
-        assembly_models$class = rep('Assembly',dim(assembly_models)[1]);
-        assembly_adhesions = subset(assembly_models, 
-            !is.na(p.value) & p.value < 0.05 & slope > 0, 
-            select = c('class','ad_num','slope','p.value','adj.r.squared','image_count'));
-        assembly_adhesions$slope = round(assembly_adhesions$slope,4);
-        assembly_adhesions$adj.r.squared = round(assembly_adhesions$adj.r.squared,3);
-        assembly_adhesions$phase_length = assembly_adhesions$image_count * time_spacing;
-        assembly_adhesions$image_count <- NULL;
-
-        #Disassembly Models Extraction
-        disassembly_models = model$disassembly;
-        disassembly_models$ad_num = seq(1,dim(disassembly_models)[1]);
-        disassembly_models$class = rep('Disassembly',dim(disassembly_models)[1]);
-        disassembly_adhesions = subset(disassembly_models, 
-            !is.na(p.value) & p.value < 0.05 & slope > 0, 
-            select = c('class','ad_num','slope','p.value','adj.r.squared','image_count'));
-        disassembly_adhesions$slope = round(disassembly_adhesions$slope,4);
-        disassembly_adhesions$adj.r.squared = round(disassembly_adhesions$adj.r.squared,3);
-        disassembly_adhesions$phase_length = disassembly_adhesions$image_count * time_spacing;
-        disassembly_adhesions$image_count <- NULL;
-        
-        #Stability Data Set Extraction
-        stability_FA_nums = intersect(assembly_adhesions$ad_num,disassembly_adhesions$ad_num);
-        stability_adhesions = list(class=rep('Stabilty',length(stability_FA_nums)),
-                                 ad_num=stability_FA_nums,
-                                 slope = rep(NA,length(stability_FA_nums)),
-                                 p.value = rep(NA,length(stability_FA_nums)),
-                                 adj.r.squared = rep(NA,length(stability_FA_nums)),
-                                 image_count = rep(NA,length(stability_FA_nums)))
-        data_set_longevities = rowSums(!is.na(data_set));
-        for (i in 1:length(stability_FA_nums)) {
-            ad_num = stability_FA_nums[i];
-            stability_adhesions$image_count[i] = data_set_longevities[ad_num] - 
-                model$assembly$image_count[ad_num] - 
-                model$disassembly$image_count[ad_num];
+        output_sets = produce_simple_CSV_output_set(models,1)
+        for (output_type in names(output_sets)) {
+            write.csv(output_sets[[output_type]],
+                file=file.path(data_dir,paste0(output_type,'.csv')),row.names=F)
         }
-        stability_adhesions$phase_length = stability_adhesions$image_count * time_spacing;
-        stability_adhesions$image_count <- NULL;
 
-        write.csv(rbind(assembly_adhesions,disassembly_adhesions,stability_adhesions),
-            file=file.path(data_dir,'ad_kinetics.csv'),row.names=F)
-
-        write_assembly_disassembly_periods(model,data_dir);
+        write_assembly_disassembly_periods(output_sets$ad_kinetics,data_dir);
     }
 }

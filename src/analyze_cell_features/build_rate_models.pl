@@ -27,7 +27,7 @@ $| = 1;
 
 my %opt;
 $opt{debug} = 0;
-GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l", "model_file=s")
+GetOptions(\%opt, "cfg|c=s", "debug|d", "lsf|l", "data_file=s")
   or die;
 
 die "Can't find cfg file specified on the command line" if not exists $opt{cfg};
@@ -38,16 +38,16 @@ my %cfg = ParseConfig(\%opt);
 ################################################################################
 # Main Program
 ################################################################################
-my @model_files = qw(Average_adhesion_signal.csv Average_adhesion_signal.csv.gz);
+my @data_files = qw(Average_adhesion_signal.csv Average_adhesion_signal.csv.gz);
 if ($opt{lsf}) {
     my @commands;
-    foreach (@model_files) {
+    foreach (@data_files) {
         #$0 - the name of the program currently running, used to protect against
         #future file name changes
-        push @commands, "$0 -cfg $opt{cfg} -model_file $_";
+        push @commands, "$0 -cfg $opt{cfg} -data_file $_";
     }
     
-    $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'R_models');
+    $opt{error_folder} = catdir($cfg{exp_results_folder}, $cfg{errors_folder}, 'build_rate_models');
     if (defined $cfg{job_group}) {
         $opt{job_group} = $cfg{job_group};
     }
@@ -65,29 +65,29 @@ if (! -e $output_base) {
 }
 
 my @R_cmds;
-if (defined($opt{model_file})) {
-	my $this_model_file = catfile($data_dir,'lin_time_series',$cfg{model_file});
-	if (not -e $this_model_file) {
-		warn "Could not find file for $cfg{model_file} ($this_model_file), skipping";
+if (defined($opt{data_file})) {
+	my $this_data_file = catfile($data_dir,'lin_time_series',$cfg{data_file});
+	if (not -e $this_data_file) {
+		warn "Could not find file for $cfg{data_file} ($this_data_file), skipping";
 		next;
 	}
-	my $output_file = catfile($output_base, 'R_out_' . $opt{model_file} . '.txt');
+	my $output_file = catfile($output_base, 'R_out_' . $opt{data_file} . '.txt');
 	push @R_cmds, "R CMD BATCH --vanilla \"--args data_dir=$data_dir " .
-	  "model_file=$opt{model_file} time_spacing=$cfg{time_spacing}  " . 
+	  "data_file=$opt{data_file} time_spacing=$cfg{time_spacing}  " . 
 	  "min_length=$cfg{min_linear_model_length}\" " . 
 	  "bilinear_modeling.R $output_file";
 } else {
-	for (@model_files) {
-		my $this_model_file = catfile($data_dir,'lin_time_series',$_);
+	for (@data_files) {
+		my $this_data_file = catfile($data_dir,'lin_time_series',$_);
 
-		if (not -e $this_model_file) {
-			# warn "Could not find file for $_ ($this_model_file), skipping";
+		if (not -e $this_data_file) {
+			# warn "Could not find file for $_ ($this_data_file), skipping";
 			next;
 		}
 
 		my $output_file = catfile($output_base, 'R_out_' . $_ . '.txt');
 		push @R_cmds, "R CMD BATCH --vanilla \"--args data_dir=$data_dir " .
-		  "model_file=$_ time_spacing=$cfg{time_spacing} " .  
+		  "data_file=$_ time_spacing=$cfg{time_spacing} " .  
 		  "min_length=$cfg{min_linear_model_length}\" " . 
 		  "bilinear_modeling.R $output_file";
 	}
@@ -129,7 +129,7 @@ bilinear_modeling.R. The R program takes three command line options:
 =over
 
 =item * data_dir - the location of the lineage time series files
-=item * model_file - the file with the data that will be used to build the model
+=item * data_file - the file with the data that will be used to build the model
 =item * debug - turns on debuging mode (optional)
 
 =back
