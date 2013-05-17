@@ -6,10 +6,6 @@ should see three folders:
 	-data: used to hold the raw imaging data, along with config files
 	controlling the options used for processing are stored here
 	
-	-doc: in here you will find a pdf document going into more depth on how
-	the series of programs that make up the pipeline are arranged and what each
-	program is responsible for
-
 	-src: all the source code that processes the images and conducts the
 	statistical analysis is in this folder
 
