@@ -1,2 +1,4 @@
 results
 doc
+data/*
+!data/config
