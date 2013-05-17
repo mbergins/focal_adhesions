@@ -10,7 +10,7 @@ should see three folders:
 	statistical analysis is in this folder
 
 
-Pre-requisites:
+Prerequisites:
 
 In addition to the programs in the src folder, I also expect that you have
 working installations of MATLAB and R. You will also need to download and put in
