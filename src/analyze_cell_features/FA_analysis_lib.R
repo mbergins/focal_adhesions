@@ -359,14 +359,27 @@ boxplot.fancy <- function(data,names=seq(1,length(data),by=1),
     }
 }
 
-plot_fancy_barplot <- function(data_sets,...) {
+plot_fancy_barplot <- function(data_sets,padj=0.5,...) {
     library(Hmisc)
 
     means = unlist(lapply(data_sets, mean, na.rm=T))
     y_plus = unlist(lapply(data_sets,function(x)t.test(x)$conf.int[2]))
     y_minus = unlist(lapply(data_sets,function(x)t.test(x)$conf.int[1]))
     
-    bar_data = barplot(means,ylim=c(0,max(y_plus*1.01)),...)
+    names(means) <- NULL;
+
+    labels_with_n = c();
+    for (data_type in names(data_sets)) {
+        labels_with_n = c(labels_with_n,
+                          paste0(data_type,'\n(n=',length(data_sets[[data_type]]),')'));
+    }
+    
+    bar_data = barplot(means,ylim=c(0,max(y_plus*1.01)),axes=F,...);
+    #add y-axis label
+    axis(2);
+
+    axis(1,at=bar_data,labels=labels_with_n,tick=F,padj=padj);
+
     errbar(bar_data,means,y_plus,y_minus,add=T,cex=1E-10,lwd=2,cap=0.3/length(data_sets))
 
     return(bar_data)
@@ -1649,6 +1662,16 @@ load_data_files <- function(dirs, files, headers = FALSE, inc_exp_names = TRUE, 
 		results = results[[1]]
 	}
 	results
+}
+
+load_data_from_csv_files <-function(csv_files) {
+    all_data = list()
+
+    for (file in csv_files) {
+        all_data = rbind(all_data,read.csv(file));
+    }
+
+    return(all_data);
 }
 
 output_phase_lengths_from_filtered <- function(signif_data,raw_data, dirs = NA) {
