@@ -2,3 +2,7 @@ results
 doc
 data/*
 !data/config
+src/webapp/logs
+src/webapp/sessions
+src/webapp/utilities/*.run
+src/webapp/public/threshold_testing
