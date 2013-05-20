@@ -2,7 +2,15 @@ results
 doc
 data/*
 !data/config
+
 src/webapp/logs
 src/webapp/sessions
 src/webapp/utilities/*.run
 src/webapp/public/threshold_testing
+src/webapp/public/google7a0bac1a9d63b882.html
+src/webapp/public/sample/
+src/webapp/public/software/
+src/webapp/user_exp_info.stor
+src/webapp/user_login.stor
+src/webapp/utilities/data_by_*
+src/webapp/utilities/results_by_*

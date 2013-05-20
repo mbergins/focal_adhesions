@@ -23,7 +23,7 @@ my %search_targets = (
 # Main
 ###############################################################################
 
-my $find_results = `find /home/mbergins/Documents/Projects/focal_adhesions/trunk/data/FAAS_*/*.cfg`;
+my $find_results = `find /home/mbergins/Documents/Projects/focal_adhesions/data/FAAS_*/*.cfg`;
 my @cfgs = split("\n",$find_results);
 
 my @cfg_hits;
@@ -46,8 +46,8 @@ if ($opt{debug}) {
 	die;
 }
 
-my $data_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/data/";
-my $processing_results_dir = "/home/mbergins/Documents/Projects/focal_adhesions/trunk/results/";
+my $data_dir = "/home/mbergins/Documents/Projects/focal_adhesions/data/";
+my $processing_results_dir = "/home/mbergins/Documents/Projects/focal_adhesions/results/";
 my $results_dir = "../public/results/";
 
 my $file_list;
