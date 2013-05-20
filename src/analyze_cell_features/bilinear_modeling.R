@@ -159,6 +159,8 @@ find_stability_properties <- function(time.series,best_assembly,best_disassembly
     # is a stability phase.
     stability_props$mean_intensity = NA;
     stability_props$mean_fold_change = NA;
+    stability_props$stdev = NA;
+    stability_props$coeff_of_var = NA;
 
     if (length(stability_props$image_count >= 1)) {
         stability_indexes = seq(best_assembly$image_count+1, length=stability_props$image_count);
@@ -166,6 +168,8 @@ find_stability_properties <- function(time.series,best_assembly,best_disassembly
         stability_fold_change = stability_values/mean(c(time.series$value[1],tail(time.series$value,n=1)));
         stability_props$mean_intensity = mean(stability_values);
         stability_props$mean_fold_change = mean(stability_fold_change);
+        stability_props$stdev = sd(stability_fold_change);
+        stability_props$coeff_of_var = stability_props$stdev/stability_props$mean_fold_change;
     }
     
     stability_props = as.data.frame(stability_props);
@@ -339,7 +343,7 @@ produce_simple_CSV_output_set <- function(models,time_spacing) {
     valid_stability_nums = intersect(assembly_adhesions$FA_number,disassembly_adhesions$FA_number);
     stability_adhesions = models$stability[match(valid_stability_nums,models$stability$FA_number),];
     stability_adhesions_full_data = stability_adhesions;
-    
+
     stability_adhesions$mean_intensity <- NULL;
     stability_adhesions$mean_fold_change <- NULL;
     stability_adhesions$class = rep('Stability',length(valid_stability_nums));
