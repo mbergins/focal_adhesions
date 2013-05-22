@@ -169,6 +169,14 @@ for i_num = 1:length(image_folders)
     
     out_file = fullfile(out_folder,sprintf('%05d.png',i_num));
     imwrite(composite_image,out_file);
+
+    out_folder = fullfile(exp_dir,'visualizations','normalized_images');
+    if (not(exist(out_folder,'dir')))
+        mkdir(out_folder);
+    end
+    
+    out_file = fullfile(out_folder,sprintf('%05d.png',i_num));
+    imwrite(orig_i,out_file);
     
     if (i_p.Results.debug)
         disp(['Done with ', num2str(i_num), '/',num2str(length(image_folders))]);
