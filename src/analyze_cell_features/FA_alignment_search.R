@@ -709,10 +709,15 @@ if (length(args) != 0) {
     class(fixed_best_angle) <- "numeric";
     if (exists('time_series_dir')) {
         start_time = proc.time();
-        temp = gather_FA_orientation_data(time_series_dir,
+        FA_orientation_data = gather_FA_orientation_data(time_series_dir,
             fixed_best_angle = fixed_best_angle, min.ratio=min.ratio, 
             diagnostic.figure=T);
         end_time = proc.time();
+        
+        write.table(t(FA_orientation_data$corrected_orientation),
+                  file.path(time_series_dir,'..','FAAI_angles.csv'),
+                  row.names=F,col.names=F,sep=',');
+
         print(paste('FA Orientation Runtime:',(end_time - start_time)[3]))
         
         # start_time = proc.time();
