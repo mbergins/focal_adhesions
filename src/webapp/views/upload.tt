@@ -37,6 +37,9 @@
 				max_adhesion_size: {
 					min: 1
 				},
+				FAAI_min_ratio: {
+					min: 1.1
+				},
 			},
 		});
 	});
@@ -122,6 +125,15 @@
 							<div class="controls">
 								<input type="text" class="input-xlarge" value="" name="max_adhesion_size" >
 								<span class="help-inline">Leave blank to remove the maximum adhesion size limit</span> 
+							</div>
+						</div>
+						
+						<h3>FAAI Options</h3>
+						<div class="control-group">
+							<label class="control-label" for ="FAAI_min_ratio">Min FAAI Ratio</label>
+							<div class="controls">
+								<input type="text" class="input-xlarge" value="3" name="FAAI_min_ratio" >
+								<span class="help-inline">The minimum value of the FA major/minor axis for inclusion in the FAAI</span> 
 							</div>
 						</div>
 
@@ -211,6 +223,13 @@
 				minimum or maximum adhesion sizes allowed through the
 				segmentation step, both are specified in pixels.
 				
+				<p/><b>Min FAAI Ratio:</b> The first step in calculating the
+				FAAI is to filter FA's with a low major/minor axis ratio. The
+				angle of a single FA can't be reliably determined when this
+				ratio is low. The default value of 3 has worked for the image
+				sets in the Cell publication (see front page), but the adhesions
+				in your experiments may need a different value.
+
 				<h2>Additional Image Sets</h2>
 
 				<p/><b>Cell Mask:</b> If a set of images are specified as the
