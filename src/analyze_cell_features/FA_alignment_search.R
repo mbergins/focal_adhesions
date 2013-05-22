@@ -85,8 +85,8 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     }
 
     hist(data_set$corrected_orientation,
-        main=paste('Rotated ',data_set$best_angle,'\u00B0 / ',
-            sprintf('%0.1f',find_FAAI_from_orientation(data_set$corrected_orientation)), ' FAAI',sep=''),
+        main=paste0('Rotated ',data_set$best_angle,'\u00B0 / ',
+            sprintf('FAAI=%0.1f',find_FAAI_from_orientation(data_set$corrected_orientation))),
         xlab=paste('Angle n=',dim(data_set$high_ratio)[1],sep=''), xlim=c(-90,90));
     
     plot(data_set$per_image_dom_angle,xlab='Image Number',ylab='Dominant Angle',ylim=c(0,180));
@@ -693,6 +693,7 @@ args = commandArgs(TRUE);
 if (length(args) != 0) {
     debug = FALSE;
     fixed_best_angle = NA
+    min.ratio = 3
 
 	#split out the arguments from the passed in parameters and assign variables 
 	#in the current scope
@@ -708,10 +709,9 @@ if (length(args) != 0) {
     class(fixed_best_angle) <- "numeric";
     if (exists('time_series_dir')) {
         start_time = proc.time();
-        temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle, 
+        temp = gather_FA_orientation_data(time_series_dir,
+            fixed_best_angle = fixed_best_angle, min.ratio=min.ratio, 
             diagnostic.figure=T);
-        # temp = gather_FA_orientation_data(time_series_dir,fixed_best_angle = fixed_best_angle, 
-        #     diagnostic.figure=T,min.ratio = 2, output.file='FA_orientation_ratio2.Rdata');
         end_time = proc.time();
         print(paste('FA Orientation Runtime:',(end_time - start_time)[3]))
         

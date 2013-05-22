@@ -74,11 +74,16 @@ if (defined $cfg{fixed_best_angle}) {
 	$best_angle=" fixed_best_angle=$cfg{fixed_best_angle}";
 }
 
+my $min_ratio = '';
+if (defined $cfg{FAAI_min_ratio}) {
+	$min_ratio=" min.ratio=$cfg{FAAI_min_ratio}";
+}
+
 #######################################
 # Output file setup
 #######################################
 my @R_cmds;
-push @R_cmds, "R CMD BATCH --vanilla \"--args time_series_dir=$data_dir $best_angle\" FA_alignment_search.R $output_file";
+push @R_cmds, "R CMD BATCH --vanilla \"--args time_series_dir=$data_dir $best_angle $min_ratio\" FA_alignment_search.R $output_file";
 
 $opt{error_file} = catfile($opt{error_folder}, 'error.txt');
 
