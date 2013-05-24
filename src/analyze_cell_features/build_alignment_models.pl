@@ -12,12 +12,11 @@ use File::Path;
 use File::Spec::Functions;
 use File::Basename;
 use File::Copy;
-use Math::Matlab::Local;
 use Getopt::Long;
 use Data::Dumper;
 
+use Config::General;
 use Config::Adhesions qw(ParseConfig);
-use Math::Matlab::Extra;
 use Emerald;
 use FA_job;
 
@@ -58,8 +57,11 @@ if ($opt{lsf}) {
 
 my $data_dir = catdir($cfg{exp_results_folder}, $cfg{adhesion_props_folder},'lin_time_series');
 if (! -e $data_dir) {
-	warn "Unable to find lin time series dir ($data_dir), exiting.";
-	exit;
+	&copy_over_single_image_props;
+	if (! -e $data_dir) {
+		warn "Unable to find lin time series dir ($data_dir), exiting.";
+		exit;
+	}
 }
 
 $opt{error_folder} = catfile($cfg{exp_results_folder}, $cfg{errors_folder}, 'alignment_models');
@@ -99,6 +101,18 @@ for (@R_cmds) {
 #Functions
 ################################################################################
 
+sub copy_over_single_image_props {
+	my @image_folders = <$cfg{individual_results_folder}/*/raw_data>;
+	if (scalar(@image_folders) == 1) {
+		my $lin_time_series_dir = catdir($cfg{exp_results_folder}, $cfg{adhesion_props_folder},'lin_time_series');
+		mkdir $lin_time_series_dir;
+
+		copy(catfile($image_folders[0],'Orientation.csv'),$lin_time_series_dir);
+		copy(catfile($image_folders[0],'Area.csv'),$lin_time_series_dir);
+		copy(catfile($image_folders[0],'MajorAxisLength.csv'),$lin_time_series_dir);
+		copy(catfile($image_folders[0],'MinorAxisLength.csv'),$lin_time_series_dir);
+	}
+}
 
 ################################################################################
 #Documentation
