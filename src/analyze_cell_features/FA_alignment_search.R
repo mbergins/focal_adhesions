@@ -71,7 +71,7 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     par(bty='n', mar=c(4,4.2,2,0),mgp=c(2,1,0))
     
     hist(data_set$high_ratio$orientation,main='Pos X-axis Reference',
-        xlab=paste('Angle n=',dim(data_set$high_ratio)[1],sep=''), xlim=c(-90,90));
+        xlab=paste('Angle n=',dim(data_set$high_ratio)[1],sep=''), breaks=seq(-90,90,by=10));
     
     plot(data_set$angle_search$test_angles,data_set$angle_search$angle_FAAI,typ='l',
         xlab='Dominant Search Angle',ylab='FA Alignment Index',ylim=c(0,90));
@@ -87,7 +87,7 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     hist(data_set$corrected_orientation,
         main=paste0('Rotated ',data_set$best_angle,'\u00B0 / ',
             sprintf('FAAI=%0.1f',find_FAAI_from_orientation(data_set$corrected_orientation))),
-        xlab=paste('Angle n=',dim(data_set$high_ratio)[1],sep=''), xlim=c(-90,90));
+        xlab=paste('Angle n=',dim(data_set$high_ratio)[1],sep=''), breaks=seq(-90,90,by=10));
     
     plot(data_set$per_image_dom_angle,xlab='Image Number',ylab='Dominant Angle',ylim=c(0,180));
     
@@ -105,20 +105,16 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
 
 read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
     data_set = list();
-    data_set$lineage_data = read.table(file.path(time_series_dir,'../single_lin.csv'),sep=',',header=T);
-    data_set$FA_cent$per_image = read.table(file.path(time_series_dir,'../single_props/Adhesion_centroid.csv'),
-        sep=',',header=F);
-    
+ 	
     data_set$mat$orientation = read.csv(file.path(time_series_dir,'Orientation.csv'),header=F);
     data_set$mat$area = read.csv(file.path(time_series_dir,'Area.csv'),header=F);
-    data_set$mat$angle_to_FA_cent = read.csv(file.path(time_series_dir,'Angle_to_FA_cent.csv'),header=F);
     
     major_axis = read.csv(file.path(time_series_dir,'MajorAxisLength.csv'),header=F);
     minor_axis = read.csv(file.path(time_series_dir,'MinorAxisLength.csv'),header=F);
     data_set$mat$major_axis = major_axis;
     data_set$mat$minor_axis = minor_axis;
     data_set$mat$ratio = major_axis/minor_axis;
-
+	
     unlist_data_set = list()
     for (i in names(data_set$mat)) {
         unlist_data_set[[i]] = unlist(data_set$mat[[i]]);
@@ -301,15 +297,6 @@ filter_single_adhesion_alignment_data <- function(align_data, min.data.points = 
     num_above_limits = rowSums(above_all_limits)
     passed_ad_nums = which(num_above_limits >= min.data.points)
 
-    if (any(names(align_data) == "lineage_data")) {
-		if (any(names(align_data$lineage_data) == "split_count")) {
-			passed_ad_nums = intersect(passed_ad_nums, which(align_data$lineage_data$split_count <= 5));
-		}
-		if (any(names(align_data$lineage_data) == "merge_count")) {
-			passed_ad_nums = intersect(passed_ad_nums, which(align_data$lineage_data$merge_count <= 5));
-		}
-    }
-
 	for (ad_num in 1:dim(orientation)[1]) {
 		if (any(passed_ad_nums == ad_num)) {
 			next;
@@ -389,7 +376,6 @@ gather_all_single_adhesion_deviances <- function(sample_data, min.area=-Inf, min
     if (dim(overall_dev)[1] == 0) {
         return(overall_dev)
     }
-    overall_dev$lineage = sample_data$lineage_data[overall_dev$ad_num,];
 
     diff_from_dominant = c()
     for (i in 1:dim(overall_dev)[1]) {
