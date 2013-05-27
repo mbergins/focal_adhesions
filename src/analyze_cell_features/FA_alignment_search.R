@@ -3,7 +3,12 @@
 ###############################################################################
 
 gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
-    min.ratio = 3,output.file = 'FA_orientation.Rdata',diagnostic.figure=F) {
+    min.ratio = 3,output.file = 'FA_orientation.Rdata',diagnostic.figure=F,
+    output.dir=NA) {
+    
+    if (is.na(output.dir)) {
+        output.dir = file.path(exp_dir,'..');
+    }
 
     data_set = read_in_orientation_data(exp_dir, min.ratio=min.ratio);
     print('Done reading in data set')
@@ -51,14 +56,14 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
 	temp = find_per_image_dom_angle(data_set$mat, min.ratio=min.ratio)
     data_set$per_image_dom_angle = temp$best_angles
     data_set$per_image_FAAI	 = temp$FAAI
-    write.table(t(data_set$per_image_dom_angle),file=file.path(exp_dir,'..','per_image_dom_angle.csv'),
+    write.table(t(data_set$per_image_dom_angle),file=file.path(output.dir,'per_image_dom_angle.csv'),
         row.names=F,col.names=F,sep=',')
     print('Done searching for best angle in single images')
     
     data_set$single_ad_deviances = gather_all_single_adhesion_deviances(data_set);
     print('Done analyzing single adhesions')
     
-    save(data_set,file=file.path(exp_dir,'..',output.file))
+    save(data_set,file=file.path(output.dir,output.file))
     
     ###########################################################################
     # Diagnostic Figure
@@ -66,7 +71,7 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     if (! diagnostic.figure) {
         return(data_set);
     }
-    pdf(file.path(exp_dir,'..','adhesion_orientation.pdf'))
+    pdf(file.path(output.dir,'adhesion_orientation.pdf'))
     layout(rbind(c(1,2),c(3,4),c(5,5)))
     par(bty='n', mar=c(4,4.2,2,0),mgp=c(2,1,0))
     
@@ -694,14 +699,17 @@ if (length(args) != 0) {
 	
     class(fixed_best_angle) <- "numeric";
     if (exists('time_series_dir')) {
+        output.dir = file.path(time_series_dir,'..','FAAI');
+        dir.create(output.dir);
+
         start_time = proc.time();
         FA_orientation_data = gather_FA_orientation_data(time_series_dir,
-            fixed_best_angle = fixed_best_angle, min.ratio=min.ratio, 
-            diagnostic.figure=T);
+            fixed_best_angle=fixed_best_angle, min.ratio=min.ratio, 
+            diagnostic.figure=T,output.dir=output.dir);
         end_time = proc.time();
         
         write.table(t(FA_orientation_data$corrected_orientation),
-                  file.path(time_series_dir,'..','FAAI_angles.csv'),
+                  file.path(output.dir,'FAAI_angles.csv'),
                   row.names=F,col.names=F,sep=',');
 
         print(paste('FA Orientation Runtime:',(end_time - start_time)[3]))
