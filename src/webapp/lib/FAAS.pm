@@ -25,6 +25,16 @@ get '/' => sub {
 	}
 };
 
+get '/software' => sub {
+	if (not session('user_id')) {
+    	template 'software';
+	} else {
+		my $user_id = session 'user_id';
+		template 'software', {user_id=>$user_id};
+	}
+};
+
+
 get '/deploy' => sub {
     template 'deployment_wizard', {
 		directory => getcwd(),
