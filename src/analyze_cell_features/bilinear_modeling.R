@@ -413,7 +413,7 @@ if (length(args) != 0) {
             print(paste('Could not find FA_angle_recentered.csv'))
         }
         
-        output_folder = file.path(data_dir,'models');
+        output_folder = file.path(data_dir,'assem_disassem_models');
 		dir.create(output_folder,recursive=TRUE,showWarnings=F);
         
         #######################################################################
@@ -435,12 +435,12 @@ if (length(args) != 0) {
         #######################################################################
         # Simple CSV File Output
         #######################################################################
-        output_sets = produce_simple_CSV_output_set(models,1)
+        output_sets = produce_simple_CSV_output_set(models,time_spacing)
         for (output_type in names(output_sets)) {
             write.csv(output_sets[[output_type]],
                 file=file.path(data_dir,paste0(output_type,'.csv')),row.names=F)
         }
 
-        write_assembly_disassembly_periods(output_sets$ad_kinetics,data_dir);
+        write_assembly_disassembly_periods(output_sets$ad_kinetics,output_folder);
     }
 }
