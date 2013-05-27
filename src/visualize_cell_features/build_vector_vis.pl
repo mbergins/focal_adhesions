@@ -63,8 +63,7 @@ my @full_svg_file = &build_full_svg_file(@svg_files);
 unlink(@bmp_files);
 unlink(@svg_files);
 
-# my $output_file = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost.svg");
-my $output_file = catfile($cfg{exp_results_folder}, "ghost.svg");
+my $output_file = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost.svg");
 
 open SVG_OUT, ">$output_file" or die "Unable to open ghost.svg";
 print SVG_OUT @svg_header;
