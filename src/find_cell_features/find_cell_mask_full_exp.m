@@ -52,7 +52,6 @@ image_folders = image_folders(3:end);
 mask_thresholds = zeros(length(image_folders),1);
 for i = 1:length(image_folders)
     mask_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.raw_mask);
-    clean_opts.debug = 1;
     mask_thresholds(i) = find_cell_mask(mask_file,clean_opts);
     if (mod(i,10) == 0)
         disp(['Done with ',mask_file]);
@@ -71,14 +70,13 @@ ylimits = ylim;
 ylim([0,ylimits(2)]);
 hold on;
 plot([0,length(mask_thresholds)],[nanmedian(mask_thresholds),nanmedian(mask_thresholds)],'r')
-saveas(mask_plot,fullfile(exp_folder,'adhesion_props','cell_mask_thresholds.png'));
+saveas(mask_plot,fullfile(exp_folder,'adhesion_props','image_analysis','cell_mask_thresholds.png'));
 hold off;
 
 if (i_p.Results.single_threshold)
     repro_start = tic;
     disp('Re-processing cell masks with a single threshold');
     clean_opts.mask_threshold = nanmedian(mask_thresholds);
-    clean_opts.debug = 1;
     for i = 1:length(image_folders)
         mask_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.raw_mask);
         mask_thresholds(i) = find_cell_mask(mask_file,clean_opts);

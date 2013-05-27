@@ -58,6 +58,6 @@ output_file = fullfile(base_dir,image_dirs(1).name,filenames.background_intensit
 if (not(exist(output_folder,'dir')))
     mkdir(output_folder);
 end
-csvwrite(output_file,background_median);
+csvwrite_with_folder_creation(output_file,background_median);
 
 toc;
