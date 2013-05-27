@@ -60,7 +60,6 @@ my %data_sets;
 
 print "\n\nDetermining Tracking Matrix\n" if $opt{debug};
 my @tracking_mat;
-my @birth_mat;
 my %tracking_probs;
 my %tracking_facts;
 &make_tracking_mat;
@@ -79,8 +78,6 @@ print "\n\nOutputing Tracking Matrix\n" if $opt{debug};
 my $tracking_output_file = catfile($cfg{exp_results_folder}, $cfg{tracking_folder}, $cfg{tracking_output_file});
 mkpath(dirname($tracking_output_file));
 &output_mat_csv(\@tracking_mat, $tracking_output_file);
-my $birth_map_output_file = catfile($cfg{exp_results_folder}, $cfg{adhesion_props_folder}, $cfg{birth_map_output_file});
-&output_mat_csv(\@birth_mat, $birth_map_output_file);
 
 ###############################################################################
 #Functions
@@ -193,7 +190,6 @@ sub initialize_tracking_mat {
 
     for (0 .. $num_adhesions) {
         push @{ $tracking_mat[$_] }, $_;
-        push @{ $birth_mat[0] }, $_;
     }
     print "Intialized the tracking matrix on image #: $first_key\n" if $opt{debug};
 }
@@ -598,8 +594,6 @@ sub detect_new_adhesions {
     if (scalar @births == 0) {
         push @births, -1;
     }
-
-    push @birth_mat, \@births;
 }
 
 sub check_tracking_mat_integrity {
