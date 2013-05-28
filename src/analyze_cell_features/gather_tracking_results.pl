@@ -72,8 +72,8 @@ my %data_sets = &Image::Data::Collection::gather_data_sets(\%cfg, \%opt, \@data_
 %data_sets = &convert_data_to_units(\%data_sets, \%cfg);
 my @available_data_types = &gather_data_types;
 
-print "\n\nCreating/Outputing Overall Cell Property Files\n" if $opt{debug};
-&gather_and_output_overall_cell_properties;
+# print "\n\nCreating/Outputing Overall Cell Property Files\n" if $opt{debug};
+# &gather_and_output_overall_cell_properties;
 
 # print "\n\nCreating/Outputing Individual Adhesion Property Files\n" if $opt{debug};
 # my @single_ad_props = &gather_single_ad_props(\%cfg, \%opt);
