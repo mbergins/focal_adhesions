@@ -164,7 +164,7 @@
 			</div>
 			
 			<div id=file_description>
-				<h2>Listing of Produced Files</h2>
+				<h2>Files in adhesion_props</h2>
 				The "adhesion_props" folder contains a range of output files
 				describing the extracted and summarized properties of the FA.
 				The 'image_analysis' folder contains diagnostic plots and
