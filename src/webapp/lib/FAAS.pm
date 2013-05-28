@@ -62,4 +62,12 @@ post '/deploy' => sub {
 	};
 };
 
+get '/results_understanding' => sub {
+	template 'results_understanding';
+};
+
+get '/results_understanding/' => sub {
+	template 'results_understanding';
+};
+
 true;
