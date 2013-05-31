@@ -4,7 +4,6 @@
 # Global Variables and Modules
 ###############################################################################
 use lib "../lib";
-use lib "../lib/perl";
 
 use strict;
 use File::Path;
