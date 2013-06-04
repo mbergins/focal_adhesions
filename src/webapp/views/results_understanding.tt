@@ -17,12 +17,13 @@
 			instructions on how to find a few of the most common properties
 			measured in focal adhesion dynamics experiments. You can also find
 			short descriptions of all the results files here as well.
-
+			
+			</p>
 			<ul>
 				<li><a href="#assem">Focal Adhesion Assembly and Disassembly Rates</a></li>
 				<li><a href="#stability">Focal Adhesion Stability Phase Properties</a></li>
 				<li><a href="#static_props">Find Static FA Properties</a></li>
-				<li><a href="#props">Find Dynamic FA Properties</a></li>
+				<li><a href="#dynamic_props">Find Dynamic FA Properties</a></li>
 				<li><a href="#FAAI">Find the Focal Adhesion Alignment Index (FAAI)</a></li>
 				<li><a href="#file_description">Files in adhesion_props</a></li>
 			</ul>
