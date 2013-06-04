@@ -5,7 +5,6 @@
 ###############################################################################
 use strict;
 use lib "../lib";
-use lib "../lib/perl";
 
 use File::Basename;
 use File::Spec::Functions;
