@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 chmod a+w ../../webapp/;
 chmod a+w ../public/;
