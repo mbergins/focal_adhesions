@@ -35,6 +35,9 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     ###########################################################################
     for (area_class in names(data_set$area_sets)) {
         this_or = data_set$area_sets[[area_class]]$orientation
+        if (length(this_or) == 0) {
+            next;
+        }
 
         temp = list()
 
@@ -47,8 +50,8 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
         temp$FAAI = find_FAAI_from_orientation(temp$corrected_orientation);
 
         data_set$area_results[[area_class]] = temp;
+        print(paste('Done with area class:', area_class))
     }
-    print('Done with area bins')
 
     ###########################################################################
     # Per Image/Adhesion FAAI Search
@@ -158,13 +161,14 @@ find_per_image_dom_angle <- function(mat_data, min.ratio=3) {
     		FAAI = c(FAAI, NA);
             next;
         }
+        this_orientation = this_orientation[good_rows];
 
-        angle_search = test_dom_angles(this_orientation[good_rows]);
+        angle_search = test_dom_angles(this_orientation);
         best_angle = find_best_alignment_angle(angle_search)
 		
-		best_orientation = apply_new_orientation(this_orientation[good_rows],best_angle)
+		best_orientation = apply_new_orientation(this_orientation,best_angle)
 		image_FAAI = find_FAAI_from_orientation(best_orientation)
-
+        
         best_angles = c(best_angles, best_angle);
 		FAAI = c(FAAI,image_FAAI);
     }
@@ -172,17 +176,31 @@ find_per_image_dom_angle <- function(mat_data, min.ratio=3) {
     return(temp)
 }
 
-test_dom_angles <- function(orientation, search_resolution = 0.1) {
-    # I'll include and then discard the last angle because 180 is the same as 0
-    # degrees rotation in this case, but we need a consistant end point to allow
-    # the search resolution to vary
-    angles_to_test = seq(0,180,by=search_resolution)
-    angles_to_test = angles_to_test[-length(angles_to_test)];
-    
+test_dom_angles <- function(orientation) {
+    # We only need to test those dominate angles where there will be a shift in
+    # the standard deviation of the data set. Since SD can only change when an
+    # angle has flipped through the -90 back to 90 side, we only need to test a
+    # single point between each unique angle. This next command pulls out those
+    # unique angles and rotates them to the 0 - 180 range
+    angle_list = unique(sort(orientation)) + 90;
+
+    # Now we will pick out a point between each of those angles, in particular
+    # the mean angle, unless there is only one unique value, in that case, it
+    # doesn't matter what angles we test, all will maximimze the FAAI, so skip forward
+    angles_to_test = c()
+    if (length(angle_list) <= 2) {
+        angles_to_test = mean(angle_list);
+    } else {
+        for (i in 1:(length(angle_list) - 1)) {
+            angles_to_test = c(angles_to_test, mean(angle_list[i:(i+1)]));
+        }
+    }
+    angles_to_test = c(0,angles_to_test);
     results = list(x = angles_to_test, test_angles = angles_to_test);
-    new_angle_FAAI = c()
+    
     mean_angle = c()
     median_angle = c()
+    new_angle_FAAI = c()
     for (angle in angles_to_test) {
         new_orientation = apply_new_orientation(orientation,angle);
         mean_angle = c(mean_angle,mean(new_orientation, na.rm=T));
@@ -194,7 +212,8 @@ test_dom_angles <- function(orientation, search_resolution = 0.1) {
     results$mean_angle = mean_angle;
     results$median_angle = median_angle;
     results$angle_FAAI = new_angle_FAAI;
-    
+    results$FA_angles = orientation;
+
     return(results)
 }
 
@@ -203,35 +222,38 @@ find_FAAI_from_orientation <- function(orientation_data) {
 }
 
 find_best_alignment_angle <- function(test_angle_set) {
-    # to select the best angle, find the angles with the maximum FAAI, from
+    # to select the best angle, find the angle with the maximum FAAI, from
     # those angles select the angle with the lowest absolute value of the mean
     # angle
-    max_FAAI = max(test_angle_set$angle_FAAI)*0.9999
-    #the max FAAI value is reduced by 0.01% due to some strange numeric
-    #accuracy issues that elimnated some angles from the max FAAI index set
-    #despite having the same standard deviation, this seemed to be especially
-    #problematic with small data sets
-    max_FAAI_indexes = which(test_angle_set$angle_FAAI >= max_FAAI)
+    max_FAAI_angle = test_angle_set$test_angles[test_angle_set$angle_FAAI == max(test_angle_set$angle_FAAI)];
     
-    abs_mean = abs(test_angle_set$mean_angle)[max_FAAI_indexes];
-    sorted_abs_mean = sort(abs_mean,decreasing = F, index.return = T)
+    # deal with a degenerate case where there are multiple max FAAI angles,
+    # this typically happens when there is only one angle in the data set. In
+    # that case only two angles were tested, 0 and the angle, thus, it doesn't
+    # matter what angle we select here, the angle will be corrected below.
+    if (length(max_FAAI_angle) > 1) {
+        if (max_FAAI_angle[1] != 0) {
+            print("You shouldn't hit this message, if you do, time to investigate");
+        }
+        max_FAAI_angle = max_FAAI_angle[1];
+    }
     
-    best_index = max_FAAI_indexes[sorted_abs_mean$ix[1]]
-
-    best_angle = test_angle_set$test_angles[best_index];
-    return(best_angle)
+    corrected_orientation = apply_new_orientation(test_angle_set$FA_angles,max_FAAI_angle);
+    best_angle = max_FAAI_angle + mean(corrected_orientation,na.rm=T);
+    best_angle = round(best_angle,2);
+    return(best_angle);
 }
 
 apply_new_orientation <- function(orientation_data,angle) {
     orientation_data = orientation_data - angle;
     
-    less_neg_ninety = ! is.na(orientation_data) & orientation_data < -90;
+    less_neg_ninety = ! is.na(orientation_data) & orientation_data <= -90;
     orientation_data[less_neg_ninety] = orientation_data[less_neg_ninety] + 180;
 
     return(orientation_data)
 }
 
-find_best_FAAI <- function(orientations) {
+find_FAAI <- function(orientations) {
     test_angles = test_dom_angles(orientations);
     best_angle = find_best_alignment_angle(test_angles);
     cor_orientation = apply_new_orientation(orientations,best_angle);
@@ -287,10 +309,31 @@ find_FADI_from_orientation <- function(orientation_data) {
 # Processing Single Adhesion Data
 ###########################################################
 
+gather_all_single_adhesion_deviances <- function(sample_data, min.area=-Inf, min.data.points=2) {
+    sample_data_filtered = filter_single_adhesion_alignment_data(sample_data, 
+        min.area=min.area, min.data.points=min.data.points);
+    overall_dev = adhesion_angle_deviance(sample_data_filtered$mat$filtered_orientation);
+    
+    #no single adhesion devs were calculated, no need for further processing,
+    #return the empty results
+    if (dim(overall_dev)[1] == 0) {
+        return(overall_dev)
+    }
+
+    diff_from_dominant = c()
+    for (i in 1:dim(overall_dev)[1]) {
+        angle_set = sort(c(overall_dev$best_angle[i],sample_data$best_angle));
+        temp = min(c(angle_set[2] - angle_set[1]),angle_set[1] + 180 - angle_set[2]);
+        diff_from_dominant = c(diff_from_dominant, temp);
+    }
+    overall_dev$diff_from_dominant = diff_from_dominant
+
+    return(overall_dev)
+}
+
 filter_single_adhesion_alignment_data <- function(align_data, min.data.points = 2, min.ratio = 3, 
 	min.area = -Inf) {
  
-    #make sure all the data matrices are formated as matrices
     orientation = as.matrix(align_data$mat$orientation);
     ratio = as.matrix(align_data$mat$ratio);
     area = as.matrix(align_data$mat$area);
@@ -301,7 +344,7 @@ filter_single_adhesion_alignment_data <- function(align_data, min.data.points = 
     above_all_limits = above_ratio_limit & above_area_limit;
     num_above_limits = rowSums(above_all_limits)
     passed_ad_nums = which(num_above_limits >= min.data.points)
-
+    
 	for (ad_num in 1:dim(orientation)[1]) {
 		if (any(passed_ad_nums == ad_num)) {
 			next;
@@ -329,7 +372,8 @@ adhesion_angle_deviance <- function(orientations,min.data.points) {
 		angle_test = test_dom_angles(or_set);
 		best_angle = find_best_alignment_angle(angle_test);
         best_angle_set = c(best_angle_set,best_angle);
-
+        
+        or_set_pre = or_set;
 		or_set = apply_new_orientation(or_set, best_angle);
 
 		diffs = abs(or_set[2:length(or_set)] - or_set[1]);
@@ -338,59 +382,6 @@ adhesion_angle_deviance <- function(orientations,min.data.points) {
 	}
 	return(data.frame(mean_dev = mean_dev, ad_num=passed_ads, 
         num_pass_filter=num_pass_filter, best_angle=best_angle_set))
-}
-
-number_consecutive_trues <- function(logical_seq) {
-    logical_seq = as.logical(logical_seq)
-
-    max_consec = 0
-    this_consec = 0
-    for (i in 1:length(logical_seq)) {
-        if (logical_seq[i]) {
-            this_consec = this_consec + 1;
-        } else {
-            if (this_consec > max_consec) {
-                max_consec = this_consec;
-            } else {
-                this_consec = 0;
-            }
-        }
-    }
-    
-    #if the entire sequence is true, the else clause above won't be hit, check
-    #for this and set max_consec appropriately
-    if (this_consec > max_consec) {
-        max_consec = this_consec
-    }
-
-    return(max_consec);
-}
-
-stopifnot(number_consecutive_trues(c(rep(F,10),rep(T,10),rep(F,50),rep(T,200))) == 200)
-stopifnot(number_consecutive_trues(c(rep(F,10),rep(T,10),rep(F,50),rep(T,20))) == 20)
-stopifnot(number_consecutive_trues(c(rep(T,25),rep(F,10),rep(T,10),rep(F,50),rep(T,20))) == 25)
-stopifnot(number_consecutive_trues(rep(T,20)) == 20)
-
-gather_all_single_adhesion_deviances <- function(sample_data, min.area=-Inf, min.data.points=2) {
-    sample_data_filtered = filter_single_adhesion_alignment_data(sample_data, 
-        min.area=min.area, min.data.points=min.data.points);
-    overall_dev = adhesion_angle_deviance(sample_data_filtered$mat$filtered_orientation);
-
-    #no single adhesion devs were calculated, no need for further processing,
-    #return the empty results
-    if (dim(overall_dev)[1] == 0) {
-        return(overall_dev)
-    }
-
-    diff_from_dominant = c()
-    for (i in 1:dim(overall_dev)[1]) {
-        angle_set = sort(c(overall_dev$best_angle[i],sample_data$best_angle));
-        temp = min(c(angle_set[2] - angle_set[1]),angle_set[1] + 180 - angle_set[2]);
-        diff_from_dominant = c(diff_from_dominant, temp);
-    }
-    overall_dev$diff_from_dominant = diff_from_dominant
-
-    return(overall_dev)
 }
 
 ###########################################################
@@ -700,7 +691,7 @@ if (length(args) != 0) {
     class(fixed_best_angle) <- "numeric";
     if (exists('time_series_dir')) {
         output.dir = file.path(time_series_dir,'..','FAAI');
-        dir.create(output.dir);
+        dir.create(output.dir, showWarnings=F);
 
         start_time = proc.time();
         FA_orientation_data = gather_FA_orientation_data(time_series_dir,
