@@ -35,6 +35,9 @@ my %cfg = ParseConfig(\%opt);
 #Main Program
 ###############################################################################
 
+###########################################################
+# File Conversion
+###########################################################
 our @files;
 find(\&include_in_vis, catdir($cfg{individual_results_folder}));
 my @colors = &build_jet_color_map(scalar(@files));
@@ -51,6 +54,9 @@ print "Done Converting to BMP\n" if $opt{debug};
 my @svg_files = &convert_using_potrace(@bmp_files);
 print "Done Converting to SVG\n" if $opt{debug};
 
+###########################################################
+# SVG Creation
+###########################################################
 my @svg_header = &get_svg_header($svg_files[0]);
 
 if ($opt{white_background}) {
@@ -62,7 +68,15 @@ my @full_svg_file = &build_full_svg_file(@svg_files);
 unlink(@bmp_files);
 unlink(@svg_files);
 
+###########################################################
+# SVG Output
+###########################################################
 my $output_file = catfile($cfg{exp_results_folder}, $cfg{movie_output_folder}, "ghost.svg");
+
+#visualizations folder doesn't exist, exit
+if (! -d catdir($cfg{exp_results_folder}, $cfg{movie_output_folder})) {
+	exit;
+}
 
 open SVG_OUT, ">$output_file" or die "Unable to open ghost.svg";
 print SVG_OUT @svg_header;

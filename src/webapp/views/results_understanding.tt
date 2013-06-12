@@ -17,11 +17,13 @@
 			instructions on how to find a few of the most common properties
 			measured in focal adhesion dynamics experiments. You can also find
 			short descriptions of all the results files here as well.
-
+			
+			</p>
 			<ul>
 				<li><a href="#assem">Focal Adhesion Assembly and Disassembly Rates</a></li>
-				<li><a href="#stability">Focal Adhesion Stability Properties</a></li>
-				<li><a href="#props">Find Areas/Intensities</a></li>
+				<li><a href="#stability">Focal Adhesion Stability Phase Properties</a></li>
+				<li><a href="#static_props">Find Static FA Properties</a></li>
+				<li><a href="#dynamic_props">Find Dynamic FA Properties</a></li>
 				<li><a href="#FAAI">Find the Focal Adhesion Alignment Index (FAAI)</a></li>
 				<li><a href="#file_description">Files in adhesion_props</a></li>
 			</ul>
@@ -76,7 +78,7 @@
 			</div>
 			
 			<div id=stability>
-				<h2>Focal Adhesion Stability Properties</h2>
+				<h2>Focal Adhesion Stability Phase Properties</h2>
 				<p>
 				Several properties of the FA's stability phase are also measured
 				and saved. To be present in this file, the adhesion must have an
@@ -123,9 +125,8 @@
 				ad_num column.
 			</div>
 
-			<div id=props>
-				<h2>Measure Focal Adhesion Areas/Intensities</h2>
-				<h3>Single Images</h3>
+			<div id=static_props>
+				<h2>Find Static FA Properties</h2>
 				<p>
 				Several different properties are collected about each focal adhesion
 				identified by the system. These properites, such as area and intensity
@@ -138,20 +139,34 @@
 				and intensity values respectively. All of the units of distance or area
 				are in pixels or square pixels.
 
-				<h3>Time-lapse Image Sets</h3>
-				<p>
-				Several of sets of properties are also organzied into matrices that
-				represent the value of that property over the lifetime of each
-				adhesion. In general, the files are organized so that the data from
-				each adhesion is present on a single row, with the value of that
-				property for each image in the time-series in the columns.  Placeholds
-				of NaN are used when an adhesion isn't present in a specfic image.
+			</div>
 
+			<div id=dynamic_props>
+				<h2>Find Dynamic FA Properties</h2>
 				<p>
-				As an example, consider an adhesion that is born in image 10 and dies
-				in frame 20. All the slots before frame 10 will be NaN, while all the
-				values after frame 20 will be NaN as well. Columns 10-20 will contain
-				the value for that adhesion in the image set.
+
+				In addition to static properties collected by the system,
+				several dynamic properties are also collected. These properties
+				are summaries of a single adhesion over time, even if the
+				adhesion was only present in the movie for a single frame. These
+				properties can be found in the 'single_lin.csv' file in the
+				'adhesion_props' folder.
+
+				<!-- <h3>Time-lapse Image Sets</h3> -->
+				<!-- <p> -->
+				<!-- Several of sets of properties are also organzied into matrices that -->
+				<!-- represent the value of that property over the lifetime of each -->
+				<!-- adhesion. In general, the files are organized so that the data from -->
+				<!-- each adhesion is present on a single row, with the value of that -->
+				<!-- property for each image in the time-series in the columns.  Placeholders -->
+				<!-- of NaN are used when an adhesion isn't present in a specfic image. -->
+
+				<!-- <p> -->
+				<!-- As an example, consider an adhesion that is born in image 10 and dies -->
+				<!-- in frame 20. All the slots before frame 10 will be NaN, while all the -->
+				<!-- values after frame 20 will be NaN as well. Columns 10-20 will contain -->
+				<!-- the value for that adhesion in the image set. -->
+
 			</div>
 
 			<div id=FAAI>
