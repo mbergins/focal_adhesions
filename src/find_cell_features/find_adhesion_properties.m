@@ -206,7 +206,6 @@ for i=1:max(labeled_adhesions(:))
 end
 
 adhesion_mask = im2bw(labeled_adhesions,0);
-adhesion_props(1).Adhesion_mean_intensity = sum(sum(orig_I(adhesion_mask)))/sum(sum(adhesion_mask));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Properites Extracted If Cell Mask Available
