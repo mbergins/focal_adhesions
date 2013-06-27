@@ -3,7 +3,7 @@
 	<div class="page-header">
 		<div class="row">
 			<div class="span12">
-				<h1>Focal Adhesion Analysis Server - Login/Create Account</h1>
+				<h1>Invadopodia Analysis Server - Login/Create Account</h1>
 			</div>
 		</div>
 	</div>
@@ -12,14 +12,33 @@
 		<div class="span12">
 			[% IF bad_login %]
 			<div class="alert">
+				<button type="button" class="close" data-dismiss="alert">&times;</button>
 				Tried to login as [% user_id %], but the passwords didn't match. Please try again.
 			</div>
 			[% END %]
+			
+			[% IF login_success %]
+	
+			[% IF new_user %]
+			<div class="alert alert-info">
+				<button type="button" class="close" data-dismiss="alert">&times;</button>
+				New user account [% user_id %] created.
+			</div>
+			[% END %]
+
+			<div class="alert alert-success">
+				<button type="button" class="close" data-dismiss="alert">&times;</button>
+				Successful login as [% user_id %].
+			</div>
+
+			You should now be able to access your list of submitted experiments
+			using the menu in the upper right hand corner.
+			[% ELSE %]
 			<form class="form-horizontal" enctype="multipart/form-data" method="post">
 				<fieldset>
 
 					<div class="control-group">
-						<label class="control-label" for="email">Email</label>
+						<label class="control-label" for="email">Username</label>
 						<div class="controls">
 							<input type="text" class="input-xlarge" name="email" >
 							<span class="help-inline"></span> 
@@ -38,15 +57,14 @@
 					<div class="form-actions"> 
 						<button type="submit" class="btn btn-primary">Login/Create Account</button> 
 					</div> 
-
 				</fieldset>
 			</form>
-			
+
 			If you are logged in when an experiment is submitted, you will be
 			able to access a list of your submitted experiments and their status
 			in the system. Experiments can still be submitted without logging
 			in.
-
+			[% END %]
 		</div>
 	</div>
 </div>

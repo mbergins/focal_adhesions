@@ -17,7 +17,6 @@ my $login_data_file = '../user_login.stor';
 ###############################################################################
 
 get '/login' => sub {
-
 	template 'login';
 };
 
@@ -28,19 +27,17 @@ post '/login' => sub {
 	if (-w $login_data_file) {
 		%user_info = %{lock_retrieve($login_data_file)};
 	}	
-
+	
+	#deal with the case that the user_id exists, IE an account already exists
+	#for this user
 	if (defined $user_info{$user_id}) {
 		my $csh = Crypt::SaltedHash->new(salt=>$user_info{$user_id}{salt});
 		$csh->add(param('password'));
 		my $salted = $csh->generate;
 		
-		# debug $user_id; 
-		# debug Dumper(\%user_info);
-		# debug $salted;
-		
 		if ($salted eq $user_info{$user_id}{password}) {
 			session user_id => $user_id;
-			redirect '/';
+			template 'login', {login_success => 1, user_id => $user_id};
 		} else {
 			template 'login', {bad_login => 1, user_id => $user_id};
 		}
@@ -51,13 +48,10 @@ post '/login' => sub {
 
 		$user_info{$user_id}{password} = $salted;
 		$user_info{$user_id}{salt} = $csh->salt_bin();
-		
-		# debug $user_id; 
-		# debug Dumper(\%user_info);
 
 		lock_store \%user_info, $login_data_file;
 		session user_id => $user_id;
-		redirect '/';
+		template 'login', {login_success => 1, user_id => $user_id, new_user=>1};
 	}
 };
 
