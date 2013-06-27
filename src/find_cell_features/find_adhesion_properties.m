@@ -152,19 +152,13 @@ adhesion_props = regionprops(labeled_adhesions,'Area','Centroid', ...
 %%Properites Always Extracted
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-centroid_data = [adhesion_props.Centroid];
-centroid_x = centroid_data(1:2:length(adhesion_props)*2);
-centroid_y = centroid_data(2:2:length(adhesion_props)*2);
+%Each FA's centroid will be on a single row
+fa_centroids = reshape([adhesion_props.Centroid],2,[])';
+ad_centroid = [mean(fa_centroids(:,1)), mean(fa_centroids(:,2))];
 
-ad_centroid = [mean(centroid_x),mean(centroid_y)];
-adhesion_props(1).Adhesion_centroid = ad_centroid;
-dist_to_centroid = sqrt((centroid_x - ad_centroid(1)).^2 ...
-    + (centroid_y - ad_centroid(2)).^2);
-
-x_dist_to_cent = centroid_x - ad_centroid(1);
-y_dist_to_cent = ad_centroid(2) - centroid_y;
-
-angle_to_ad_cent = atan2(y_dist_to_cent,x_dist_to_cent)*(180/pi);
+angle_to_ad_cent = find_angles_from_center(fa_centroids,ad_centroid);
+dist_to_centroid = sqrt((fa_centroids(:,1) - ad_centroid(1)).^2 ...
+    + (fa_centroids(:,2) - ad_centroid(2)).^2);
 
 convex_hull = bwconvhull(labeled_adhesions > 0);
 convex_dists = bwdist(~convex_hull);
@@ -205,8 +199,6 @@ for i=1:max(labeled_adhesions(:))
     end
 end
 
-adhesion_mask = im2bw(labeled_adhesions,0);
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Properites Extracted If Cell Mask Available
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -214,20 +206,11 @@ if (exist('cell_mask','var'))
     cell_centroid = regionprops(cell_mask,'centroid');
     cell_centroid = cell_centroid.Centroid;
     
-    [border_row,border_col] = ind2sub(size(cell_mask),find(bwperim(cell_mask)));
-    adhesion_props(1).Border_pix = [border_col,border_row];
-    
     adhesion_props(1).Cell_size = sum(cell_mask(:));
     
     adhesion_props(1).Cell_mean_intensity = sum(sum(orig_I(cell_mask)))/adhesion_props(1).Cell_size;
     
-    cell_not_ad_mask = cell_mask & not(adhesion_mask);
-    adhesion_props(1).Cell_not_ad_mean_intensity = sum(sum(orig_I(cell_not_ad_mask)))/sum(sum(cell_not_ad_mask));
-    
-    not_cell_mask = not(cell_mask);
-    adhesion_props(1).Outside_mean_intensity = sum(sum(orig_I(not_cell_mask)))/sum(sum(not_cell_mask));
-    
-    [dists, indices] = bwdist(~cell_mask);
+    [dists, ~] = bwdist(~cell_mask);
     
     %Now we search for the pixels which are closest to an edge of the cell
     %mask that is also touching the edge of image. We want to find these
@@ -241,33 +224,50 @@ if (exist('cell_mask','var'))
     [bb_dists, ~] = bwdist(~black_border_mask);
     
     dists(bb_dists < dists) = NaN;
+    
+%     %Each FA's centroid will be on each row
+%     fa_centroids = reshape([adhesion_props.Centroid],2,[])';
+    
+    [fa_angles,fa_dists] = find_angles_from_center(fa_centroids,cell_centroid);
+        
+    dists_from_center = sqrt(fa_dists(:,1).^2 + fa_dists(:,2).^2);
+    
     for i=1:max(labeled_adhesions(:))
-        centroid_pos = round(adhesion_props(i).Centroid);
-        centroid_unrounded = adhesion_props(i).Centroid;
-        if(size(centroid_pos,1) == 0)
-            warning('MATLAB:noCentroidFound','collect_adhesion_properties - centroid not found');
-            adhesion_props(i).Centroid_dist_from_edge = NaN;
-        else
-            adhesion_props(i).Centroid_dist_from_edge = dists(centroid_pos(2),centroid_pos(1));
-            [cep_x,cep_y] = ind2sub(size(cell_mask), indices(centroid_pos(2), centroid_pos(1)));
-            adhesion_props(i).Closest_edge_pixel = [cep_x,cep_y];
-            
-            adhesion_props(i).Centroid_dist_from_center = sqrt((cell_centroid(1) - centroid_unrounded(1))^2 + (cell_centroid(2) - centroid_unrounded(2))^2);
-            adhesion_props(i).Angle_to_center = acos((centroid_unrounded(1) - cell_centroid(1))/adhesion_props(i).Centroid_dist_from_center);
-            assert(adhesion_props(i).Angle_to_center >= 0 && adhesion_props(i).Angle_to_center <= pi, 'Error: angle to center out of range: %d',adhesion_props(i).Angle_to_center);
-            if (centroid_unrounded(2) - cell_centroid(2) < 0)
-                if (centroid_unrounded(1) - cell_centroid(1) < 0)
-                    assert(adhesion_props(i).Angle_to_center >= pi/2 && adhesion_props(i).Angle_to_center <= pi)
-                    adhesion_props(i).Angle_to_center = 2*pi - adhesion_props(i).Angle_to_center;
-                elseif (centroid_unrounded(1) - cell_centroid(1) >= 0)
-                    assert(adhesion_props(i).Angle_to_center >= 0 && adhesion_props(i).Angle_to_center <= pi/2)
-                    adhesion_props(i).Angle_to_center = 2*pi - adhesion_props(i).Angle_to_center;
-                end
-            end
-        end
-        adhesion_props(i).CB_corrected_signal = adhesion_props(i).Average_adhesion_signal - adhesion_props(1).Cell_not_ad_mean_intensity;
+        adhesion_props(i).Angle_to_center = fa_angles(i);
+        adhesion_props(i).Centroid_dist_from_center = dists_from_center(i);
+
+        centroid_rounded = round(fa_centroids(i,:));
+        adhesion_props(i).Centroid_dist_from_edge = dists(centroid_rounded(2),centroid_rounded(1));
     end
 end
+
+function [fa_angles,varargout] = find_angles_from_center(centroids,center)
+
+%I expect the centroids of each object to be on a single row, with the
+%center having the same format, but with only one row
+assert(size(centroids,2) == 2)
+assert(size(center,1) == 1)
+assert(size(center,2) == 2)
+
+%now recenter the X values, in centroid column 1
+centroids(:,1) = centroids(:,1) - center(1);
+
+%now recenter the Y values, in centroid column 2, remember, the Y values
+%from regionprops is flipped, so high values are located near the bottom of
+%the image, while low values near the top
+centroids(:,2) = center(2) - centroids(:,2);
+
+fa_angles = atan2(centroids(:,2),centroids(:,1)) * (180/pi);
+
+%if a 2nd output value is requested, return the dists from centroid
+if (nargout > 1)
+    varargout{1} = centroids;
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Data Output Functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function write_adhesion_data(S,varargin)
 % WRITE_STRUCT_DATA     write most the data stored in a given struct to a
@@ -303,7 +303,7 @@ if (not(exist(out_dir,'dir')))
 end
 
 to_exclude = {'ConvexHull','ConvexImage','Image','FilledImage', ...
-    'PixelList', 'SubarrayIdx', 'Border_pix', 'Extrema'};
+    'PixelList', 'SubarrayIdx', 'Extrema'};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%Main Program
@@ -335,7 +335,6 @@ for i = 1:size(field_names,1)
     data = ad_props_cell(i,:);
     output_CSV_from_cell(data, file_out, 'format', format_string);
 end
-
 
 function output_CSV_from_cell(data, out_file, varargin)
 % output_CSV_from_cell    writes a provided cell data structure to a CSV
