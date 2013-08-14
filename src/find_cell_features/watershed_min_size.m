@@ -76,8 +76,7 @@ try touching_ad_nums(2) = watershed_ads(pix_pos_ind(1) + 1,pix_pos_ind(2)); end 
 try touching_ad_nums(3) = watershed_ads(pix_pos_ind(1),pix_pos_ind(2) - 1); end %#ok<TRYNC>
 try touching_ad_nums(4) = watershed_ads(pix_pos_ind(1),pix_pos_ind(2) + 1); end %#ok<TRYNC>
 
-touching_ad_nums = unique(touching_ad_nums);
-touching_ad_nums = touching_ad_nums(touching_ad_nums ~= 0);
+touching_ad_nums = nonzeros(unique(touching_ad_nums));
 %if there aren't any pixels which were connected to newest pixel, add the
 %newest pixel as a new adhesion, otherwise, start a more complicated
 %procedure
