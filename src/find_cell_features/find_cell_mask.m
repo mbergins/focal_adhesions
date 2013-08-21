@@ -69,7 +69,7 @@ if (isnan(mask_thresh))
     
     [pathstr,name, ~] = fileparts(I_file);
     out_file = fullfile(pathstr,[name,'_edge.png']);
-
+    
     imwrite(mask_image_orig_norm,out_file);
     
     return
@@ -89,20 +89,25 @@ threshed_mask = imfill(threshed_mask,'holes');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Pixel Intensity Histogram
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-hist(mask_pixels(:),length(unique(mask_pixels(:)))/4);
-xlabel('Pixel Intensity');
-ylabel('Pixel Count');
-hold on;
-ylimits = ylim;
-plot([mask_thresh,mask_thresh],ylimits,'g','LineWidth',3);
 
-if (exist('smoothed_heights','var'))
-    plot(intensity,smoothed_heights,'r','LineWidth',3);
-    plot(intensity(imax),zmax,'x');
+%wrapping this in a try to keep matlab from crashing when plot production
+%isn't available
+try %#ok<TRYNC>
+    hist(mask_pixels(:),length(unique(mask_pixels(:)))/4);
+    xlabel('Pixel Intensity');
+    ylabel('Pixel Count');
+    hold on;
+    ylimits = ylim;
+    plot([mask_thresh,mask_thresh],ylimits,'g','LineWidth',3);
+    
+    if (exist('smoothed_heights','var'))
+        plot(intensity,smoothed_heights,'r','LineWidth',3);
+        plot(intensity(imax),zmax,'x');
+    end
+    
+    hold off;
+    print('-dpng',fullfile(fileparts(I_file),'cell_mask_hist.png'))
 end
-
-hold off;
-print('-dpng',fullfile(fileparts(I_file),'cell_mask_hist.png'))
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % File Output
