@@ -35,11 +35,11 @@ my %cfg = ParseConfig(\%opt);
 # Main Program
 ################################################################################
 
-my @folders = sort <$cfg{individual_results_folder}/*>;
-die "Unable to find image results folders" if scalar(@folders) == 0;
-
 my @too_many_FA = <$cfg{individual_results_folder}/*/Found_too_many*>;
 die "Found too many FAs" if scalar(@too_many_FA) > 0;
+
+my @folders = sort <$cfg{individual_results_folder}/*>;
+die "Unable to find image results folders" if scalar(@folders) == 0;
 
 our @file_list;
 find(\&collect_all, ($folders[0]));
