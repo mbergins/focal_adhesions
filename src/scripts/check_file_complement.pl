@@ -36,8 +36,10 @@ my %cfg = ParseConfig(\%opt);
 ################################################################################
 
 my @folders = sort <$cfg{individual_results_folder}/*>;
-
 die "Unable to find image results folders" if scalar(@folders) == 0;
+
+my @too_many_FA = <$cfg{individual_results_folder}/*/Found_too_many*>;
+die "Found too many FAs" if scalar(@too_many_FA) > 0;
 
 our @file_list;
 find(\&collect_all, ($folders[0]));
@@ -63,19 +65,6 @@ sub collect_all {
     push @file_list, $File::Find::name;
 }
 
-sub diff_matrices {
-	my @mat_1 = @{$_[0]};
-	my @mat_2 = @{$_[1]};
-	
-	my %file_marks;
-
-	if (scalar(@mat_1) > scalar(@mat_2)) {
-		
-	} else {
-	
-	}
-}
-
 ################################################################################
 #Documentation
 ################################################################################
@@ -91,7 +80,11 @@ check_file_complement.pl -cfg FA_config
 
 =head1 Description
 
-Running MATLAB jobs on emerald is hit or miss, as such, I need a short program to search for and determine if a full set of files have been deposited by the latest program run. This program simply counts the number of files in each image directory and fails with an error when the counts differ for any of the folders. Future versions may pass to image number back, this version simply fails.
+Running MATLAB jobs on emerald is hit or miss, as such, I need a short program
+to search for and determine if a full set of files have been deposited by the
+latest program run. This program simply counts the number of files in each image
+directory and fails with an error when the counts differ for any of the folders.
+Future versions may pass to image number back, this version simply fails.
 
 Required parameter(s):
 
