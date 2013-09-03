@@ -57,6 +57,11 @@
 		</div>
 	</div>
 
+	<p class=lead>
+	New Feature 9/3/2013: <a href="#default_vals">Change the Default Values from the URL Bar</a>
+	</p>
+	
+	Full <a href="#instructions">instructions</a> available at the bottom of the page.
 	<div class="row">
 		<div class="span12">
 			<div id="upload_form_and_instructions" class="collapse in">
@@ -75,7 +80,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="time_spacing">Imaging Frequency (minutes)</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="1" name="time_spacing" />
+								<input type="text" class="input-xlarge" value="[% time_spacing %]" name="time_spacing" />
 								<span class="help-inline">Amount of time, in minutes, between the images</span> 
 							</div>
 						</div>
@@ -83,7 +88,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="stdev_thresh">Detection Threshold</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="2" name="stdev_thresh" >
+								<input type="text" class="input-xlarge" value="[% stdev_thresh %]" name="stdev_thresh" >
 								<span class="help-inline">Normally set to 2, see instructions below for more help</span> 
 							</div>
 						</div>
@@ -91,7 +96,11 @@
 						<div class="control-group">
 							<label class="control-label" for="static">Only Calculate Static Properties</label>
 							<div class="controls">
-								<input type="checkbox" name="static" />
+								[% IF static %]
+									<input type="checkbox" checked name="static" />
+								[% ELSE %]
+									<input type="checkbox" name="static" />
+								[% END %]
 							</div>
 						</div>
 
@@ -99,14 +108,18 @@
 						<div class="control-group">
 							<label class="control-label" for="no_ad_splitting">Don't Split Adjacent Adhesions</label>
 							<div class="controls">
-								<input type="checkbox" name="no_ad_splitting" />
+								[% IF no_ad_splitting %]
+									<input type="checkbox" checked name="no_ad_splitting" />
+								[% ELSE %]
+									<input type="checkbox" name="no_ad_splitting" />
+								[% END %]
 							</div>
 						</div>
 						
 						<div class="control-group">
 							<label class="control-label" for ="min_linear_model_length">Min FA Phase Length (images)</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="10" name="min_linear_model_length" >
+								<input type="text" class="input-xlarge" value="[% min_linear_model_length %]" name="min_linear_model_length" >
 								<span class="help-inline">The minimum number of points in an assembly or disassembly phase</span> 
 							</div>
 						</div>
@@ -115,7 +128,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="min_adhesion_size">Min Adhesion Size (pixels)</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="2" name="min_adhesion_size" >
+								<input type="text" class="input-xlarge" value="[% min_adhesion_size %]" name="min_adhesion_size" >
 								<span class="help-inline">Leave blank to remove the minimum adhesion size limit</span> 
 							</div>
 						</div>
@@ -123,7 +136,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="max_adhesion_size">Max Adhesion Size (pixels)</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="" name="max_adhesion_size" >
+								<input type="text" class="input-xlarge" value="[% max_adhesion_size %]" name="max_adhesion_size" >
 								<span class="help-inline">Leave blank to remove the maximum adhesion size limit</span> 
 							</div>
 						</div>
@@ -132,7 +145,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="FAAI_min_ratio">Min FAAI Ratio</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="3" name="FAAI_min_ratio" >
+								<input type="text" class="input-xlarge" value="[% FAAI_min_ratio %]" name="FAAI_min_ratio" >
 								<span class="help-inline">The minimum value of the FA major/minor axis for inclusion in the FAAI</span> 
 							</div>
 						</div>
@@ -151,8 +164,7 @@
 						<div class="control-group">
 							<label class="control-label" for="email">Email Address</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge email" name="email">
-
+								<input type="text" value=[% email %] class="input-xlarge email" name="email">
 								<span class="help-inline">Your email address will only be used for notification purposes</span> 
 							</div>
 						</div>
@@ -173,10 +185,12 @@
 				</form>
 
 				<hr />
+				<div id="instructions">
 				<h1>Instructions</h1>
 				If you encounter any problems or find any of these instructions
 				confusing, feel free to email me (matthew.berginski [AT]
 				gmail.com).
+
 				<h2>Required Files</h2>
 				<h3 class="thin">
 					Adhesion Image File
@@ -251,6 +265,47 @@
 				<h3>Note to Self About Experiment</h3>
 				Whatever you put in this box will be send back to you in any email the system
 				sends concerning your experiment. It is limited to 80 characters.
+				
+				<div id="default_vals">
+				<h2>Changing the Default Values from the URL Bar</h2>
+				
+				You can change the default values for all the experimental
+				parameters by appending a few characters to the upload URL. The
+				general format for this is
+				?VARIABLE_NAME1=VAL1&VARIABLE_NAME2=VAL2. For example, if you
+				want to set the default time between images to 0.5, you can use
+				this URL for the upload page:
+
+				<p />
+				<blockquote>
+				<a href="http://faas.testing.berginski.com/upload?time_spacing=0.5">
+				http://faas.testing.berginski.com/upload?time_spacing=0.5</a>
+				</blockquote>
+				
+				<p />
+				Now suppose you want to set the default time between images to
+				0.5 and minimum adhesion size to 5 pixels:
+				
+				<p />
+				<blockquote>
+				<a href="http://faas.testing.berginski.com/upload?time_spacing=0.5&min_adhesion_size=5">
+				http://faas.testing.berginski.com/upload?time_spacing=0.5&min_adhesion_size=5</a>
+				</blockquote>
+				
+				<p />
+				In order to set the checkboxes, such as enabling static analysis, using a value of 1 for on and 0 for off. The rest of the variable names should be self-explanitory:
+				<ul>
+					<li>stdev_thresh</li>
+					<li>static</li>
+					<li>no_ad_splitting</li>
+					<li>min_linear_model_length</li> 
+					<li>min_adhesion_size</li>
+					<li>max_adhesion_size</li> 
+					<li>FAAI_min_ratio</li>
+					<li>email</li>
+				</ul>
+				
+				<a href="#upload_form">Return</a> to the submission form.
 			</div>
 			<div id="upload_status" class="collapse">Starting Upload</div>
 			<div id="following_upload_instructions" class="collapse">

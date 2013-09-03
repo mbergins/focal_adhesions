@@ -27,7 +27,16 @@ my $user_exp_info_file = '../user_exp_info.stor';
 ###############################################################################
 
 get '/upload' => sub {
-	template 'upload';
+	
+	my %opt = (time_spacing => 1, stdev_thresh => 2, static => 0, 
+		no_ad_splitting => 0, min_linear_model_length => 10, 
+		min_adhesion_size => 2, max_adhesion_size => "", FAAI_min_ratio => 3,
+		email => '');
+	
+	foreach (keys %opt) {
+		$opt{$_} = param $_ if (defined param $_);
+	}
+	template 'upload', \%opt;
 };
 
 post '/upload' => sub {
