@@ -22,18 +22,13 @@ foreach (@files) {
 	close INPUT;
 }
 
-
 open OUTPUT, ">perl_use_statements.txt";
 print OUTPUT join("\n", sort keys %use_statements);
 close OUTPUT;
-
 
 sub wanted {
 	if (($_ =~ /.pl$/ || $_ =~ /.plx$/) &&
 	 	!($File::Find::name =~ /lib\/perl/)) {
 		push @files, $File::Find::name;
 	}
-}
-
-sub get_use_statements {
 }

@@ -219,7 +219,7 @@ produce_rate_filters <- function(single.exp.data, model_count, min.r.sq=-Inf,
     # disassembly phases, collecting logic table describing which adhesions
     # fulfill which criteria
     vars_to_filter = c("assembly", "disassembly")
-    for (var in vars_to_filter) {
+    for (phase in vars_to_filter) {
         #apply a bonferroni correction to the maximum acceptable p-value
         #calculation if model count provided
         corrected.p.value = max.p.val;
@@ -227,64 +227,39 @@ produce_rate_filters <- function(single.exp.data, model_count, min.r.sq=-Inf,
             corrected.p.value = corrected.p.value / model_count;
         }
         
-        if (old.names) {
-            filter_sets[[var]]$good.r.sq = ! is.na(single.exp.data[[var]]$R_sq) & 
-                single.exp.data[[var]]$R_sq >= min.r.sq
-            filter_sets[[var]]$low.p.val = ! is.na(single.exp.data[[var]]$p_val) & 
-                single.exp.data[[var]]$p_val < corrected.p.value 
-            filter_sets[[var]]$pos.slope = ! is.na(single.exp.data[[var]]$slope) & 
-                single.exp.data[[var]]$slope > 0; 
-        } else {
-            filter_sets[[var]]$good.r.sq = ! is.na(single.exp.data[[var]]$adj.r.squared) & 
-                single.exp.data[[var]]$adj.r.squared >= min.r.sq
-            filter_sets[[var]]$low.p.val = ! is.na(single.exp.data[[var]]$p.value) & 
-                single.exp.data[[var]]$p.value < corrected.p.value 
-            filter_sets[[var]]$pos.slope = ! is.na(single.exp.data[[var]]$slope) & 
-                single.exp.data[[var]]$slope > 0; 
-        }
+		filter_sets[[phase]]$good.r.sq = ! is.na(single.exp.data[[phase]]$adj.r.squared) & 
+			single.exp.data[[phase]]$adj.r.squared >= min.r.sq;
+		filter_sets[[phase]]$low.p.val = ! is.na(single.exp.data[[phase]]$p.value) & 
+			single.exp.data[[phase]]$p.value < corrected.p.value; 
+		filter_sets[[phase]]$pos.slope = ! is.na(single.exp.data[[phase]]$slope) & 
+			single.exp.data[[phase]]$slope > 0;
 
         if (! is.na(min.cent.dist)) {
             thresh = quantile(single.exp.data$exp_props$Mean_FA_cent_dist,c(min.cent.dist))
-            filter_sets[[var]]$cent_dist = ! is.na(single.exp.data$exp_props$Mean_FA_cent_dist) & 
+            filter_sets[[phase]]$cent_dist = ! is.na(single.exp.data$exp_props$Mean_FA_cent_dist) & 
                 single.exp.data$exp_props$Mean_FA_cent_dist > thresh; 
         }
     }
     
-    # There are two variables that are unique to assembly and disassembly
-    # (split birth events and deaths due to merges), we will keep all those in
-    # the logic table "extra" and the in named variables so we can access the
-    # named variables separated if needed
-    filter_sets$assembly$not_split_birth = ! single.exp.data$exp_props$split_birth_status
-    filter_sets$assembly$extra = filter_sets$assembly$not_split_birth
-    
-    filter_sets$disassembly$death_status = single.exp.data$exp_props$death_status
-    filter_sets$disassembly$extra = filter_sets$disassembly$death_status
-    
     # Now all the filters are cascaded to produce the final filter set, then
     # the pos.slope variable is checked and applied if requested
     final_filters = list()
-    for (var in vars_to_filter) {
-        final_filters[[var]] = (filter_sets[[var]]$good.r.sq & 
-            filter_sets[[var]]$low.p.val & filter_sets[[var]]$extra);
-        if (any(names(filter_sets[[var]]) == "cent_dist")) {
-            final_filters[[var]] = (final_filters[[var]] & filter_sets[[var]]$cent_dist);
-        }
-    }
-
-    if (pos.slope) {
-        for (var in vars_to_filter) {
-            final_filters[[var]] = (final_filters[[var]] & filter_sets[[var]]$pos.slope);
+    for (phase in vars_to_filter) {
+        final_filters[[phase]] = (filter_sets[[phase]]$good.r.sq & filter_sets[[phase]]$low.p.val);
+        if (any(names(filter_sets[[phase]]) == "cent_dist")) {
+            final_filters[[phase]] = (final_filters[[phase]] & filter_sets[[phase]]$cent_dist);
         }
     }
     
-    final_filters$joint = final_filters$assembly & final_filters$disassembly
+	assemb_FA_nums = single.exp.data$assem$FA_number[final_filters$assembly];
+	dis_FA_nums = single.exp.data$dis$FA_number[final_filters$disassembly];
+    joint_FA_nums = intersect(assemb_FA_nums,dis_FA_nums);
+	final_filters$joint = is.element(single.exp.data$stability$FA_num,joint_FA_nums)
     
-    for (filter_type in names(final_filters)) {
+	for (filter_type in names(final_filters)) {
         final_filters[[filter_type]] = as.logical(final_filters[[filter_type]])
     }
 
-    final_filters$filter_sets = filter_sets;
-    
     return(final_filters)
 }
 

@@ -159,7 +159,7 @@ if (i_p.Results.no_ad_splitting)
     %segmentation methods, just identify the connected areas
     ad_segment = bwlabel(threshed_image,4);
 else
-    ad_segment = watershed_min_size(focal_image,bwlabel(threshed_image,4), ...
+    ad_segment = watershed_min_size(focal_image,threshed_image, ...
         i_p.Results.min_independent_size);
 end
 toc(seg_start);

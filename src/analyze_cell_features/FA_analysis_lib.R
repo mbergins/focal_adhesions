@@ -716,7 +716,7 @@ bootstrap_overlap <- function(boot_one,boot_two,p_val, type="bca") {
 # Filtering
 #######################################
 filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 0.05, debug = FALSE,
-        pos.slope = TRUE,old.names=F,min.cent.dist=NA,min.birth.num=NA) {
+        min.cent.dist=NA,min.birth.num=NA) {
 
     ad_data = list();
     
@@ -741,67 +741,45 @@ filter_results <- function(results, model_count = NA, min.r.sq=0.9, max.p.val = 
         res = results[[i]];
         
         filter_sets = produce_rate_filters(res, model_count, min.r.sq = min.r.sq, max.p.val = max.p.val, 
-            pos.slope = pos.slope,old.names=old.names,min.cent.dist=min.cent.dist)
+            min.cent.dist=min.cent.dist)
         
-        assembly_filt = filter_sets$assembly;
+		assembly_filt = filter_sets$assembly;
         disassembly_filt = filter_sets$disassembly;
         joint_filt = filter_sets$joint;
         
         these_props = subset(res$exp_props, select = props_to_select);
+
         #######################################################################
         # Building the Assembly Data Set
         #######################################################################
-
         this_assem_data = list()
         this_assem_data = res$assembly[assembly_filt,]
-        this_assem_data = cbind(this_assem_data,these_props[assembly_filt,])
+        this_assem_data = cbind(this_assem_data,these_props[res$assembly[assembly_filt,]$FA_number,])
         this_assem_data$exp_num = c(this_assem_data$exp_num, rep(i,length(which(assembly_filt))));
-        this_assem_data$lin_num = c(this_assem_data$lin_num, which(assembly_filt));
 
         ad_data$assembly = rbind(ad_data$assembly,this_assem_data)
              
         #######################################################################
         # Building the Disassembly Data Set
         #######################################################################
-        
         this_dis_data = list()
         this_dis_data = res$disassembly[disassembly_filt,]
-        this_dis_data = cbind(this_dis_data,these_props[disassembly_filt,])
+        this_dis_data = cbind(this_dis_data,these_props[res$disassembly[disassembly_filt,]$FA_number,])
         this_dis_data$exp_num = c(this_dis_data$exp_num, rep(i,length(which(disassembly_filt))));
-        this_dis_data$lin_num = c(this_dis_data$lin_num, which(disassembly_filt));
         
         ad_data$disassembly = rbind(ad_data$disassembly,this_dis_data)
         
         #######################################################################
-        # Building the Joint Data Set
+        # Building the Stability Data Set
         #######################################################################
-        ad_data$joint$exp_num = c(ad_data$joint$exp_num, rep(i,length(which(joint_filt))));
-        ad_data$joint$lin_num = c(ad_data$joint$lin_num, which(joint_filt));
-        ad_data$joint$assembly_length = c(ad_data$joint$assembly_length, res$assem$image_count[joint_filt]);
-        ad_data$joint$assembly_slope = c(ad_data$joint$assembly_slope, res$assem$slope[joint_filt]);
-        ad_data$joint$assembly_r_sq = c(ad_data$joint$assembly_r_sq, res$assem$adj.r.squared[joint_filt]);
-        ad_data$joint$disassembly_length = c(ad_data$joint$disassembly_length, res$dis$image_count[joint_filt]);
-        ad_data$joint$disassembly_slope = c(ad_data$joint$disassembly_slope, res$dis$slope[joint_filt]);
-        ad_data$joint$disassembly_r_sq = c(ad_data$joint$disassembly_r_sq, res$dis$adj.r.squared[joint_filt]);
-        ad_data$joint$longevity = c(ad_data$joint$longevity, res$exp_props$longevity[joint_filt]);
-        
-        # Figuring out the length of the stability phase is a bit complicated.
-        # The assembly and disassembly phases can end and start on the same
-        # image, so we need to ensure that our counts acknowledge that
-        # possiblity.
-        i_num_joint_longev = res$exp_props$death_i_num[joint_filt] - res$exp_props$birth_i_num[joint_filt] + 1;
-        # ad_data$joint$stability_length = c(ad_data$joint$stability_length, 
-        #     i_num_joint_longev - res$assem$image_count[joint_filt] - res$dis$image_count[joint_filt] + 1);
+		this_stability = res$stability[joint_filt,];
+        this_stability$exp_num = cbind(this_stability$exp_num,rep(i,length(which(joint_filt))));
+		ad_data$stability = rbind(ad_data$stability,this_stability);
     }
-    
-
-    ad_data$assembly$exp_num = as.factor(ad_data$assembly$exp_num);
+	
+	ad_data$assembly$exp_num = as.factor(ad_data$assembly$exp_num);
     ad_data$disassembly$exp_num = as.factor(ad_data$disassembly$exp_num);
     ad_data$joint$exp_num = as.factor(ad_data$joint$exp_num);
-
-    ad_data$assembly = as.data.frame(ad_data$assembly);
-    ad_data$disassembly = as.data.frame(ad_data$disassembly);
-    ad_data$joint = as.data.frame(ad_data$joint);
 
     return(ad_data);
 }

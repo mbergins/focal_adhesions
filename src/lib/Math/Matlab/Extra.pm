@@ -31,7 +31,9 @@ sub execute_commands {
 
     my $error_file = $opt{error_file};
 
-    my $matlab_object = Math::Matlab::Local->new();
+    my $matlab_object = Math::Matlab::Local->new({
+			cmd => '/usr/local/bin/matlab -nodisplay'
+	});
 	if (defined $opt{root_mwd}) {
 		$matlab_object->root_mwd($opt{root_mwd});
 	}
