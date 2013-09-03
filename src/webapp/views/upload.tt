@@ -57,14 +57,15 @@
 		</div>
 	</div>
 
-	<p class=lead>
-	New Feature 9/3/2013: <a href="#default_vals">Change the Default Values from the URL Bar</a>
-	</p>
-	
-	Full <a href="#instructions">instructions</a> available at the bottom of the page.
 	<div class="row">
 		<div class="span12">
 			<div id="upload_form_and_instructions" class="collapse in">
+				<p class=lead> 
+					New Feature 9/3/2013: <a href="#default_vals">Change the Default Values from the URL
+					Bar</a> </p>
+				
+				Full <a href="#instructions">instructions</a> available at the
+				bottom of the page.
 				<form id="upload_form" class="form-horizontal" enctype="multipart/form-data" method="post">
 					<fieldset>
 						<h2>Required Files</h2>
@@ -185,7 +186,7 @@
 				</form>
 
 				<hr />
-				<div id="instructions">
+				<div id="instructions"></div>
 				<h1>Instructions</h1>
 				If you encounter any problems or find any of these instructions
 				confusing, feel free to email me (matthew.berginski [AT]
@@ -195,11 +196,12 @@
 				<h3 class="thin">
 					Adhesion Image File
 				</h3>
-				The program expects that you will submit a grayscale stacked TIFF image set of
-				the Focal Adhesion marker protein. The analysis methods have been tested with a
-				wide range of Focal Adhesion markers including Paxillin, FAK and Vinculin. The
-				image set can be of any size, but keep in mind that a large image set can take
-				some time to upload.
+				The program expects that you will submit a grayscale stacked
+				TIFF image set of the Focal Adhesion marker protein. The
+				analysis methods have been tested with a wide range of Focal
+				Adhesion markers including Paxillin, FAK and Vinculin. The image
+				set can be of any size, but keep in mind that a large image set
+				can take some time to upload.
 
 				<h2>Detection Settings</h2>
 				<p/><b>Adhesion Detection Threshold:</b>This number is used by the adhesion
@@ -266,7 +268,7 @@
 				Whatever you put in this box will be send back to you in any email the system
 				sends concerning your experiment. It is limited to 80 characters.
 				
-				<div id="default_vals">
+				<div id="default_vals"></div>
 				<h2>Changing the Default Values from the URL Bar</h2>
 				
 				You can change the default values for all the experimental
