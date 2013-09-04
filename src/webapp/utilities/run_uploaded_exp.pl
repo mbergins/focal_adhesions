@@ -19,11 +19,6 @@ GetOptions(\%opt, "fullnice", "ID=s","debug|d") or die;
 
 $| = 1;
 
-if ($opt{fullnice}) {
-	system("renice -n 20 -p $$ > /dev/null");
-	system("ionice -c 3 -p $$");
-}
-
 ###############################################################################
 # Configuration
 ###############################################################################
@@ -98,6 +93,11 @@ if (basename($oldest_data{upload_folder}) =~ /FAAS_(.*)/) {
 $oldest_data{data_folder} = catdir($dir_locations{data_proc},basename($oldest_data{upload_folder}));
 move($oldest_data{upload_folder}, $oldest_data{data_folder});
 # dircopy($oldest_data{upload_folder}, $oldest_data{data_folder});
+if ($opt{fullnice}) {
+	system("renice -n 20 -p $$ > /dev/null");
+	system("ionice -c 3 -p $$");
+}
+
 $oldest_data{cfg_file} = rel2abs(catfile($oldest_data{data_folder},"analysis.cfg"));
 
 my %temp = ParseConfig(
