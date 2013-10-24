@@ -60,10 +60,7 @@
 	<div class="row">
 		<div class="span12">
 			<div id="upload_form_and_instructions" class="collapse in">
-				<p class=lead> 
-					New Feature 9/3/2013: <a href="#default_vals">Change the Default Values from the URL
-					Bar</a> </p>
-				
+				<p/>
 				Full <a href="#instructions">instructions</a> available at the
 				bottom of the page.
 				<form id="upload_form" class="form-horizontal" enctype="multipart/form-data" method="post">
