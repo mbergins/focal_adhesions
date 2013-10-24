@@ -114,6 +114,8 @@ $oldest_data{results_folder} = rel2abs(catdir($dir_locations{results},basename($
 if (not $oldest_data{cfg}{static}) {
 	&build_vector_vis(%oldest_data);
 }
+&add_runtime_to_config(\%oldest_data,$start_time);
+&copy_config_to_results($oldest_data{cfg_file},$oldest_data{results_folder});
 $oldest_data{public_zip} = &zip_results_folder(%oldest_data);
 
 File::Path::rmtree($oldest_data{results_folder});
@@ -125,7 +127,6 @@ if (defined $oldest_data{cfg}{email}) {
 	&send_done_email(%oldest_data);
 }
 
-&add_runtime_to_config(\%oldest_data,$start_time);
 &delete_run_file($run_file);
 
 ###############################################################################
@@ -142,6 +143,13 @@ sub add_runtime_to_config {
 	open OUTPUT, ">>$oldest_data{cfg_file}" or die $!;
 	print OUTPUT "runtime = $total_time\n";
 	close OUTPUT;
+}
+
+sub copy_config_to_results {
+	my $config_file_location = $_[0];
+	my $results_folder = $_[1];
+	
+	copy($config_file_location, $results_folder);
 }
 
 ###########################################################
