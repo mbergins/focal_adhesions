@@ -103,6 +103,10 @@
 					intensity values during the standard phase.</li> 
 					<li>coeff_of_var: Result of dividing stdev by
 					mean_fold_change values, the coefficient of variation.</li>
+					<li>half_peak_time: Amount of time between the time when the
+					assembly phase hits half of the stability mean intensity and
+					when the disassembly phase hits half of the stability mean
+					intensity.</li>
 				</ul>
 
 				<p>
