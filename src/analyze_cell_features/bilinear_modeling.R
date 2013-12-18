@@ -20,8 +20,10 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
     
     for (FA_number in lineages_to_analyze) {
         #find the models where the birth or death filter properties are met
+		
+		only.data = na.omit(data[FA_number,]);
+
         if (birth_filter[FA_number]) {
-            only.data = na.omit(data[FA_number,]);
             time.series = list(value=only.data,
                 time=seq(0,along.with=only.data,by=time.spacing));
 
@@ -29,7 +31,7 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
                 min.phase.length=min.phase.length);
         }
         if (death_filter[FA_number]) {
-            only.data.reverse = na.omit(rev(data[FA_number,]));
+            only.data.reverse = rev(only.data);
             time.series.reverse = list(value=only.data.reverse,
                 time=seq(0,along.with=only.data.reverse,by=time.spacing));
 
@@ -49,9 +51,16 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
             best_disassembly_model$FA_number = FA_number;
             models$disassembly = rbind(models$disassembly, best_disassembly_model);
 
-            stability_model = find_stability_properties(time.series,best_assembly_model,best_disassembly_model);
+            stability_model = find_stability_properties(time.series,
+														best_assembly_model,
+														best_disassembly_model);
             stability_model$FA_number = FA_number;
-            models$stability = rbind(models$stability, stability_model);
+			stability_model$half_peak_time = find_time_between_half_peaks(only.data,
+											   	     stability_model$mean_intensity,
+											   		 assemb_model=best_assembly_model,
+											   		 disassem_model=best_disassembly_model);
+            
+			models$stability = rbind(models$stability, stability_model);
         } else if (birth_filter[FA_number]) {
             best_indexes = find_optimum_model_indexes(assembly=assembly_model_results,disassembly=NULL);
             
@@ -104,6 +113,21 @@ fit_all_possible_log_models <- function(time.series,min.phase.length=10) {
     data_summary = as.data.frame(data_summary);
 }
 
+find_time_between_half_peaks <- function(fa_intensity,stability_mean,
+										 assemb_model,disassem_model) {
+
+	#Requested by Pradeep Uchill to implement a metric from a Maddy Parson
+	#paper.
+	fa_intensity_min = fa_intensity - min(fa_intensity);
+	
+	stability_mean_min = stability_mean - min(fa_intensity);
+	
+	meet_half_stability = which(fa_intensity_min > stability_mean_min*0.5)
+
+	time_between = max(meet_half_stability) - min(meet_half_stability);
+	return(time_between);
+}
+
 find_optimum_model_indexes <- function(assembly=NULL,disassembly=NULL) {
     best_fit_indexes = c(NA, NA);
    
@@ -154,24 +178,24 @@ find_stability_properties <- function(time.series,best_assembly,best_disassembly
         best_assembly$image_count - 
         best_disassembly$image_count;
     
-    # If there aren't any images included in the stability phase, then we can't
-    # calculate these variables, so set them as NA. They will be reset if there
-    # is a stability phase.
-    stability_props$mean_intensity = NA;
-    stability_props$mean_fold_change = NA;
-    stability_props$stdev = NA;
-    stability_props$coeff_of_var = NA;
-
-    if (length(stability_props$image_count >= 1)) {
+	
+	#If the stability phase contains at least one image, we will only use those
+	#images to make the remaining calculation, otherwise, use the last data
+	#point in assembly and the first in disassembly
+    if (stability_props$image_count >= 1) {
         stability_indexes = seq(best_assembly$image_count+1, length=stability_props$image_count);
         stability_values = time.series$value[stability_indexes];
-        stability_fold_change = stability_values/mean(c(time.series$value[1],tail(time.series$value,n=1)));
-        stability_props$mean_intensity = mean(stability_values);
-        stability_props$mean_fold_change = mean(stability_fold_change);
-        stability_props$stdev = sd(stability_fold_change);
-        stability_props$coeff_of_var = stability_props$stdev/stability_props$mean_fold_change;
-    }
-    
+	} else {
+        stability_indexes = c(best_assembly$image_count, best_assembly$image_count+1);
+        stability_values = time.series$value[stability_indexes];
+	}
+
+	stability_fold_change = stability_values/mean(c(time.series$value[1],tail(time.series$value,n=1)));
+	stability_props$mean_intensity = mean(stability_values);
+	stability_props$mean_fold_change = mean(stability_fold_change);
+	stability_props$stdev = sd(stability_fold_change);
+	stability_props$coeff_of_var = stability_props$stdev/stability_props$mean_fold_change;
+
     stability_props = as.data.frame(stability_props);
     return(stability_props);
 }
@@ -334,8 +358,9 @@ produce_simple_CSV_output_set <- function(models,time_spacing) {
     output_sets = list();
     output_sets$ad_kinetics = rbind(assembly_adhesions,disassembly_adhesions,stability_adhesions);
     output_sets$ad_kinetics$phase_length = output_sets$ad_kinetics$image_count * time_spacing;
-
-    output_sets$stability_props = stability_adhesions_full_data;
+	
+	stability_adhesions_full_data$half_peak_time = stability_adhesions_full_data$half_peak_time * time_spacing;
+	output_sets$stability_props = stability_adhesions_full_data;
     
     return(output_sets);
 }
