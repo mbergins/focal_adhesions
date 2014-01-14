@@ -194,7 +194,7 @@ sub send_email {
 	
 	if (defined $email_data{exp_note}) {
 		$email_data{body} = "$email_data{body}\n" . 
-			"Your note to yourself about this experiment:\n\n$email_data{exp_note}";
+			"Your note about this experiment:\n\n$email_data{exp_note}";
 	}
 	
 	my $from_str = "\"From: noreply\@$hostname (FAAS Notification)\"";
