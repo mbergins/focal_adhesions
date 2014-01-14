@@ -140,7 +140,18 @@ end
 if (sum(sum(threshed_image)) == 0)
     no_ad_found_file = fullfile(output_dir, 'no_FAs_found.txt');
     system(['touch ', no_ad_found_file]);
-    disp('Didn''t find any adhesions');
+    return;
+end
+
+%adding a check for finding too many adhesions, if found too many return
+%from function
+temp_ad_count = max(max(bwlabel(threshed_image,4)));
+if (temp_ad_count > i_p.Results.max_adhesion_count)
+    highlighted_image = create_highlighted_image(focal_normed, threshed_image, ...
+        'color_map',[1,1,0]);
+    imwrite(highlighted_image,fullfile(output_dir, 'highlights.png'));
+    print_too_many_FA_error(output_dir);
+    return;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -175,6 +186,7 @@ if ((length(ad_nums) - 1) > i_p.Results.max_adhesion_count)
         'color_map',[1,1,0]);
     imwrite(highlighted_image,fullfile(output_dir, 'highlights.png'));
     print_too_many_FA_error(output_dir);
+    return;
 %     error(['Found more (',num2str(max(ad_segment(:))),') adhesions than', ...
 %         ' max adhesion count (',num2str(i_p.Results.max_adhesion_count),').']);
 end
