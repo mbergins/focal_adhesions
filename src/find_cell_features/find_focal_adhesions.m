@@ -214,6 +214,18 @@ toc(holes_start);
 if(i_p.Results.status_messages), disp('Done filling adhesion holes'); end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Remove Large Adhesions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if (i_p.Results.max_adhesion_size < Inf)
+    props = regionprops(ad_segment,'Area');
+    areas = [props.Area];
+    filter_result = areas <= i_p.Results.max_adhesion_size;
+    passed_size_binary = ismember(ad_segment, find(filter_result));
+    
+    ad_segment = passed_size_binary.*ad_segment;
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Renumber adhesions to be sequential
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ad_nums = unique(ad_segment);
