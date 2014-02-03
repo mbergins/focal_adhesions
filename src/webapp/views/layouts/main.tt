@@ -60,8 +60,6 @@
 </div>
 [% END %]
 
-<h1>Notice: This is the Testing Server</h1>
-
 [% content %]
 
 <footer class="footer">
