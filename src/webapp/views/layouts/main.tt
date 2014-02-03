@@ -17,6 +17,9 @@
 <script src="[% request.uri_base %]/javascripts/jquery-1.7.2.min.js"></script>
 <script src="[% request.uri_base %]/bootstrap/js/bootstrap.min.js"></script>
 
+<!-- <script src="[% request.uri_base %]/javascripts/pace.js"></script> -->
+<!-- <link href="/pace/themes/pace-theme-barber-pole.css" rel="stylesheet" /> -->
+
 </head>
 <body>
 
@@ -56,6 +59,8 @@
   </div>
 </div>
 [% END %]
+
+<h1>Notice: This is the Testing Server</h1>
 
 [% content %]
 
