@@ -27,7 +27,6 @@ my $user_exp_info_file = '../user_exp_info.stor';
 ###############################################################################
 
 get '/upload' => sub {
-	
 	my %opt = (time_spacing => 1, stdev_thresh => 2, static => 0, 
 		no_ad_splitting => 0, min_linear_model_length => 10, 
 		min_adhesion_size => 2, max_adhesion_size => "", FAAI_min_ratio => 3,
@@ -78,7 +77,7 @@ post '/upload' => sub {
 
 		my @copy_if_defined = qw(stdev_thresh no_ad_splitting min_adhesion_size
 		max_adhesion_size email exp_note min_linear_model_length time_spacing
-		static FAAI_min_ratio);
+		static FAAI_min_ratio max_adhesion_count);
 		foreach (@copy_if_defined) {
 			my $val = param $_;
 			if (defined $val && $val ne "") {
