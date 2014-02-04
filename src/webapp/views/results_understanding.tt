@@ -157,10 +157,10 @@
 				'adhesion_props' folder.
 				
 				</p>
-				The calculated properties include longevity, largest adhesion
-				area, mean area, mean FA marker intensity and axial ratio. If a
-				cell mask set of files are provided, the average distance from
-				the cell edge and cell center are also included.
+				The calculated properties include longevity (lifetime), largest
+				adhesion area, mean area, mean FA marker intensity and axial
+				ratio. If a cell mask set of files are provided, the average
+				distance from the cell edge and cell center are also included.
 
 				<!-- <h3>Time-lapse Image Sets</h3> -->
 				<!-- <p> -->
