@@ -20,8 +20,8 @@ my @all_cfgs = split("\n",$find_results);
 my $all_cfg_count = scalar(@all_cfgs);
 
 $find_results = `find /home/mbergins/Documents/Projects/focal_adhesions/data/FAAS_*/*.cfg -ctime -$opt{days}`;
-my @last_7_day_cfgs = split("\n",$find_results);
-my $cfg_count = scalar(@last_7_day_cfgs);
+my @recent_cfgs = split("\n",$find_results);
+my $cfg_count = scalar(@recent_cfgs);
 
 my $image_count_line = `find /home/mbergins/Documents/Projects/focal_adhesions/data/ -iregex .*png.* | wc`;
 my @image_count = split(/\s+/,$image_count_line);
@@ -31,7 +31,7 @@ my $IP_count_line  = `grep -h ip /home/mbergins/Documents/Projects/focal_adhesio
 my @IP_count = split(/\s+/,$IP_count_line);
 my $total_IPs = $IP_count[1];
 
-%emails = &get_email_addresses_and_counts(@last_7_day_cfgs);
+%emails = &get_email_addresses_and_counts(@recent_cfgs);
 my @count_sort = sort {$emails{$b}{count} <=> $emails{$a}{count}} keys %emails;
 
 my $email_text = "In total $total_images images have been processed in $all_cfg_count experiments from $total_IPs IP adresses.\n\n";
