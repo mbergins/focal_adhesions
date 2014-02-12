@@ -140,7 +140,6 @@ for i_num = 1:length(image_folders)
     ad_nums_lineage_order = tracking_seq(tracking_seq(:,i_num) > 0,i_num);
     %Build the unique lineage highlighted image
     cmap_nums = lineage_to_cmap(tracking_seq(:,i_num) > 0);
-%     this_cmap = zeros(max(ad_label_perim(:)),3);
     this_cmap(ad_nums_lineage_order,:) = lineage_cmap(cmap_nums,:); %#ok<AGROW>
     highlighted_all = create_highlighted_image(orig_i,ad_label_perim,'color_map',this_cmap);
 
