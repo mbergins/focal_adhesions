@@ -49,7 +49,7 @@ i_p.addParamValue('status_messages',1,@(x)x == 1 || x == 0);
 i_p.parse(I_file,varargin{:});
 
 %Add the folder with all the scripts used in this master program
-addpath('matlab_scripts');
+addpath(genpath('matlab_scripts'));
 addpath('../visualize_cell_features');
 
 filenames = add_filenames_to_struct(struct());
@@ -113,17 +113,11 @@ end
 %identify and remove adhesions on the edge of the image
 threshed_image = remove_edge_adhesions(threshed_image);
 
-%filter out small adhesions if requested
-if (i_p.Results.min_adhesion_size > 1 || i_p.Results.max_adhesion_size < Inf)
-    labeled_thresh = bwlabel(threshed_image,4);
-    
-    props = regionprops(labeled_thresh,'Area'); %#ok<MRPBW>
-    areas = [props.Area];
-    filter_result = areas >= i_p.Results.min_adhesion_size & areas <= i_p.Results.max_adhesion_size;
-    labeled_thresh = ismember(labeled_thresh, find(filter_result));
-    
-    threshed_image = labeled_thresh > 0;
-end
+%filter out small/large adhesions
+threshed_image = bwpropopen(threshed_image,'Area',i_p.Results.min_adhesion_size,...
+    'connectivity',4);
+threshed_image = bwpropclose(threshed_image,'Area',i_p.Results.max_adhesion_size,...
+    'connectivity',4);
 
 % Remove adhesions outside mask
 if (exist('cell_mask','var'))
@@ -175,6 +169,15 @@ else
 end
 toc(seg_start);
 if(i_p.Results.status_messages), disp('Done finding adhesion regions'); end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Check Adhesion Sizes Again
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%this deals with the possibility that a small adhesion was left after
+%watershed splitting
+ad_segment = labelpropopen(ad_segment,'Area',i_p.Results.min_adhesion_size);
+ad_segment = labelpropclose(ad_segment,'Area',i_p.Results.max_adhesion_size);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Check for too many adhesions
