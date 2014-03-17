@@ -5,6 +5,10 @@ function final_label_mat = watershed_min_size(imageOrig,threshed_image,min_size)
 
 im = imageOrig.*(threshed_image > 0);      %threshold (should eliminate any negative values)
 
+%reset any values at or below zero to a small positive value to ensure that
+%the find further down includes all segmented pixels
+im(threshed_image > 0 & im <= 0) = 1E10;   
+
 %The following code might try to lookup a pixel value outside the image
 %size, so add a layer of zeros to deal with that possibility. We will
 %remove the layer at the end of processing.
