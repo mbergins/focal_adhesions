@@ -43,11 +43,9 @@
 			},
 		});
 	});
-
 </script>
 
 <div class="container">
-	
 	<!-- HEADER line -->
 	<div class="page-header">
 		<div class="row">
@@ -65,7 +63,7 @@
 				bottom of the page.
 				<form id="upload_form" class="form-horizontal" enctype="multipart/form-data" method="post">
 					<fieldset>
-						<h2>Required Files</h2>
+						<h2>Required File</h2>
 						<div class="control-group">
 							<label class="control-label" for="adhesion_file">FA Time-lapse</label>
 							<div class="controls">
@@ -83,42 +81,36 @@
 							</div>
 						</div>
 
-						<div class="control-group">
-							<label class="control-label" for ="stdev_thresh">Detection Threshold</label>
-							<div class="controls">
-								<input type="text" class="input-xlarge" value="[% stdev_thresh %]" name="stdev_thresh" >
-								<span class="help-inline">Normally set to 2, see instructions below for more help</span> 
-							</div>
-						</div>
-						
-						<div class="control-group">
-							<label class="control-label" for="static">Only Calculate Static Properties</label>
-							<div class="controls">
-								[% IF static %]
-									<input type="checkbox" checked name="static" />
-								[% ELSE %]
-									<input type="checkbox" name="static" />
-								[% END %]
-							</div>
-						</div>
-
 						<h2>Segmentation Options</h2>
 						<div class="control-group">
-							<label class="control-label" for="no_ad_splitting">Don't Split Adjacent Adhesions</label>
+							<label class="control-label" for="no_ad_splitting">Don't Split Adhesions</label>
 							<div class="controls">
 								[% IF no_ad_splitting %]
 									<input type="checkbox" checked name="no_ad_splitting" />
 								[% ELSE %]
 									<input type="checkbox" name="no_ad_splitting" />
 								[% END %]
+								<span class="help-inline">If selected, the watershed segmentation methods are deactivated</span> 
 							</div>
 						</div>
 						
 						<div class="control-group">
-							<label class="control-label" for ="min_linear_model_length">Min FA Phase Length (images)</label>
+							<label class="control-label" for="confocal_mode">Apply Median Filter</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="[% min_linear_model_length %]" name="min_linear_model_length" >
-								<span class="help-inline">The minimum number of points in an assembly or disassembly phase</span> 
+								[% IF confocal_mode %]
+									<input type="checkbox" checked name="confocal_mode" />
+								[% ELSE %]
+									<input type="checkbox" name="confocal_mode" />
+								[% END %]
+								<span class="help-inline">If selected, a median filter will be applied before segmentation</span> 
+							</div>
+						</div>
+						
+						<div class="control-group">
+							<label class="control-label" for ="stdev_thresh">Detection Threshold</label>
+							<div class="controls">
+								<input type="text" class="input-xlarge" value="[% stdev_thresh %]" name="stdev_thresh" >
+								<span class="help-inline">Normally set to 2, see instructions below for more help</span> 
 							</div>
 						</div>
 
@@ -139,6 +131,27 @@
 							</div>
 						</div>
 						
+						<h2>Analysis Options</h2>
+						
+						<div class="control-group">
+							<label class="control-label" for ="min_linear_model_length">Min FA Phase Length (images)</label>
+							<div class="controls">
+								<input type="text" class="input-xlarge" value="[% min_linear_model_length %]" name="min_linear_model_length" >
+								<span class="help-inline">The minimum number of points in an assembly or disassembly phase</span> 
+							</div>
+						</div>
+						
+						<div class="control-group">
+							<label class="control-label" for="static">Only Calculate Static Properties</label>
+							<div class="controls">
+								[% IF static %]
+									<input type="checkbox" checked name="static" />
+								[% ELSE %]
+									<input type="checkbox" name="static" />
+								[% END %]
+							</div>
+						</div>
+						
 						<h3>FAAI Options</h3>
 						<div class="control-group">
 							<label class="control-label" for ="FAAI_min_ratio">Min FAAI Ratio</label>
@@ -148,7 +161,7 @@
 							</div>
 						</div>
 
-						<h2>Optional</h2>
+						<h2>Optional Cell Mask Image Set</h2>
 						
 						<div class="control-group">
 							<label class="control-label" for="cell_mask_file">Cell Mask</label>
@@ -158,20 +171,20 @@
 							</div>
 						</div>
 							
-						<h3>Notification Options</h3>
+						<h2>Notification Options</h2>
 						<div class="control-group">
 							<label class="control-label" for="email">Email Address</label>
 							<div class="controls">
 								<input type="text" value="[% email %]" class="input-xlarge email" name="email">
 								<span class="help-inline">Your email address will only be used for notification purposes</span> 
 							</div>
-						</div>
+						 </div> 
 
 						<div class="control-group">
 							<label class="control-label" for="exp_note">Experiment Note</label>
 							<div class="controls">
 								<input type="text" class="input-xlarge" name="exp_note">
-								<span class="help-inline">Any text in this box will be returned with the results email.</span> 
+								<span class="help-inline">Any text in this box will be returned with the results email</span> 
 							</div>
 						</div>
 
@@ -211,6 +224,15 @@
 				lengthen the runtime.  If you want to see what one of your images looks like
 				when processed with a specific threshold try out the threshold <a
 					href=thresh_testing>tester</a>.
+				
+				<p/><b>Apply Median Filter:</b> This option applies a 7 by 7
+				median filter to the focal adhesion image during segmentation.
+				I've found this setting useful for segmenting adhesions imaged
+				using confocal microscopy. The filtered image is only used for
+				segmentation purposes, so all downstream properties are based on
+				the raw image values. If using this setting, I also suggest you
+				select the "Don't Split Adhesions Option", otherwise the
+				watershed segmentation has a tendency to oversegment the FAs.
 
 				<p/><b>Don't Split Adjacent Adhesions:</b> This option turns off the wateshed
 				segmentation method normally used to split adjacent adhesions. The watershed
@@ -218,6 +240,12 @@
 				selected, processing runtimes decrease. You might want to turn on this option
 				if the adhesions in your experiments don't appear to touch one another.
 				
+				<p/><b>Min/Max Adhesion Size:</b> These settings control the
+				minimum or maximum adhesion sizes allowed through the
+				segmentation step, both are specified in pixels.
+				
+
+				<h2>Analysis Options</h2>
 				<p/><b>Only Calculate Static Properties:</b> This option turns
 				off the all the processing steps after calculating the FA
 				properties for each image. None of the adhesions are tracked and
@@ -231,10 +259,6 @@
 				Decreasing this value allows more assembly and disassembly
 				phases to be gathered, but at the cost of those phases to
 				potentially be built on fewer data points.
-
-				<p/><b>Min/Max Adhesion Size:</b> These settings control the
-				minimum or maximum adhesion sizes allowed through the
-				segmentation step, both are specified in pixels.
 				
 				<p/><b>Min FAAI Ratio:</b> The first step in calculating the
 				FAAI is to filter FA's with a low major/minor axis ratio. The
