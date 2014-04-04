@@ -30,7 +30,10 @@
 			</form>
 
 			<p>
-			After submitting an image above, the server will immediatly process the provided image and return the results of several different segmentation thresholds. These results will be similiar, but not identical to the results of segmentation.
+			After submitting an image above, the server will immediatly process
+			the provided image and return the results of several different
+			segmentation thresholds. This segmentation process skips splitting
+			the focal adhesions, as is the default in the full analysis suite.
 			
 			<p>
 			If you would like to test the server, try this <a href=sample/sample_image.png>image</a>.
