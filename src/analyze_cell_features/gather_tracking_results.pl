@@ -629,7 +629,7 @@ sub gather_birth_i_num {
         if ($first_data_index == 0) {
             $starting_data[$i] = "NA";
         } else {
-            $starting_data[$i] = $first_data_index;
+            $starting_data[$i] = $first_data_index + 1;
         }
     }
     return \@starting_data;
@@ -647,7 +647,7 @@ sub gather_death_i_num {
         if ($last_data_index == $max_index) {
             $ending_data[$i] = "NA";
         } else {
-            $ending_data[$i] = $last_data_index;
+            $ending_data[$i] = $last_data_index + 1;
         }
     }
     return \@ending_data;
