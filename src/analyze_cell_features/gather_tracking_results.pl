@@ -296,7 +296,7 @@ sub gather_and_output_lineage_properties {
 	#Time Series Props
 	my @ts_props = qw(Angle_to_center Orientation MajorAxisLength
 	MinorAxisLength Dist_to_FA_cent Angle_to_FA_cent CHull_dist
-	Angle_diff_from_radial Kinase_intensity Kinase_intensity_corrected);
+	Angle_diff_from_radial Kinase_intensity Kinase_intensity_corrected Centroid_x Centroid_y);
     foreach my $data_type (@ts_props) {
         next if (not(grep $data_type eq $_, @available_data_types));
 
