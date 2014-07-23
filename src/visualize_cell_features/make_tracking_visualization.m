@@ -11,6 +11,7 @@ i_p.addRequired('exp_dir',@(x)exist(x,'dir') == 7);
 i_p.addParamValue('image_file','focal_image',@ischar);
 i_p.addParamValue('image_min_max_file','focal_image_min_max',@ischar);
 i_p.addParamValue('out_folder','tracking',@ischar);
+i_p.addParamValue('trim_image_borders',true,@islogical);
 
 i_p.addParamValue('pixel_size',0,@(x)x == 1 || x == 0);
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
@@ -41,7 +42,7 @@ if (not(exist(test_file,'file')))
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Find edges of image data in adhesion images
+% Find edges of image data in adhesion images for image bounding
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 all_binary = [];
 for i_num = 1:length(image_folders)
@@ -65,6 +66,11 @@ if (col_bounds(1) < 1), col_bounds(1) = 1; end
 if (row_bounds(1) < 1), row_bounds(1) = 1; end
 if (col_bounds(2) > size(all_binary,2)), col_bounds(2) = size(all_binary,2); end
 if (row_bounds(2) > size(all_binary,1)), row_bounds(2) = size(all_binary,1); end
+
+if (~i_p.Results.trim_image_borders)
+    row_bounds = [1,size(all_binary,1)];
+    col_bounds = [1,size(all_binary,2)];
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Assign Each Adhesion a Unique Color
@@ -149,6 +155,7 @@ for i_num = 1:length(image_folders)
     
     %Bound the images according to the bounding box found towards the top
     %of the program
+    highlighted_all_untrim = highlighted_all;
     orig_i = orig_i(row_bounds(1):row_bounds(2), col_bounds(1):col_bounds(2));
     highlighted_all = highlighted_all(row_bounds(1):row_bounds(2), col_bounds(1):col_bounds(2), 1:3);
 
@@ -162,25 +169,30 @@ for i_num = 1:length(image_folders)
     end
     
     out_folder = fullfile(exp_dir,'visualizations',i_p.Results.out_folder);
-    if (not(exist(out_folder,'dir')))
-        mkdir(out_folder);
-    end
+    mkdir_no_err(out_folder);
     
     out_file = fullfile(out_folder,sprintf('%05d.png',i_num));
     imwrite(composite_image,out_file);
 
     out_folder = fullfile(exp_dir,'visualizations','normalized_images');
-    if (not(exist(out_folder,'dir')))
-        mkdir(out_folder);
-    end
+    mkdir_no_err(out_folder);
     
     out_file = fullfile(out_folder,sprintf('%05d.png',i_num));
     imwrite(orig_i,out_file);
+
+    out_folder = fullfile(exp_dir,'visualizations','lineage_id');
+    mkdir_no_err(out_folder);
+    
+    out_file = fullfile(out_folder,sprintf('%05d.png',i_num));
+    imwrite(highlighted_all_untrim,out_file);        
     
     if (i_p.Results.debug)
         disp(['Done with ', num2str(i_num), '/',num2str(length(image_folders))]);
     end
 end
+
+csvwrite(fullfile(exp_dir,'visualizations','lineage_id','lineage_colors.csv'),...
+    lineage_cmap(lineage_to_cmap,:));
 
 toc;
 profile off;
