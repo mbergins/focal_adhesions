@@ -60,15 +60,14 @@ for my $file_num (0..$#tracking_files) {
 	select OUTPUT;
 	&output_header;
 
-	print "<g style=\"opacity:0.75\"><image xlink:href=\"./$source_file\" /></g>\n";
+	print "<g style=\"opacity:0.75\"><image xlink:href=\"$source_file\" /></g>\n";
 	
 	for (0..$#centroid_x) {
 		next if $centroid_x[$_][$file_num] eq "NaN";
 
 		my $ID_start_zero = $_ + 1;
 
-		# print "<text y=\"$centroid_x[$_][$file_num]\" x=\"$centroid_y[$_][$file_num]\" style=\"font-size:1px;fill:#$lineage_colors_hex[$_];stroke:#000000;stroke-width=0.02\">$_</text>\n";
-		print "<text y=\"$centroid_x[$_][$file_num]\" x=\"$centroid_y[$_][$file_num]\" style=\"font-size:2px;\">$ID_start_zero</text>\n";
+		print "<text y=\"$centroid_x[$_][$file_num]\" x=\"$centroid_y[$_][$file_num]\" style=\"font-size:1px;\">$ID_start_zero</text>\n";
 	}
 
 	print "</svg>";
@@ -93,7 +92,7 @@ sub convert_colors_to_hex {
 sub output_header {
 	print "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n";
 	print "\n";
-	print "<svg>\n";
+	print "<svg xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n";
 }
 
 
