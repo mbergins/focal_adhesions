@@ -26,6 +26,7 @@
 				<li><a href="#dynamic_props">Find Dynamic FA Properties</a></li>
 				<li><a href="#FAAI">Find the Focal Adhesion Alignment Index (FAAI)</a></li>
 				<li><a href="#file_description">Files in adhesion_props</a></li>
+				<li><a href="#FA_Finding">Finding a FA ID Number From the Visualizations</a></li>
 			</ul>
 
 			<hr>
@@ -142,7 +143,6 @@
 				"Area.csv" and "Average_adhesion_signal.csv" which contain area values
 				and intensity values respectively. All of the units of distance or area
 				are in pixels or square pixels.
-
 			</div>
 
 			<div id=dynamic_props>
@@ -274,6 +274,56 @@
 					<li>MinorAxisLength.csv: Length of the minor axis of an ellipse fit to the adhesion.</li>
 					<li>Orientation.csv: Angle between the major axis and the positive X axis.</li>
 				</ul>
+			</div>
+			
+			<div id=FA_finding>
+				<h2>Finding a FA ID Number From the Visualizations</h2>
+				
+				<p/>Suppose you have been looking at the FA highlight visualizations
+				in 'visualizations/tracking' and want to connect an FA you see
+				highlighted to the extracted data in the other results. In order
+				to do this, you need to find the FA ID number that uniquely
+				identifies that FA in the rest of the data files. The processing
+				pipeline produces a set of visualization files that mirror the
+				files in 'visualizations/tracking', but have FA ID number labels
+				on each FA. 
+
+				<p/>The FA ID visualization files are located in
+				'visualizations/lineage_id' and require another program that can
+				read svg files in order to see the ID labels associated with
+				each FA. I've tested these files in <a
+					href="http://www.inkscape.org/">inkscape</a>, which is open
+				source and free, but I expect Adobe Illustrator would also work.
+				With the FA ID files located, you can now open an '.svg' file
+				which contains your adhesion of interest and you should see
+				something like this:
+				
+				<p/>
+				<img width="50%" src="images/FA_ID/full_view.png" />
+
+				<p/>To find the FA ID, you need to zoom in until the tiny labels
+				associated with each FA are visible. In inkscape, you can hold
+				down ctrl and use the mouse wheel or the 'View/Zoom' menu to
+				zoom. After zooming, you should see something like this:
+
+				<p/>
+				<img width="50%" src="images/FA_ID/small.png" />
+
+				<p/>Although the ID numbers aren't the easiest to read,
+				especially in areas of dense FAs, the ID numbers will always be
+				to the lower right of each FA. I had to make the ID numbers that
+				small to make it possible to see the numbers without too much
+				overlap. You can double check the ID number by opening another
+				svg image from the folder, which also contains the same
+				adhesion. This is the same ID number used in all the files in
+				'adhesion_props'. It also corresponds to the row number in the
+				'lin_time_series', so if you find your FA ID number is 1000, all
+				the row number 1000s in csv files in 'lin_time_series'
+				corresponds to your FA.
+
+				By the way, this solution isn't all that great, but I'm open to
+				other ideas on how to link from the visualizations to the raw
+				data. Feel free to get in touch with me if you have any ideas.
 			</div>
 		</div>
 	</div>
