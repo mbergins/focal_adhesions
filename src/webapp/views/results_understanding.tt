@@ -321,8 +321,8 @@
 				the row number 1000s in csv files in 'lin_time_series'
 				corresponds to your FA.
 
-				By the way, this solution isn't all that great, but I'm open to
-				other ideas on how to link from the visualizations to the raw
+				<p/>By the way, this solution isn't all that great, but I'm open
+				to other ideas on how to link from the visualizations to the raw
 				data. Feel free to get in touch with me if you have any ideas.
 			</div>
 		</div>
