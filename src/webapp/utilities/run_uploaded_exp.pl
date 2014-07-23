@@ -53,13 +53,19 @@ my $run_file = "fa_webapp.$opt{ID}.run";
 ###########################################################
 # Preliminary Setup
 ###########################################################
+
+#check for files in the upload directory, if none, wait 30 seconds and try again
 my @uploaded_folders = <$dir_locations{upload}/*>;
 if (scalar(@uploaded_folders) == 0) {
-	&delete_run_file($run_file);
 	if ($opt{debug}) {
 		print "No new experiments found\n";
 	}
-	exit;
+	sleep 30;
+	@uploaded_folders = <$dir_locations{upload}/*>;
+	if (scalar(@uploaded_folders) == 0) {
+		unlink $run_file;
+		exit;
+	}
 }
 
 my %oldest_data;
@@ -127,7 +133,7 @@ if (defined $oldest_data{cfg}{email}) {
 	&send_done_email(%oldest_data);
 }
 
-&delete_run_file($run_file);
+unlink $run_file;
 
 ###############################################################################
 # Functions
@@ -178,11 +184,6 @@ sub process_run_file {
 	open OUTPUT, ">$run_file" or die "$!";
 	print OUTPUT $$;
 	close OUTPUT;
-}
-
-sub delete_run_file {
-	my $run_file = shift;
-	unlink $run_file;
 }
 
 ###########################################################
