@@ -45,7 +45,11 @@ my @hex_colors = &convert_rbg_to_hex(@colors);
 @files = sort @files;
 
 if (scalar(@files) == 0) {
-	die "Didn't find any files to use for the vector visualization, exiting. \n Searched in: $cfg{individual_results_folder}.";
+	if ($opt{debug}) {
+		die "Didn't find any files to use for the vector visualization, exiting.\nSearched in: $cfg{individual_results_folder}.";
+	} else {
+		exit;
+	}
 }
 
 my @bmp_files = &build_bitmaps(@files);
