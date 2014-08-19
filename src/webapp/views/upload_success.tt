@@ -18,7 +18,7 @@
 			
 			[% IF gmail %]
 			<p><p>Also, it looks like you submitted a gmail email address for
-			notification. Gmail tends to classify the nofication emails as spam,
+			notification. Gmail tends to classify the notification emails as spam,
 			but if you add noreply@faas.bme.unc.edu to your contact list gmail
 			will recognize the notification email as legitimate. 
 			[% END %]
