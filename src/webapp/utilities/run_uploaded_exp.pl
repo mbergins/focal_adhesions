@@ -95,9 +95,15 @@ if (basename($oldest_data{upload_folder}) =~ /FAAS_(.*)/) {
 ###########################################################
 # Processing
 ###########################################################
-
 $oldest_data{data_folder} = catdir($dir_locations{data_proc},basename($oldest_data{upload_folder}));
-move($oldest_data{upload_folder}, $oldest_data{data_folder});
+
+#This deals with the very low probability that there is a collision in the new
+#exp name and an older exp name, which then removes the old folder
+if (-d $oldest_data{data_folder}) {
+	File::Path::rmtree($oldest_data{data_folder});
+}
+
+move($oldest_data{upload_folder}, $oldest_data{data_folder}) or die $!;
 # dircopy($oldest_data{upload_folder}, $oldest_data{data_folder});
 if ($opt{fullnice}) {
 	system("renice -n 20 -p $$ > /dev/null");
