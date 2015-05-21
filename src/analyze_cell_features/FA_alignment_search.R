@@ -61,6 +61,9 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
     data_set$per_image_FAAI	 = temp$FAAI
     write.table(t(data_set$per_image_dom_angle),file=file.path(output.dir,'per_image_dom_angle.csv'),
         row.names=F,col.names=F,sep=',')
+    write.table(t(data_set$per_image_FAAI),file=file.path(output.dir,'per_image_FAAI.csv'),
+        row.names=F,col.names=F,sep=',')
+
     print('Done searching for best angle in single images')
     
     data_set$single_ad_deviances = gather_all_single_adhesion_deviances(data_set);
