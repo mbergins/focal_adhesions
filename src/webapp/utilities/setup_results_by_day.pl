@@ -37,6 +37,7 @@ foreach (@results_folders) {
 	mkpath("$target_folder/$date");
 	system("ln -s $abs_target $target_folder/$date");
 }
+
 ##############################
 # Session ID 
 ##############################
@@ -106,10 +107,10 @@ sub make_data_links_by_config_var {
 		if (defined $config{$cfg_var}) {
 			$config{$cfg_var} =~ s/^\s+//;
 			mkpath("$target_folder/$config{$cfg_var}");
-			system("ln -s $abs_target $target_folder/$config{$cfg_var}");
+			system("ln -s \"$abs_target\" \"$target_folder/$config{$cfg_var}\"");
 		} else {
 			mkpath("$target_folder/no_$cfg_var");
-			system("ln -s $abs_target $target_folder/no_$cfg_var");
+			system("ln -s \"$abs_target\" \"$target_folder/no_$cfg_var\"");
 		}
 	}
 }
@@ -146,10 +147,10 @@ sub make_results_links_by_config_var {
 		if (defined $config{$cfg_var}) {
 			$config{$cfg_var} =~ s/^\s+//;
 			mkpath("$target_folder/$config{$cfg_var}");
-			system("ln -s $abs_target $target_folder/$config{$cfg_var}");
+			system("ln -s \"$abs_target\" \"$target_folder/$config{$cfg_var}\"");
 		} else {
 			mkpath("$target_folder/no_$cfg_var");
-			system("ln -s $abs_target $target_folder/no_$cfg_var");
+			system("ln -s \"$abs_target\" \"$target_folder/no_$cfg_var\"");
 		}
 	}
 }
