@@ -13,7 +13,7 @@
 			<h2>Options</h2>
 			<ul>
 				<li><a href='upload'>Submit a New Experiment</a></li>
-				<li><a href='thresh_testing'>Check Adhesion Threshold Setting</a></li>
+				<!-- <li><a href='thresh_testing'>Check Adhesion Threshold Setting</a></li> -->
 				<li><a href='server_status'>Check Server Status</a></li>
 				<li><a href='results_understanding'>Help with Interpreting the Results</a></li>
 			</ul>

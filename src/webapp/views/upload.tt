@@ -221,9 +221,10 @@
 				background. The lower this number, the more pixels will be classified as part
 				of an adhesion.  The default value of two works well in most cases, but values
 				down to around one may be appropriate.  Also be aware that lower values will
-				lengthen the runtime.  If you want to see what one of your images looks like
-				when processed with a specific threshold try out the threshold <a
-					href=thresh_testing>tester</a>.
+				lengthen the runtime.  
+				<!-- If you want to see what one of your images looks like -->
+				<!-- when processed with a specific threshold try out the threshold <a -->
+				<!-- 	href=thresh_testing>tester</a>. -->
 				
 				<p/><b>Apply Median Filter:</b> This option applies a 7 by 7
 				median filter to the focal adhesion image during segmentation.
