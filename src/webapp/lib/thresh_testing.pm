@@ -34,7 +34,7 @@ post '/thresh_testing' => sub {
 	$input_file->copy_to($out_file);
 
 	my $start_process = time;
-	system("octave --eval \"cd ../misc_code; build_thresholded_image_sets('../public/$out_file')\" > /dev/null 2> /dev/null");
+	system("octave-cli --eval \"cd ../misc_code; pkg load image; build_thresholded_image_sets('../public/$out_file')\" > /dev/null 2> /dev/null");
 	my $end_process = time;
 	
 	my $out_html = template 'thresh_testing_results', 
