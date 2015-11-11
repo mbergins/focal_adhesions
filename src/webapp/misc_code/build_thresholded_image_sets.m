@@ -2,12 +2,16 @@ function build_thresholded_image_sets(I_file)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Setup variables and parse command line
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+pkg load image;
 tic;
 
 focal_image  = double(imread(I_file));
 if (length(size(focal_image)) > 2) 
     focal_image = focal_image(:,:,1);
 end
+
+focal_image = (focal_image - min(focal_image(:)))/range(focal_image(:));
+
 if (size(focal_image,1) > 1000)
 	focal_image = imresize(focal_image, 1000/size(focal_image,1));
 end
