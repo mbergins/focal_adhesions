@@ -39,6 +39,10 @@ mask_pixels = mask_pixels(mask_pixels >= quantile(mask_pixels,0.05));
 
 if (not(any(strcmp(i_p.UsingDefaults,'mask_threshold'))))
     mask_thresh = i_p.Results.mask_threshold;
+elseif (length(unique(mask_pixels)) == 2)
+    %in this case, the provided mask image is already binary essentially,
+    %so we will just pick a value in between the two
+    mask_thresh = mean(mask_pixels);
 else
     %%Threshold identification
     [heights, intensity] = hist(mask_pixels(:),length(unique(mask_pixels(:)))/4);
@@ -49,9 +53,9 @@ else
     if (length(imax) == 1)
         mask_thresh = NaN;
     else
-        %keep in mind that the zmax is sorted by value, so the highest peak is
-        %first and the corresponding index is also first in imax, the same pattern
-        %hold for zmin and imin
+        %keep in mind that the zmax is sorted by value, so the highest peak
+        %is first and the corresponding index is also first in imax, the
+        %same pattern hold for zmin and imin  
         sorted_max_indexes = sort(imax);
         highest_max_index = find(sorted_max_indexes == imax(1));
         
