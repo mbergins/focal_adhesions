@@ -68,7 +68,10 @@ end
 
 for i = 1:length(image_folders)
     I_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.focal_image);
-    find_focal_adhesions(I_file,clean_opts);
+    try
+        find_focal_adhesions(I_file,clean_opts);
+    catch
+    end
     disp(['Done with ',I_file]);
 end
 toc(overall_start);

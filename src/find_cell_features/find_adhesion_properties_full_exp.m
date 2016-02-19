@@ -44,7 +44,9 @@ image_folders = image_folders(3:end);
 for i = 1:length(image_folders)
     I_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.focal_image);
     adhesions_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.adhesions);
-    find_adhesion_properties(I_file,adhesions_file,clean_opts);
+    try
+        find_adhesion_properties(I_file,adhesions_file,clean_opts);
+    end
     disp(['Done with ',I_file]);
 end
 toc(overall_start);
