@@ -1,0 +1,25 @@
+# minute (0-59),
+# |      hour (0-23),
+# |      |       day of the month (1-31),
+# |      |       |       month of the year (1-12),
+# |      |       |       |       day of the week (0-6 with 0=Sunday).
+# |      |       |       |       |       commands
+
+
+#The following commands are used to track how much load the server is under and 
+#the number of workers
+
+#Gather Uptime Readings to Track Usage
+* * * * * uptime >> /var/www/focal_adhesions/src/webapp/utilities/uptime_readings.txt
+* * * * * uptime >> /var/www/focal_adhesions_testing/src/webapp/utilities/uptime_readings.txt
+
+#Save a copy of the cron file
+* * * * * crontab -l > /var/www/focal_adhesions/src/webapp/utilities/current_cron.txt
+* * * * * crontab -l > /var/www/focal_adhesions_testing/src/webapp/utilities/current_cron.txt
+
+##################################################################
+# Processing Workers
+##################################################################
+
+#FA Image Analysis Worker
+* * * * * cd /var/www/focal_adhesions/src/webapp/utilities; ./run_uploaded_exp.pl -ID 1 -fullnice
