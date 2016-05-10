@@ -63,6 +63,13 @@ gather_FA_orientation_data <- function(exp_dir,fixed_best_angle = NA,
         row.names=F,col.names=F,sep=',')
     write.table(t(data_set$per_image_FAAI),file=file.path(output.dir,'per_image_FAAI.csv'),
         row.names=F,col.names=F,sep=',')
+	
+	dir.create(file.path(output.dir,'per_image_angles'));
+	for (i_num in 1:length(temp$passed_angles)) {
+		write.table(temp$passed_angles[[i_num]],
+					file=file.path(output.dir,'per_image_angles',sprintf('%s.csv',i_num)),
+					row.names=F,col.names=F,sep=',')
+	}
 
     print('Done searching for best angle in single images')
     
@@ -150,6 +157,7 @@ read_in_orientation_data <- function(time_series_dir,min.ratio = 3) {
 
 find_per_image_dom_angle <- function(mat_data, min.ratio=3) {
     best_angles = c()
+    passed_angles = list()
     FAAI = c()
     for (i_num in 1:dim(mat_data$orientation)[2]) {
         this_orientation = mat_data$orientation[,i_num];
@@ -161,10 +169,12 @@ find_per_image_dom_angle <- function(mat_data, min.ratio=3) {
         #present in the image, put in place holders and skip to next image
         if (sum(good_rows) < 3) {
             best_angles = c(best_angles, NA);
+            passed_angles[[i_num]] = NA;
     		FAAI = c(FAAI, NA);
             next;
         }
         this_orientation = this_orientation[good_rows];
+		passed_angles[[i_num]] = this_orientation;
 
         angle_search = test_dom_angles(this_orientation);
         best_angle = find_best_alignment_angle(angle_search)
@@ -175,7 +185,7 @@ find_per_image_dom_angle <- function(mat_data, min.ratio=3) {
         best_angles = c(best_angles, best_angle);
 		FAAI = c(FAAI,image_FAAI);
     }
-	temp = list(best_angles = best_angles, FAAI=FAAI);	
+	temp = list(best_angles = best_angles, FAAI=FAAI, passed_angles = passed_angles);	
     return(temp)
 }
 
