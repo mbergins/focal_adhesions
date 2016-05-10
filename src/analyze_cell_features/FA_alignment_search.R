@@ -174,7 +174,6 @@ find_per_image_dom_angle <- function(mat_data, min.ratio=3) {
             next;
         }
         this_orientation = this_orientation[good_rows];
-		passed_angles[[i_num]] = this_orientation;
 
         angle_search = test_dom_angles(this_orientation);
         best_angle = find_best_alignment_angle(angle_search)
@@ -182,6 +181,7 @@ find_per_image_dom_angle <- function(mat_data, min.ratio=3) {
 		best_orientation = apply_new_orientation(this_orientation,best_angle)
 		image_FAAI = find_FAAI_from_orientation(best_orientation)
         
+		passed_angles[[i_num]] = best_orientation;
         best_angles = c(best_angles, best_angle);
 		FAAI = c(FAAI,image_FAAI);
     }
