@@ -18,8 +18,8 @@ my $upload_dir = catdir('..','uploaded_experiments');
 
 my $run_exp_dir = catdir('..','utilities');
 
-my $uptime_file = "/home/mbergins/Documents/uptime_readings.txt";
-my $cron_file = "/home/mbergins/Documents/current_cron";
+my $uptime_file = catfile('..','utilities','uptime_readings.txt');
+my $cron_file = catfile('..','utilities','current_cron.txt');
 ###############################################################################
 # Main
 ###############################################################################
