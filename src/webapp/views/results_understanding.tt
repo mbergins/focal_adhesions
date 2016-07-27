@@ -241,24 +241,26 @@
 
 				<h3>lin_time_series</h3>
 
-				This folder contains sets of FA properties organized into matrix
-				format. Each data file is arranged in the same fashion, on each
-				row are the properties of a single adhesion and in each column
-				are all the properties from the adhesions present in a single
-				image. For the adhesions that haven't been born or have died,
-				NaN is used as placeholder value. 
+				<p>This folder contains sets of FA properties organized into
+				matrix format. Each data file is arranged in the same fashion,
+				on each row are the properties of a single adhesion and in each
+				column are all the properties from the adhesions present in a
+				single image. For the adhesions that haven't been born or have
+				died, NaN is used as placeholder value. 
 
-				Several of the properties rely on the presence of a secondary
-				marker to use to find the body of the cell. These properties
-				aren't calculated when the secondar marker isn't present.
 
-				I also calculate the overall cellular centroids in two ways,
+				<p>Several of the properties rely on the presence of a secondary
+				marker to use to find the boundary of the cell. These properties
+				aren't calculated when the secondary marker isn't present.
+
+
+				<p>I also calculate the overall cellular centroids in two ways,
 				depending on the data available. When only an FA marker is
 				present, I calculate the "FA centroid", which is simply the
 				average of the x and y coordinates of all the FA found in the
-				image. When the secondary cell body marker is present, I also
-				calculate the "cell centroid", which is the unweighted centroid
-				of the pixels in the cell body.
+				image. When the secondary cell boundary marker is present, I
+				also calculate the "cell centroid", which is the unweighted
+				centroid of the pixels in the cell body.
 
 				<ul>
 					<li>Angle_diff_from_radial.csv: The difference in angle between the line leading from the FA centroid to the individual FA major/minor axis angle.</li>
