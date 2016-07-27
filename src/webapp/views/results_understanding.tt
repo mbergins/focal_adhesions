@@ -270,6 +270,8 @@
 					<li>Average_adhesion_signal.csv: Average value of the FA marker intensity.</li>
 					<li>Centroid_dist_from_center.csv: Distance from the cell mask centroid to the individual FA centroid.</li>
 					<li>Centroid_dist_from_edge.csv: Distance from the cell edge to the FA centroid.</li>
+					<li>Centroid_x.csv: Location of the unweighted FA centroid x component as returned by regionprops.</li>
+					<li>Centroid_y.csv: Location of the unweighted FA centroid y component as returned by regionprops.</li>
 					<li>CHull_dist.csv: Distance from the convex hull edge to the FA centroid.</li>
 					<li>Dist_to_FA_cent.csv: Distance to the FA centroid from the the individual FA centroid</li>
 					<li>MajorAxisLength.csv: Length of the major axis of an ellipse fit to the adhesion.</li>
