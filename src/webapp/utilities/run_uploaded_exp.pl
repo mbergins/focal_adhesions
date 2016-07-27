@@ -207,7 +207,6 @@ sub send_email {
 	my $from_str = "\"noreply\@$hostname (FAAS Notification)\"";
 
 	my $command = "echo \"$email_data{body}\" | mail -r $from_str -s \"$email_data{subject}\" $email_data{address}";
-	print $command;
 	system $command;
 }
 
