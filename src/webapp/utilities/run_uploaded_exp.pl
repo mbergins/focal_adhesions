@@ -103,6 +103,13 @@ if (-d $oldest_data{data_folder}) {
 	File::Path::rmtree($oldest_data{data_folder});
 }
 
+if (-e $oldest_data{data_folder}) {
+	open TEMP, ">>trouble_exps.txt";
+	print TEMP "$oldest_data{data_folder}\n";
+	close TEMP;
+	File::Path::rmtree($oldest_data{data_folder});
+}
+
 move($oldest_data{upload_folder}, $oldest_data{data_folder}) or die $!;
 # dircopy($oldest_data{upload_folder}, $oldest_data{data_folder});
 if ($opt{fullnice}) {
