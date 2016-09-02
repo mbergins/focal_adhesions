@@ -28,7 +28,7 @@ high_passed_image = focal_image - blurred_image;
 mean_val = mean(high_passed_image(:));
 stdev_val = std(high_passed_image(:));
 
-stdev_intervals = 1:0.5:4;
+stdev_intervals = 1:0.5:6;
 
 thresholds = mean_val + stdev_val*stdev_intervals;
 
@@ -103,10 +103,6 @@ end
 
 function cleaned_binary = remove_edge_adhesions(threshed_image)
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Main Program
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 edge_border = ones(size(threshed_image));
 edge_border = bwperim(edge_border);
 
@@ -118,9 +114,6 @@ end
 
 function high_image = create_highlighted_image(I,high,color_map)
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%Main Program
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 image_size = size(I);
 
 if (size(image_size) < 3)

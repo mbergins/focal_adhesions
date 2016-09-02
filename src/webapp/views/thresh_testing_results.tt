@@ -66,6 +66,26 @@
 					<img src="thumbs/input_4.jpg" alt="">
 				</a>
 				</li>
+				<li class="span6">
+				<a href="input_4.5.png" class="thumbnail">
+					<img src="thumbs/input_4.5.jpg" alt="">
+				</a>
+				</li>
+				<li class="span6">
+				<a href="input_5.png" class="thumbnail">
+					<img src="thumbs/input_5.jpg" alt="">
+				</a>
+				</li>
+				<li class="span6">
+				<a href="input_5.5.png" class="thumbnail">
+					<img src="thumbs/input_5.5.jpg" alt="">
+				</a>
+				</li>
+				<li class="span6">
+				<a href="input_6.png" class="thumbnail">
+					<img src="thumbs/input_6.jpg" alt="">
+				</a>
+				</li>
 			</ul>
 		</div>
 	</div>
