@@ -238,9 +238,10 @@ sub send_done_email {
 	
 	my $full_id = basename($config{upload_folder});
 	
-	my $body = "Your experiment ($full_id) has finished processing. " . 
-		"You can download your results here:\n\n" .
-		"http://$hostname/results/$config{public_zip}\n\n" . 
+	my $body = "Your experiment ($full_id) has finished processing and " . 
+		"you can download your results here:\n\n" .
+		"http://$hostname/results/$config{public_zip}\n\n" .
+		"Please note that these results will be removed in a month. " .
 		"You can find help with understanding the results here:\n\n" .
 		"http://$hostname/results_understanding/\n\n";
 

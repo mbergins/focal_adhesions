@@ -29,7 +29,7 @@
 
 				[% CASE 'done' %]
 
-				Your experiment is done, you can download your results <a href=[% download_url %]>here</a>.
+				Your experiment is done, you can download your results <a href=[% download_url %]>here</a>. Please note, that this result file will only be available for one month.
 
 				[% CASE DEFAULT %]
 				[% exp_status %]
