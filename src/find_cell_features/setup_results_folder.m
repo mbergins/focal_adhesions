@@ -57,7 +57,8 @@ for i_num = 1:length(i_names)
         %check for images with more than 2 dimensions, in that case, cut it
         %down to just the first dimension
         if (length(size(input_image)) > 2)
-            input_image = input_image(:,:,1);
+            marked_channel = find_label_channel(input_image);
+            input_image = input_image(:,:,marked_channel);
         end
         
         imwrite(input_image,fullfile(image_out_folder,i_p.Results.out_name),...
@@ -69,3 +70,17 @@ for i_num = 1:length(i_names)
 end
 
 toc;
+end
+
+function marked_channel = find_label_channel(input_image)
+    marked_channel = 0;
+    
+    for channel_num = 1:size(input_image,3)
+        if (any(any(input_image(:,:,channel_num) > 0)))
+            if (marked_channel ~= 0)
+                error('Found multiple channels with signals in multi-color tiff');
+            end
+            marked_channel = channel_num;
+        end
+    end
+end

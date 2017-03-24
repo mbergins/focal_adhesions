@@ -2,12 +2,16 @@ function build_thresholded_image_sets(I_file)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Setup variables and parse command line
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+pkg load image;
 tic;
 
 focal_image  = double(imread(I_file));
 if (length(size(focal_image)) > 2) 
     focal_image = focal_image(:,:,1);
 end
+
+focal_image = (focal_image - min(focal_image(:)))/range(focal_image(:));
+
 if (size(focal_image,1) > 1000)
 	focal_image = imresize(focal_image, 1000/size(focal_image,1));
 end
@@ -24,7 +28,7 @@ high_passed_image = focal_image - blurred_image;
 mean_val = mean(high_passed_image(:));
 stdev_val = std(high_passed_image(:));
 
-stdev_intervals = 1:0.5:4;
+stdev_intervals = 1:0.5:6;
 
 thresholds = mean_val + stdev_val*stdev_intervals;
 
@@ -60,7 +64,7 @@ command = ['convert ', fullfile(folder,[base_name,'_norm.png']), ' -weight Bold 
 system(command);
 for i=1:length(highlighted_images)
     command = ['convert ', output_files{i}, ' -weight Bold  -pointsize ', font_size, ... 
-        ' -gravity southwest -fill white -annotate 0 "Stdev Threshold: ', ...
+        ' -gravity southwest -fill white -annotate 0 "stdev Threshold: ', ...
         num2str(stdev_intervals(i)), '" ', output_files{i}];
     system(command);
 end
@@ -99,10 +103,6 @@ end
 
 function cleaned_binary = remove_edge_adhesions(threshed_image)
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Main Program
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 edge_border = ones(size(threshed_image));
 edge_border = bwperim(edge_border);
 
@@ -114,9 +114,6 @@ end
 
 function high_image = create_highlighted_image(I,high,color_map)
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%Main Program
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 image_size = size(I);
 
 if (size(image_size) < 3)

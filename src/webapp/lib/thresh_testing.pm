@@ -1,4 +1,4 @@
-package upload;
+package thresh_testing;
 use Dancer ':syntax';
 use strict;
 use warnings;
@@ -26,7 +26,7 @@ post '/thresh_testing' => sub {
 		make_path $out_folder or die $!;
 		chmod 0777, $out_folder;
 	}
-
+	
 	my $input_file = upload('input_image') or die $!;
 	my $out_dir = tempdir(DIR=>$out_folder);
 	chmod 0777, $out_dir;
@@ -34,7 +34,7 @@ post '/thresh_testing' => sub {
 	$input_file->copy_to($out_file);
 
 	my $start_process = time;
-	system("octave --eval \"cd ../misc_code; build_thresholded_image_sets('../public/$out_file')\" > /dev/null 2> /dev/null");
+	system("octave-cli --eval \"cd ../misc_code; pkg load image; build_thresholded_image_sets('../public/$out_file')\" > /dev/null 2> /dev/null");
 	my $end_process = time;
 	
 	my $out_html = template 'thresh_testing_results', 

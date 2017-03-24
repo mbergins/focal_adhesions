@@ -103,6 +103,13 @@ if (-d $oldest_data{data_folder}) {
 	File::Path::rmtree($oldest_data{data_folder});
 }
 
+if (-e $oldest_data{data_folder}) {
+	open TEMP, ">>trouble_exps.txt";
+	print TEMP "$oldest_data{data_folder}\n";
+	close TEMP;
+	File::Path::rmtree($oldest_data{data_folder});
+}
+
 move($oldest_data{upload_folder}, $oldest_data{data_folder}) or die $!;
 # dircopy($oldest_data{upload_folder}, $oldest_data{data_folder});
 if ($opt{fullnice}) {
@@ -204,10 +211,9 @@ sub send_email {
 			"Your note about this experiment:\n\n$email_data{exp_note}";
 	}
 	
-	my $from_str = "\"From: noreply\@$hostname (FAAS Notification)\"";
+	my $from_str = "\"noreply\@$hostname (FAAS Notification)\"";
 
-	my $command = "echo \"$email_data{body}\" | mail -a $from_str -s \"$email_data{subject}\" $email_data{address}";
-	# print $command;
+	my $command = "echo \"$email_data{body}\" | mail -r $from_str -s \"$email_data{subject}\" $email_data{address}";
 	system $command;
 }
 
@@ -232,9 +238,10 @@ sub send_done_email {
 	
 	my $full_id = basename($config{upload_folder});
 	
-	my $body = "Your experiment ($full_id) has finished processing. " . 
-		"You can download your results here:\n\n" .
-		"http://$hostname/results/$config{public_zip}\n\n" . 
+	my $body = "Your experiment ($full_id) has finished processing and " . 
+		"you can download your results here:\n\n" .
+		"http://$hostname/results/$config{public_zip}\n\n" .
+		"Please note that these results will be removed in a month. " .
 		"You can find help with understanding the results here:\n\n" .
 		"http://$hostname/results_understanding/\n\n";
 

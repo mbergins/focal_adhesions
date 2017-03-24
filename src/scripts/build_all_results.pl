@@ -57,6 +57,7 @@ my @overall_command_seq = (
 	[ "../find_cell_features",      "./run_matlab_over_field.pl -script register_with_nifty"],
 	[ "../find_cell_features",      "./collect_fa_image_set.pl" ],
 	[ "../find_cell_features",      "./collect_fa_properties.pl" ],
+	[ "../visualize_cell_features", "./make_static_id_files.pl" ],
 	[ "../analyze_cell_features",   "./build_tracking_data.pl" ],
 	[ "../analyze_cell_features",   "./track_adhesions.pl" ],
 	[ "../analyze_cell_features",   "./gather_tracking_results.pl" ],

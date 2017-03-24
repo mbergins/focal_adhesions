@@ -39,6 +39,10 @@ mask_pixels = mask_pixels(mask_pixels >= quantile(mask_pixels,0.05));
 
 if (not(any(strcmp(i_p.UsingDefaults,'mask_threshold'))))
     mask_thresh = i_p.Results.mask_threshold;
+elseif (length(unique(mask_pixels)) == 2)
+    %in this case, the provided mask image is already binary essentially,
+    %so we will just pick a value in between the two
+    mask_thresh = mean(mask_pixels);
 else
     %%Threshold identification
     [heights, intensity] = hist(mask_pixels(:),length(unique(mask_pixels(:)))/4);
@@ -49,9 +53,9 @@ else
     if (length(imax) == 1)
         mask_thresh = NaN;
     else
-        %keep in mind that the zmax is sorted by value, so the highest peak is
-        %first and the corresponding index is also first in imax, the same pattern
-        %hold for zmin and imin
+        %keep in mind that the zmax is sorted by value, so the highest peak
+        %is first and the corresponding index is also first in imax, the
+        %same pattern hold for zmin and imin  
         sorted_max_indexes = sort(imax);
         highest_max_index = find(sorted_max_indexes == imax(1));
         
@@ -77,12 +81,9 @@ end
 
 threshed_mask = mask_image > mask_thresh;
 
-%%Mask Cleanup
-connected_areas = bwlabel(threshed_mask);
-region_sizes = regionprops(connected_areas, 'Area'); %#ok<MRPBW>
-
-%filter out connected regions smaller than 2.5% of the total image area
-threshed_mask = ismember(connected_areas, find([region_sizes.Area] > 0.025*length(mask_image(:))));
+%filter to the largest object in the field, assuming only a single cell or
+%cluster is present 
+threshed_mask = filter_to_largest_object(threshed_mask);
 
 threshed_mask = imfill(threshed_mask,'holes');
 

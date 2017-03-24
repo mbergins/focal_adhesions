@@ -144,7 +144,7 @@ if (temp_ad_count > i_p.Results.max_adhesion_count)
     highlighted_image = create_highlighted_image(focal_normed, threshed_image, ...
         'color_map',[1,1,0]);
     imwrite(highlighted_image,fullfile(output_dir, 'highlights.png'));
-    print_too_many_FA_error(output_dir);
+    print_too_many_FA_error(output_dir,temp_ad_count,i_p.Results.max_adhesion_count);
     return;
 end
 
@@ -189,9 +189,8 @@ if ((length(ad_nums) - 1) > i_p.Results.max_adhesion_count)
         'color_map',[1,1,0]);
     imwrite(highlighted_image,fullfile(output_dir, 'highlights.png'));
     print_too_many_FA_error(output_dir);
+    print_too_many_FA_error(output_dir,length(ad_nums),i_p.Results.max_adhesion_count);
     return;
-%     error(['Found more (',num2str(max(ad_segment(:))),') adhesions than', ...
-%         ' max adhesion count (',num2str(i_p.Results.max_adhesion_count),').']);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -333,12 +332,12 @@ else
 end
 end
 
-function print_too_many_FA_error(target_folder)
+function print_too_many_FA_error(target_folder,FA_count,max_count)
 
 fileID = fopen(fullfile(target_folder,'Found_too_many_FAs.txt'),'w');
 
 fprintf(fileID,'Looks like the system found too many adhesions in this image\n');
-fprintf(fileID,'to continue with processing. You should see a file in the same\n');
+fprintf(fileID,'to continue with processing (%d, max %d). You should see a file in the same\n',FA_count, max_count);
 fprintf(fileID,'folder with highlights showing where the adhesions were identified\n');
 fprintf(fileID,'in this image. If you think all the regions identified in this image\n');
 fprintf(fileID,'are adhesions, then please contact me (email on home page)\n');

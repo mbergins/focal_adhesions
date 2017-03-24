@@ -318,26 +318,34 @@ produce_simple_CSV_output_set <- function(models,time_spacing) {
 
     #Assembly Models Extraction
     assembly_models = models$assembly;
-    assembly_models$class = rep('Assembly',dim(assembly_models)[1]);
-    assembly_adhesions = subset(assembly_models, 
-                                !is.na(p.value) & p.value < 0.05 & slope > 0, 
-                                select = output_properties);
-    assembly_adhesions$slope = round(assembly_adhesions$slope,4);
-    assembly_adhesions$adj.r.squared = round(assembly_adhesions$adj.r.squared,3);
-    # assembly_adhesions$phase_length = assembly_adhesions$image_count * time_spacing;
-    # assembly_adhesions$image_count <- NULL;
+	if (dim(assembly_models)[1] > 0) {
+		assembly_models$class = rep('Assembly',dim(assembly_models)[1]);
+		assembly_adhesions = subset(assembly_models, 
+									!is.na(p.value) & p.value < 0.05 & slope > 0, 
+									select = output_properties);
+		assembly_adhesions$slope = round(assembly_adhesions$slope,4);
+		assembly_adhesions$adj.r.squared = round(assembly_adhesions$adj.r.squared,3);
+		# assembly_adhesions$phase_length = assembly_adhesions$image_count * time_spacing;
+		# assembly_adhesions$image_count <- NULL;
+	} else {
+		assembly_adhesions = NULL;
+	}
 
     #Disassembly Models Extraction
-    disassembly_models = models$disassembly;
-    disassembly_models$class = rep('Disassembly',dim(disassembly_models)[1]);
-    disassembly_adhesions = subset(disassembly_models, 
-                                   !is.na(p.value) & p.value < 0.05 & slope > 0, 
-                                   select = output_properties);
-    disassembly_adhesions$slope = round(disassembly_adhesions$slope,4);
-    disassembly_adhesions$adj.r.squared = round(disassembly_adhesions$adj.r.squared,3);
-    # disassembly_adhesions$phase_length = disassembly_adhesions$image_count * time_spacing;
-    # disassembly_adhesions$image_count <- NULL;
-        
+	disassembly_models = models$disassembly;
+	if (dim(disassembly_models)[1] > 0) {
+		disassembly_models$class = rep('Disassembly',dim(disassembly_models)[1]);
+		disassembly_adhesions = subset(disassembly_models, 
+									   !is.na(p.value) & p.value < 0.05 & slope > 0, 
+									   select = output_properties);
+		disassembly_adhesions$slope = round(disassembly_adhesions$slope,4);
+		disassembly_adhesions$adj.r.squared = round(disassembly_adhesions$adj.r.squared,3);
+		# disassembly_adhesions$phase_length = disassembly_adhesions$image_count * time_spacing;
+		# disassembly_adhesions$image_count <- NULL;
+	} else {
+		disassembly_models = NULL;
+	}
+
     #Stability Data Set Extraction
     valid_stability_nums = intersect(assembly_adhesions$FA_number,disassembly_adhesions$FA_number);
     stability_adhesions = models$stability[match(valid_stability_nums,models$stability$FA_number),];
