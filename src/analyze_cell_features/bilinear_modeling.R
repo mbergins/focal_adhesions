@@ -50,17 +50,20 @@ build_bilinear_models <- function(data,exp_props,min.phase.length=10,time.spacin
             best_disassembly_model = disassembly_model_results[best_indexes[2],];
             best_disassembly_model$FA_number = FA_number;
             models$disassembly = rbind(models$disassembly, best_disassembly_model);
-
-            stability_model = find_stability_properties(time.series,
-														best_assembly_model,
-														best_disassembly_model);
-            stability_model$FA_number = FA_number;
-			stability_model$half_peak_time = find_time_between_half_peaks(only.data,
-											   	     stability_model$mean_intensity,
-											   		 assemb_model=best_assembly_model,
-											   		 disassem_model=best_disassembly_model);
             
-			models$stability = rbind(models$stability, stability_model);
+            if (! is.na(best_assembly_model$image_count) & 
+                ! is.na(best_disassembly_model$image_count)) {
+              stability_model = find_stability_properties(time.series,
+                                                          best_assembly_model,
+                                                          best_disassembly_model);
+              stability_model$FA_number = FA_number;
+              stability_model$half_peak_time = find_time_between_half_peaks(only.data,
+                                                                            stability_model$mean_intensity,
+                                                                            assemb_model=best_assembly_model,
+                                                                            disassem_model=best_disassembly_model);
+              
+              models$stability = rbind(models$stability, stability_model);
+            }
         } else if (birth_filter[FA_number]) {
             best_indexes = find_optimum_model_indexes(assembly=assembly_model_results,disassembly=NULL);
             
@@ -178,7 +181,6 @@ find_stability_properties <- function(time.series,best_assembly,best_disassembly
         best_assembly$image_count - 
         best_disassembly$image_count;
     
-	
 	#If the stability phase contains at least one image, we will only use those
 	#images to make the remaining calculation, otherwise, use the last data
 	#point in assembly and the first in disassembly
