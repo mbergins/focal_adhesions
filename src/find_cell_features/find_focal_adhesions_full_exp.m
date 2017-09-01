@@ -17,6 +17,8 @@ i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x));
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
 i_p.addParamValue('min_independent_size',14,@(x)isnumeric(x) && x > 0);
 
+i_p.addParamValue('atrous_segmentation',0,@(x)isnumeric(x) && x > 0);
+
 i_p.addParamValue('min_seed_size',NaN,@(x)isnumeric(x) && x > 0);
 
 i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
@@ -69,7 +71,12 @@ end
 for i = 1:length(image_folders)
     I_file = fullfile(exp_folder,'individual_pictures',image_folders(i).name,filenames.focal_image);
     try
-        find_focal_adhesions(I_file,clean_opts);
+        if (i_p.Results.atrous_segmentation)
+            find_focal_adhesions_atrous(I_file,clean_opts);
+        else
+            find_focal_adhesions(I_file,clean_opts);
+        end
+        
     catch
     end
     disp(['Done with ',I_file]);

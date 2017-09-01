@@ -159,6 +159,9 @@ sub build_extra_opts {
 	if (defined $cfg{confocal_mode}) {
 		$extra_opt .= ",'confocal_mode',$cfg{confocal_mode}";
 	}
+	if (defined $cfg{atrous_segmentation}) {
+		$extra_opt .= ",'atrous_segmentation',$cfg{atrous_segmentation}";
+	}
 	
 	return $extra_opt;
 }
