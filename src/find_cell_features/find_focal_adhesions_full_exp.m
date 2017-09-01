@@ -76,8 +76,8 @@ for i = 1:length(image_folders)
         else
             find_focal_adhesions(I_file,clean_opts);
         end
-        
-    catch
+    catch ME
+        warning(ME.message);
     end
     disp(['Done with ',I_file]);
 end

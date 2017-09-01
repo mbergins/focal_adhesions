@@ -19,6 +19,7 @@ function [varargout] = find_focal_adhesions(I_file,varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
 i_p = inputParser;
+i_p.KeepUnmatched = true;
 i_p.StructExpand = true;
 i_p.addRequired('I_file',@(x)exist(x,'file') == 2);
 
