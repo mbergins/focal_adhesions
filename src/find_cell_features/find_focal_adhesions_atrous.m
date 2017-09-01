@@ -1,4 +1,4 @@
-function [varargout] = find_focal_adhesions_v2(I_file,varargin)
+function [varargout] = find_focal_adhesions_atrous(I_file,varargin)
 % FIND_FOCAL_ADHESIONS    locates the focal adhesions in a given image,
 %                         optionally returns the segmented image or writes
 %                         the segmented image to a file
@@ -7,13 +7,13 @@ function [varargout] = find_focal_adhesions_v2(I_file,varargin)
 %   file, 'I'
 %   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   %%%%%%%%%%      By BEI LIU    %%%%%%%%%%%%%%%%%
-%   % Usefull parameters:
+%   % Useful parameters:
 %   % -min_adhesion_size/max_adhesion_size
 %   % -structure_element_size: sturcture size for morphorlogical operations
 %   % -atrous_export_level: wavelet decomposition
 %   % -show_seg_result: 
 %   % Example:
-%   I_out = find_focal_adhesions_v2(I_file, 'min_adhesion_size', 10, 'structure_element_size', 5, 'atrous_export_level', 4);
+%   I_out = find_focal_adhesions_atrous(I_file, 'min_adhesion_size', 10, 'structure_element_size', 5, 'atrous_export_level', 4);
 
 %   Options:
 %
@@ -22,8 +22,6 @@ function [varargout] = find_focal_adhesions_v2(I_file,varargin)
 %       -output_dir: folder used to hold all the results, defaults to the
 %        same folder as the image file, 'I'
 %       -debug: set to 1 to output debugging information, defaults to 0
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Setup variables and parse command line
@@ -53,8 +51,6 @@ i_p.addParameter('per_image_thresh',0,@(x)islogical(x) || x == 0 || x == 1);
 
 i_p.addParameter('proximity_filter',0,@(x)isnumeric(x) && all(x >= 0));
 
-i_p.addParameter('confocal_mode',0,@(x)isnumeric(x) && all(x >= 0));
-
 i_p.addParameter('debug',0,@(x)x == 1 || x == 0);
 i_p.addParameter('paper_figures',0,@(x)x == 1 || x == 0);
 i_p.addParameter('status_messages',1,@(x)x == 1 || x == 0);
@@ -62,8 +58,8 @@ i_p.addParameter('status_messages',1,@(x)x == 1 || x == 0);
 i_p.parse(I_file,varargin{:});
 
 %Add the folder with all the scripts used in this master program
-% % addpath(genpath('matlab_scripts'));
-% % addpath('../visualize_cell_features');
+addpath(genpath('matlab_scripts'));
+addpath('../visualize_cell_features');
 
 filenames = add_filenames_to_struct(struct());
 
@@ -74,13 +70,6 @@ end
 
 %read in and normalize the input focal adhesion image
 focal_image  = double(imread(I_file));
-% % if (exist(fullfile(fileparts(I_file),filenames.focal_image_min_max),'file'))
-% %     image_set_min_max = csvread(fullfile(fileparts(I_file),filenames.focal_image_min_max));
-% % else
-% %     image_set_min_max = quantile(focal_image(:),[0.001,0.999]);
-% % end
-% % 
-% % focal_normed = (focal_image - image_set_min_max(1))/(range(image_set_min_max));
 focal_normed = (focal_image - min(focal_image(:)))/max(focal_image(:));
 output_dir = fileparts(I_file);
 
@@ -93,22 +82,18 @@ output_dir = fileparts(I_file);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 se = strel('disk', i_p.Results.structure_element_size);
 % se = offsetstrel('ball', 5, 50);
-if (i_p.Results.confocal_mode)
-    disp('Confocal_mode not supported');
-else
-    I_filt = imtophat(focal_image, se);
-    threshed_image = atrous(I_filt, 0, 1, i_p.Results.atrous_export_level);
-    
-    CC = bwconncomp(threshed_image, 8);
-    S = regionprops(CC, 'Area');
-    L = labelmatrix(CC);
-    threshed_image = ismember(L, find(([S.Area] >= i_p.Results.min_adhesion_size) &...
-        [S.Area] <= i_p.Results.max_adhesion_size));  
-    if i_p.Results.show_seg_result
-        figure;
-        imagesc(label2rgb(labelmatrix(bwconncomp(threshed_image, 8)), 'jet', 'w', 'shuffle'));
-        axis off; axis equal;
-    end
+I_filt = imtophat(focal_image, se);
+threshed_image = atrous(I_filt, 0, 1, i_p.Results.atrous_export_level);
+
+CC = bwconncomp(threshed_image, 8);
+S = regionprops(CC, 'Area');
+L = labelmatrix(CC);
+threshed_image = ismember(L, find(([S.Area] >= i_p.Results.min_adhesion_size) &...
+[S.Area] <= i_p.Results.max_adhesion_size));  
+if i_p.Results.show_seg_result
+      figure;
+      imagesc(label2rgb(labelmatrix(bwconncomp(threshed_image, 8)), 'jet', 'w', 'shuffle'));
+      axis off; axis equal;
 end
 
 %identify and remove adhesions on the edge of the image
@@ -132,6 +117,11 @@ end
 
 %adding a check for finding adhesions, if didn't find any, output error
 %file and die
+if (sum(sum(threshed_image)) == 0)
+    no_ad_found_file = fullfile(output_dir, 'no_FAs_found.txt');
+    system(['touch ', no_ad_found_file]);
+    return;
+end
 
 %adding a check for finding too many adhesions, if found too many return
 %from function
@@ -151,10 +141,7 @@ end
 seg_start = tic;
 %If adhesion splitting is off ('no_ad_splitting'), then watershed based
 %segmentation isn't needed because all the watershed method adds is the
-%ability to split touching adhesions. Also, we need to know the pixel size
-%in order to select a threshold for having adhesions remain as seperate
-%enties when touching, so we also check for that before using the watershed
-%segmentation
+%ability to split touching adhesions.
 
 if (i_p.Results.no_ad_splitting)
     %if splitting is off, there is no need to use the fancy watershed based
@@ -164,13 +151,9 @@ else
     D = bwdist(~threshed_image);
     D(~threshed_image) = Inf;
     D = imhmin(D, 20); 
-%     D = imclose(D, se);
-%     D = imextendedmin(D, 0.1);
     L = watershed(D, 8);
     L(~threshed_image) = 0;
     ad_segment = L;
-%     ad_segment = watershed_min_size(focal_image,threshed_image, ...
-%         i_p.Results.min_independent_size);
 end
 toc(seg_start);
 if(i_p.Results.status_messages), disp('Done finding adhesion regions'); end
@@ -268,35 +251,10 @@ if (exist('cell_mask','var'))
 end
 imwrite(highlighted_image,fullfile(output_dir, 'highlights.png'));
 
-if (i_p.Results.paper_figures)
-    col_range = (find(sum(ad_segment),1,'first')-5):(find(sum(ad_segment),1,'last')+5);
-    col_range = col_range(col_range > 0 & col_range < size(ad_segment,2));
-    row_range = (find(sum(ad_segment,2),1,'first')-5):(find(sum(ad_segment,2),1,'last')+5);
-    row_range = row_range(row_range > 0 & row_range < size(ad_segment,1));
-    
-    normed_hp_image = (high_passed_image - min(high_passed_image(:)))/range(high_passed_image(:));
-    normed_hp_image = normed_hp_image(row_range,col_range);
-    imwrite(normed_hp_image,fullfile(output_dir,'high_passed_image.png'),'bitdepth',16);
-    
-    imwrite(highlighted_image(row_range,col_range,1:3),fullfile(output_dir,'highlights_cropped.png'));
-    imwrite(focal_image(row_range,col_range),fullfile(output_dir,'focal_cropped.png'));
-end
-
 if (i_p.Results.debug)
     [~, name, ~] = fileparts(I_file);
     movefile(fullfile(output_dir, 'highlights.png'),fullfile(output_dir,[name,'_highlights.png']));
 end
-
-%diagnostic diagram
-% hist(high_passed_image(:),100);
-% xlabel('High Pass Filtered Intensity','FontSize',16,'FontName','Helvetica');
-% ylabel('Pixel Count','FontSize',16,'FontName','Helvetica');
-% y_limits = ylim();
-%
-% set(gca, 'FontName','Helvetica','FontSize',16,'Box','off');
-% set(gcf, 'PaperPositionMode', 'auto');
-% print('-dpng', fullfile(output_dir,'high_passed_intensities.png'));
-% close;
 
 if (nargout > 0)
     varargout{1} = struct('adhesions',imbinarize(ad_segment,0),'ad_segment',ad_segment);
@@ -307,35 +265,6 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function threshed_image = find_threshed_image(high_passed_image, filter_thresh, ...
-    proximity_filter,min_seed_size)
-
-if (length(filter_thresh) == 1)
-    threshed_image = high_passed_image >= filter_thresh;
-else
-    high_threshed_image = high_passed_image >= filter_thresh(2);
-    
-    if (not(isnan(min_seed_size)))
-        high_threshed_labels = bwlabel(high_threshed_image);
-        high_threshed_props = regionprops(high_threshed_labels,'Area'); %#ok<MRPBW>
-        
-        high_threshed_image = ismember(high_threshed_labels,find([high_threshed_props.Area] >= 4));
-    end
-    
-    high_threshed_image = imdilate(high_threshed_image,strel('disk',proximity_filter));
-    
-    low_threshed_image = high_passed_image >= filter_thresh(1);
-    low_thresh_bwlabel = bwlabel(low_threshed_image,4);
-    
-    overlap_labels = unique(low_thresh_bwlabel.*high_threshed_image);
-    if (overlap_labels(1) == 0)
-        overlap_labels = overlap_labels(2:end);
-    end
-    
-    threshed_image = ismember(low_thresh_bwlabel,overlap_labels);
-end
-end
 
 function print_too_many_FA_error(target_folder,FA_count,max_count)
 
