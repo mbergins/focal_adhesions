@@ -17,8 +17,6 @@ i_p.addParamValue('min_adhesion_size',1,@(x)isnumeric(x));
 i_p.addParamValue('filter_size',11,@(x)isnumeric(x) && x > 1);
 i_p.addParamValue('min_independent_size',14,@(x)isnumeric(x) && x > 0);
 
-i_p.addParamValue('atrous_segmentation',0,@(x)isnumeric(x) && x > 0);
-
 i_p.addParamValue('min_seed_size',NaN,@(x)isnumeric(x) && x > 0);
 
 i_p.addParamValue('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
@@ -34,6 +32,11 @@ i_p.addParamValue('confocal_mode',0,@(x)isnumeric(x) && all(x >= 0));
 i_p.addParamValue('debug',0,@(x)x == 1 || x == 0);
 i_p.addParamValue('paper_figures',0,@(x)x == 1 || x == 0);
 i_p.addParamValue('status_messages',1,@(x)x == 1 || x == 0);
+
+i_p.addParamValue('atrous_segmentation',0,@(x)isnumeric(x) && x > 0);
+i_p.addParameter('structure_element_size', 5,@(x)isnumeric(x) && x > 1);
+i_p.addParameter('atrous_export_level',4,@(x)isnumeric(x) && x > 0);
+
 
 i_p.parse(exp_folder,varargin{:});
 
