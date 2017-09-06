@@ -162,6 +162,12 @@ sub build_extra_opts {
 	if (defined $cfg{atrous_segmentation}) {
 		$extra_opt .= ",'atrous_segmentation',$cfg{atrous_segmentation}";
 	}
+	if (defined $cfg{structure_element_size}) {
+		$extra_opt .= ",'structure_element_size',$cfg{structure_element_size}";
+	}
+	if (defined $cfg{atrous_export_level}) {
+		$extra_opt .= ",'atrous_export_level',$cfg{atrous_export_level}";
+	}
 	
 	return $extra_opt;
 }
