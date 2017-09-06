@@ -37,13 +37,14 @@ i_p.parse(I_file);
 %Adhesion filtering parameters
 i_p.addParameter('min_adhesion_size',1,@(x)isnumeric(x));
 i_p.addParameter('max_adhesion_size',Inf,@(x)isnumeric(x) && x > 0);
+
 i_p.addParameter('structure_element_size', 5,@(x)isnumeric(x) && x > 1);
-i_p.addParameter('min_independent_size',10,@(x)isnumeric(x) && x > 0);
 i_p.addParameter('atrous_export_level',4,@(x)isnumeric(x) && x > 0);
+
+i_p.addParameter('min_independent_size',10,@(x)isnumeric(x) && x > 0);
 i_p.addParameter('show_seg_result', 0, @(x) islogical(x) || x == 1 || x == 0);
 
 i_p.addParameter('min_seed_size',NaN,@(x)isnumeric(x) && x > 0);
-
 i_p.addParameter('no_ad_splitting', 0, @(x) islogical(x) || x == 1 || x == 0);
 
 i_p.addParameter('max_adhesion_count', Inf, @(x) isnumeric(x));
