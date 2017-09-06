@@ -77,7 +77,8 @@ post '/upload' => sub {
 
 		my @copy_if_defined = qw(stdev_thresh no_ad_splitting min_adhesion_size
 		max_adhesion_size email exp_note min_linear_model_length time_spacing
-		static FAAI_min_ratio max_adhesion_count confocal_mode atrous_segmentation);
+		static FAAI_min_ratio max_adhesion_count confocal_mode 
+        atrous_segmentation structure_element_size atrous_export_level);
 		foreach (@copy_if_defined) {
 			my $val = param $_;
 			if (defined $val && $val ne "") {
