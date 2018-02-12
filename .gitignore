@@ -14,3 +14,5 @@ src/webapp/user_exp_info.stor
 src/webapp/user_login.stor
 src/webapp/utilities/data_by_*
 src/webapp/utilities/results_by_*
+
+*.DS_Store
