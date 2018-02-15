@@ -82,7 +82,10 @@ output_dir = fileparts(I_file);
 if (i_p.Results.confocal_mode)
     focal_image_med_filt = medfilt2(focal_image, [7,7],'symmetric');
     
-    threshed_image = focal_image_med_filt > (mean(focal_image_med_filt(:)) + std(focal_image_med_filt(:))*2);
+    this_thresh = mean(focal_image_med_filt(:)) +  ...
+        std(focal_image_med_filt(:))*i_p.Results.stdev_thresh;
+    
+    threshed_image = focal_image_med_filt > this_thresh;
     
     %Deal with the rare case where an identified adhesion makes it through
     %threshold, but none of the pixels are above zero in intensity. Lots of
