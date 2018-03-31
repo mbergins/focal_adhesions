@@ -134,7 +134,8 @@ post '/upload' => sub {
 sub is_file_TIFF {
 	my $file = shift @_;
 
-	my $type_output = `file $file`;
+	my $type_output = `file \"$file\"`;
+	debug($type_output);
 	if ($type_output =~ /TIFF/) {
 		return 1;
 	} else {
