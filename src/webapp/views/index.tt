@@ -60,6 +60,10 @@
 				ref status: indexed, http://f1000r.es/yc] F1000Research 2013,
 				2:68 (doi: 10.3410/f1000research.2-68.v1)</li>
 			</ul>
-		</div>
+			
+            <h3>Software Availability</h3>
+            <p>All of the pipeline and webserver code is available through <a
+              href="https://github.com/mbergins/focal_adhesions">github</a>.		
+        </div>
 	</div>
 </div>
