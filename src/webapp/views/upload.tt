@@ -76,7 +76,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="time_spacing">Imaging Frequency (minutes)</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="[% time_spacing %]" name="time_spacing" />
+								<input type="text" class="input-xlarge" value="[% time_spacing %]" name="time_spacing" autocomplete="false" />
 								<span class="help-inline">Amount of time, in minutes, between the images</span> 
 							</div>
 						</div>
@@ -109,7 +109,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="stdev_thresh">Detection Threshold</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="[% stdev_thresh %]" name="stdev_thresh" >
+								<input type="text" class="input-xlarge" value="[% stdev_thresh %]" name="stdev_thresh" autocomplete="false">
 								<span class="help-inline">Normally set to 2, see instructions below for more help</span> 
 							</div>
 						</div>
@@ -118,7 +118,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="min_adhesion_size">Min Adhesion Size (pixels)</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="[% min_adhesion_size %]" name="min_adhesion_size" >
+								<input type="text" class="input-xlarge" value="[% min_adhesion_size %]" name="min_adhesion_size" autocomplete="false" >
 								<span class="help-inline">Leave blank to remove the minimum adhesion size limit</span> 
 							</div>
 						</div>
@@ -126,7 +126,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="max_adhesion_size">Max Adhesion Size (pixels)</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="[% max_adhesion_size %]" name="max_adhesion_size" >
+								<input type="text" class="input-xlarge" value="[% max_adhesion_size %]" name="max_adhesion_size" autocomplete="false">
 								<span class="help-inline">Leave blank to remove the maximum adhesion size limit</span> 
 							</div>
 						</div>
@@ -136,7 +136,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="min_linear_model_length">Min FA Phase Length (images)</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="[% min_linear_model_length %]" name="min_linear_model_length" >
+								<input type="text" class="input-xlarge" value="[% min_linear_model_length %]" name="min_linear_model_length" autocomplete="false" >
 								<span class="help-inline">The minimum number of points in an assembly or disassembly phase</span> 
 							</div>
 						</div>
@@ -156,7 +156,7 @@
 						<div class="control-group">
 							<label class="control-label" for ="FAAI_min_ratio">Min FAAI Ratio</label>
 							<div class="controls">
-								<input type="text" class="input-xlarge" value="[% FAAI_min_ratio %]" name="FAAI_min_ratio" >
+								<input type="text" class="input-xlarge" value="[% FAAI_min_ratio %]" name="FAAI_min_ratio" autocomplete="false">
 								<span class="help-inline">The minimum value of the FA major/minor axis for inclusion in the FAAI</span> 
 							</div>
 						</div>
