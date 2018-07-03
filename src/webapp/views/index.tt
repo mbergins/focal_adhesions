@@ -20,12 +20,6 @@
 
 			<hr>
 			
-			<p>11/21/2016 - The server that houses the FA Analysis server is
-			running out of hard drive space. As such, the results of the
-			processing pipeline will only be available for one month going
-			forward. If you have any experiments older a month, please download
-			them soon.</p>
-			
 			<p>Welcome to the focal adhesion analysis webserver, hosted from Shawn
 			Gomez's <a href="http://gomezlab.bme.unc.edu/">lab</a> at the
 			University of North Carolina at Chapel Hill. This website implements a
