@@ -9,7 +9,7 @@
 
 	<div class="row">
 		<div class="span12">
-        	<IMG src="images/ghost.jpg" alt="FA visualization">
+        	<IMG src="images/ghost.jpg" alt="FA visualization" width=300>
 			<h2>Options</h2>
 			<ul>
 				<li><a href='upload'>Submit a New Experiment</a></li>
