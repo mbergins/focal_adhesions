@@ -25,6 +25,12 @@ i_names = dir(i_p.Results.I_source); i_names = i_names(3:end);
 if (length(i_names) > 1)
     for i_num = 1:length(i_names)
         i_full_file = fullfile(i_p.Results.I_source,i_names(i_num).name);
+        
+        %deal with the extra .DS_store files Mac OS X likes to leave around
+        if (strcmp(i_names(i_num).name, '.DS_store'))
+            next;
+        end
+        
         i_count = length(imfinfo(i_full_file));
         if (i_count > 1) 
             error(['Detected multiple files of which ' , i_full_file, ' contains multiple frames.']);

@@ -45,6 +45,7 @@ my @image_sets = (
     [qw(raw_mask_folder raw_mask_file)],
     [qw(raw_kinase_folder raw_kinase_file)],
     [qw(adhesion_image_folder_generic adhesion_image_file)],
+    [qw(adhesion_image_folder_secondary adhesion_image_secondary_file)],
     [qw(adhesion_image_folder_pax adhesion_image_file)],
     [qw(adhesion_image_folder_vin adhesion_image_file)],
     [qw(adhesion_image_folder_fak adhesion_image_file)],
