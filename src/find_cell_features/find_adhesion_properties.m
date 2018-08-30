@@ -49,6 +49,7 @@ end
 %read in the input focal adhesion image data
 focal_image = double(imread(focal_file));
 adhesions = imread(adhesions_file);
+focal_image_secondary = double(imread(fullfile(fileparts(focal_file),filenames.focal_image_secondary)));
 
 %gather the background correction, if available
 background_correction = 0;
@@ -74,6 +75,11 @@ end
 if (exist('kinase','var'))
     adhesion_properties = collect_kinase_properties(kinase,adhesions,adhesion_properties);
 end
+
+focal_ratio = focal_image./focal_image_secondary;
+temp = regionprops(adhesions,focal_ratio,'MeanIntensity');
+
+[adhesion_properties.('Focal_ratio')] = temp.MeanIntensity;
 
 if (i_p.Results.debug), disp('Done with gathering properties'); end
 
