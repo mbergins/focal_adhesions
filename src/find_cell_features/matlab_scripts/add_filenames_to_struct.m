@@ -24,10 +24,6 @@ filenames.focal_image_secondary = 'focal_image_secondary.png';
 filenames.focal_image_secondary_min_max = '../../adhesion_props/image_analysis/focal_secondary_min_max.csv';
 filenames.focal_image_secondary_threshold = '../../adhesion_props/image_analysis/focal_secondary_filter_results.csv';
 
-filenames.adhesions_secondary = 'adhesions_secondary.png';
-filenames.adhesions_binary_secondary = 'adhesions_binary_secondary.png';
-filenames.adhesions_perim_secondary = 'adhesions_perim_secondary.png';
-
 filenames.kinase = 'kinase.png';
 filenames.kinase_min_max = '../../adhesion_props/image_analysis/kinase_min_max.csv';
 
