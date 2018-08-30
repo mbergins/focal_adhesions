@@ -61,7 +61,11 @@ if (exist(fullfile(fileparts(I_file),filenames.cell_mask),'file'))
 end
 
 %read in and normalize the input focal adhesion image
-focal_image  = double(imread(I_file));
+focal_image_primary = double(imread(I_file));
+focal_image_secondary = double(imread(fullfile(fileparts(I_file),filenames.focal_image_secondary)));
+fa_image_set = cat(3,focal_image_primary,focal_image_secondary);
+
+focal_image = max(fa_image_set,[],3);
 if (exist(fullfile(fileparts(I_file),filenames.focal_image_min_max),'file'))
     image_set_min_max = csvread(fullfile(fileparts(I_file),filenames.focal_image_min_max));
 else
