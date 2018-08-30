@@ -33,7 +33,11 @@ all_high_passed = zeros(size(temp_image,1),size(temp_image,2),size(image_dirs,1)
 % Collect all the images
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i_num = 1:size(image_dirs,1)
-    fa_image = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
+    fa_image_primary = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image)));
+    fa_image_secondary = double(imread(fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image_secondary)));
+    fa_image_set = cat(3,fa_image_primary,fa_image_secondary);
+    
+    fa_image = max(fa_image_set,[],3);
     
     I_filt = fspecial('disk',11);
     blurred_image = imfilter(fa_image,I_filt,'same',mean(fa_image(:)));
