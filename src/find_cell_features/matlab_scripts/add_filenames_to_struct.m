@@ -9,6 +9,8 @@ function filenames = add_filenames_to_struct(filenames)
 filenames.individual_results_dir = 'individual_pictures';
 
 filenames.focal_image = 'focal_image.png';
+filenames.focal_image_min_max = '../../adhesion_props/image_analysis/focal_min_max.csv';
+filenames.focal_image_threshold = '../../adhesion_props/image_analysis/focal_filter_results.csv';
 
 filenames.adhesions = 'adhesions.png';
 filenames.adhesions_binary = 'adhesions_binary.png';
@@ -18,6 +20,14 @@ filenames.raw_mask = 'raw_mask_file.png';
 filenames.cell_mask = 'cell_mask.png';
 filenames.raw_mask_min_max = '../../adhesion_props/image_analysis/cell_mask_min_max.csv';
 
+filenames.focal_image_secondary = 'focal_image_secondary.png';
+filenames.focal_image_secondary_min_max = '../../adhesion_props/image_analysis/focal_secondary_min_max.csv';
+filenames.focal_image_secondary_threshold = '../../adhesion_props/image_analysis/focal_secondary_filter_results.csv';
+
+filenames.adhesions_secondary = 'adhesions_secondary.png';
+filenames.adhesions_binary_secondary = 'adhesions_binary_secondary.png';
+filenames.adhesions_perim_secondary = 'adhesions_perim_secondary.png';
+
 filenames.kinase = 'kinase.png';
 filenames.kinase_min_max = '../../adhesion_props/image_analysis/kinase_min_max.csv';
 
@@ -25,8 +35,6 @@ filenames.photo_bleach_correction = 'photo_correct.txt';
 
 filenames.background_intensity = '../../adhesion_props/image_analysis/background_intensity.txt';
 
-filenames.focal_image_min_max = '../../adhesion_props/image_analysis/focal_min_max.csv';
-filenames.focal_image_threshold = '../../adhesion_props/image_analysis/focal_filter_results.csv';
 filenames.focal_image_threshold_plot = '../../adhesion_props/image_analysis/focal_threshold.eps';
 filenames.per_image_threshold_plot = '../../adhesion_props/image_analysis/per_image_threshold.eps';
 
