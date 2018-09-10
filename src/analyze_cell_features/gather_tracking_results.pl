@@ -110,7 +110,7 @@ sub convert_data_to_units {
 	  Cell_not_ad_mean_intensity Adhesion_mean_intensity CB_corrected_signal
 	  Photo_cor_ad_signal Angle_to_FA_cent Adhesion_centroid
 	  Angle_diff_from_radial Kinase_mean_intensity Kinase_intensity 
-	  Kinase_intensity_corrected Focal_ratio);
+	  Kinase_intensity_corrected Focal_ratio Secondary_signal_average);
 	
 	my @lin_conversion = qw(Centroid_dist_from_edge Centroid_dist_from_center
 		MajorAxisLength MinorAxisLength Dist_to_FA_cent CHull_dist);
@@ -155,7 +155,7 @@ sub gather_single_ad_props {
     my @possible_data_types =
       qw(Area Average_adhesion_signal Eccentricity Solidity MajorAxisLength 
          MinorAxisLength Centroid_dist_from_edge Centroid_dist_from_center 
-         Variance_adhesion_signal);
+         Variance_adhesion_signal Secondary_signal_average);
 
     my @single_ad_data_types = map {
         my $type = $_;
@@ -297,7 +297,7 @@ sub gather_and_output_lineage_properties {
 	my @ts_props = qw(Angle_to_center Orientation MajorAxisLength
 	MinorAxisLength Dist_to_FA_cent Angle_to_FA_cent CHull_dist
 	Angle_diff_from_radial Kinase_intensity Kinase_intensity_corrected Centroid_x 
-    Centroid_y Focal_ratio);
+    Centroid_y Focal_ratio Secondary_signal_average);
     foreach my $data_type (@ts_props) {
         next if (not(grep $data_type eq $_, @available_data_types));
 
