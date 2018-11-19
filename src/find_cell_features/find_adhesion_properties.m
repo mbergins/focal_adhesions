@@ -76,12 +76,13 @@ if (exist('kinase','var'))
     adhesion_properties = collect_kinase_properties(kinase,adhesions,adhesion_properties);
 end
 
-focal_ratio = focal_image./focal_image_secondary;
-temp = regionprops(adhesions,focal_ratio,'MeanIntensity');
-[adhesion_properties.('Focal_ratio')] = temp.MeanIntensity;
-
 focal_secondary_intensity = regionprops(adhesions,focal_image_secondary,'MeanIntensity');
 [adhesion_properties.('Secondary_signal_average')] = focal_secondary_intensity.MeanIntensity;
+
+ratio = [adhesion_properties.Average_adhesion_signal]./[adhesion_properties.Secondary_signal_average];
+for i=1:max(adhesions(:))
+    adhesion_properties(i).('Focal_ratio') = ratio(i);
+end
 
 
 if (i_p.Results.debug), disp('Done with gathering properties'); end
