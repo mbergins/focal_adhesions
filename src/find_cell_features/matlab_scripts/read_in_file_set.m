@@ -10,9 +10,11 @@ data_set.focal_image_range = csvread(fullfile(this_dir,filenames.focal_image_min
 data_set.focal_norm = (double(data_set.focal_image) - data_set.focal_image_range(1))/ ... 
     range(data_set.focal_image_range);
 
+data_set.focal_image_secondary = imread(fullfile(this_dir,filenames.focal_image_secondary));
+data_set.focal_image_range_secondary = csvread(fullfile(this_dir,filenames.focal_image_secondary_min_max));
+
+data_set.focal_secondary_norm = (double(data_set.focal_image_secondary) - data_set.focal_image_range(1))/ ... 
+    range(data_set.focal_image_range);
+
 data_set.adhesions = imread(fullfile(this_dir,filenames.adhesions));
 data_set.adhesions_perim = imread(fullfile(this_dir,filenames.adhesions_perim));
-
-if (exist(fullfile(this_dir,'raw_data','Adhesion_centroid.csv'),'file'))
-    data_set.adhesion_centroid = csvread(fullfile(this_dir,'raw_data','Adhesion_centroid.csv'));
-end
