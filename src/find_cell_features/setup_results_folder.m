@@ -78,15 +78,9 @@ end
 toc;
 end
 
-function marked_channel = find_label_channel(input_image)
-    marked_channel = 0;
-    
-    for channel_num = 1:size(input_image,3)
-        if (any(any(input_image(:,:,channel_num) > 0)))
-            if (marked_channel ~= 0)
-                error('Found multiple channels with signals in multi-color tiff');
-            end
-            marked_channel = channel_num;
-        end
-    end
+function FA_channel = find_label_channel(input_image)
+
+channel_sums = [sum(sum(input_image(:,:,:)))];
+FA_channel = find(channel_sums == max(channel_sums));
+
 end
