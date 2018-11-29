@@ -46,7 +46,7 @@
 					<li>slope: This is assembly or disassembly rate calculated
 					using the same method as Webb, et al. 2004, with the
 					modifications described <a
-						href="dx.doi.org/10.1371/journal.pone.0022025">here</a></li> 
+						href="https://dx.doi.org/10.1371/journal.pone.0022025">here</a></li> 
 					<li>p.value: The p value calculated for the likelyhood of
 					seeing the determined assembly/disassembly properties
 					occuring by chance.</li> 
