@@ -33,7 +33,7 @@ image_limits = zeros(size(image_dirs,1),2);
 for i_num = 1:size(image_dirs,1)
     image_file_name = fullfile(base_dir,image_dirs(i_num).name,filenames.focal_image);
     
-    temp_image = imread(image_file_name);
+    temp_image = double(imread(image_file_name));
     image_limits(i_num,:) = quantile(temp_image(:),[1E-4,1-1E-4]);
 end
 
