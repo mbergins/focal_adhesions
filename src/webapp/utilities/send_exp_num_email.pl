@@ -18,9 +18,14 @@ GetOptions(\%opt, "days=s", "email=s") or die;
 my $find_results = `find ../../../data/FAAS_*/*.cfg`;
 my @all_cfgs = split("\n",$find_results);
 
-#There were 19319 experiments submitted using the 1st edition hardware.
-# Raw data was cleared for 2016 and 2017, each with 6627 and 9542 submissions
-my $all_cfg_count = scalar(@all_cfgs) + 19319 + 6627 + 9542;
+#I have periodically needed to clear old experimental data from the server and
+#we didn't transfer any data from the original hardware, but wanted to maintain
+#the submission/image count. I've maintained all the config files from 2016
+#onward, but need to add in the number of experiments from the original
+#hardware:
+#
+#	Original Hardware: 19319 experiments
+my $all_cfg_count = scalar(@all_cfgs) + 19319;
 
 $find_results = `find ../../../data/FAAS_*/*.cfg -ctime -$opt{days}`;
 my @recent_cfgs = split("\n",$find_results);
@@ -28,9 +33,15 @@ my $cfg_count = scalar(@recent_cfgs);
 
 my $image_count_line = `find ../../../data/ -iregex .*png.* | wc`;
 my @image_count = split(/\s+/,$image_count_line);
-#There were 614705 images processed using the 1st edition hardware
-# There were 318392 and 264893 images in 2016 and 2017 
-my $total_images = $image_count[1] + 614705 + 318392 + 264893;
+
+#All of the image data has been cleaned periodically as well, here are the counts:
+#
+# Original Hardware: 614705
+# 2016: 318392
+# 2017: 264893
+# 2018: 361919
+
+my $total_images = $image_count[1] + 614705 + 318392 + 264893 + 361919;
 
 my $IP_count_line  = `grep -h ip ../../../data/*/*.cfg | sort | uniq | wc`;
 my @IP_count = split(/\s+/,$IP_count_line);
