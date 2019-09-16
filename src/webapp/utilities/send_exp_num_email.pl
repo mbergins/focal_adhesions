@@ -66,6 +66,8 @@ $email_text .= $disk_usage;
 
 my $subject = "The FAAS processed $cfg_count experiments in the past $opt{days} days and $all_cfg_count overall";
 
+$email_text =~ s/"/\\"/g;
+
 system("echo \"$email_text\" | mail -s \"$subject\" $opt{email}");
 
 ###############################################################################
