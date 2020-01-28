@@ -106,6 +106,9 @@ sub make_data_links_by_config_var {
 		my $abs_target = &File::Spec::Functions::rel2abs($_);
 		if (defined $config{$cfg_var}) {
 			$config{$cfg_var} =~ s/^\s+//;
+			#there's a user with a " mark in their email address, this regex
+			#removes the " mark
+			$config{$cfg_var} =~ s/"//;
 			mkpath("$target_folder/$config{$cfg_var}");
 			system("ln -s \"$abs_target\" \"$target_folder/$config{$cfg_var}\"");
 		} else {
