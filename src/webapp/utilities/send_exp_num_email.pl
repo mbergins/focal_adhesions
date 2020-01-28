@@ -34,14 +34,16 @@ my $cfg_count = scalar(@recent_cfgs);
 my $image_count_line = `find ../../../data/ -iregex .*png.* | wc`;
 my @image_count = split(/\s+/,$image_count_line);
 
-#All of the image data has been cleaned periodically as well, here are the counts:
+#All of the image data has been cleaned periodically as well, here are the
+#counts:
 #
 # Original Hardware: 614705
 # 2016: 318392
 # 2017: 264893
 # 2018: 361919
+# 2019: 231903
 
-my $total_images = $image_count[1] + 614705 + 318392 + 264893 + 361919;
+my $total_images = $image_count[1] + 614705 + 318392 + 264893 + 361919 + 231903;
 
 my $IP_count_line  = `grep -h ip ../../../data/*/*.cfg | sort | uniq | wc`;
 my @IP_count = split(/\s+/,$IP_count_line);
