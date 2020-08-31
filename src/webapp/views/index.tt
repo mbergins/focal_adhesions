@@ -1,63 +1,61 @@
-<div class="container">
-	<div class="page-header">
-		<div class="row">
-			<div class="span12">
-				<h1>Focal Adhesion Analysis Server</h1>
-			</div>
-		</div>
-	</div>
+<div role="main" class="container">
+  <div class="row">
+    <div class="col">
+      <h1>Focal Adhesion Analysis Server</h1>
+    </div>
+  </div>
 
-	<div class="row">
-		<div class="span12">
-        	<IMG src="images/ghost.jpg" alt="FA visualization" width=300>
-			<h2>Options</h2>
-			<ul>
-				<li><a href='upload'>Submit a New Experiment</a></li>
-				<li><a href='thresh_testing'>Check Adhesion Threshold Setting</a></li>
-				<li><a href='server_status'>Check Server Status</a></li>
-				<li><a href='results_understanding'>Help with Interpreting the Results</a></li>
-			</ul>
+  <div class="row">
+    <div class="span12">
+      <IMG src="images/ghost.jpg" alt="FA visualization" width=300>
+      <h2>Options</h2>
+      <ul>
+        <li><a href='upload'>Submit a New Experiment</a></li>
+        <li><a href='thresh_testing'>Check Adhesion Threshold Setting</a></li>
+        <li><a href='server_status'>Check Server Status</a></li>
+        <li><a href='results_understanding'>Help with Interpreting the Results</a></li>
+      </ul>
 
-			<hr>
-			
-			<p>Welcome to the focal adhesion analysis webserver, hosted from Shawn
-			Gomez's <a href="http://gomezlab.bme.unc.edu/">lab</a> at the
-			University of North Carolina at Chapel Hill. This website implements a
-			set of computer vision algorithms designed to automatically process
-			time-lapse images of fluorescently labeled focal adhesion proteins in
-			motile cells. The methods associated with the processing have been
-			published in <a
-				href="http://dx.doi.org/10.1371/journal.pone.0022025">PLOS One</a>
-			and <a
-				href="http://dx.doi.org/10.1016/j.cell.2011.12.034">Cell</a>.</p>
+      <hr>
 
-			
-			<p>If you have any problems with the website, questions about the
-			results or suggestions for improvements, please email me
-			(matthew.berginski [AT] gmail.com).</p>
+      <p>Welcome to the focal adhesion analysis webserver, hosted from Shawn
+      Gomez's <a href="http://gomezlab.bme.unc.edu/">lab</a> at the
+      University of North Carolina at Chapel Hill. This website implements a
+      set of computer vision algorithms designed to automatically process
+      time-lapse images of fluorescently labeled focal adhesion proteins in
+      motile cells. The methods associated with the processing have been
+      published in <a
+                     href="http://dx.doi.org/10.1371/journal.pone.0022025">PLOS One</a>
+      and <a
+            href="http://dx.doi.org/10.1016/j.cell.2011.12.034">Cell</a>.</p>
 
-			<p>Need an image set for testing? Download a set <a
-				href='sample/Paxillin_test_set.tif'>here</a>.</p>
 
-			<p>Want to see what the processed results are like? Download this <a
-				href='sample/FAAS_sample_results.zip'>file</a> and take a look
-			at the results interpretation <a
-				href="results_understanding">page</a>.</p>
+      <p>If you have any problems with the website, questions about the
+      results or suggestions for improvements, please email me
+      (matthew.berginski [AT] gmail.com).</p>
 
-			<h3>How To Cite the FAAS</h3>
-			<p>The FAAS has been published in <a
-				href="http://dx.doi.org/10.3410/f1000research.2-68.v1">F1000
-				Research</a>.</p>
-			<ul>
-				<li>Berginski ME, Gomez SM. (2013) The Focal Adhesion Analysis
-				Server: a web tool for analyzing focal adhesion dynamics [v1;
-				ref status: indexed, http://f1000r.es/yc] F1000Research 2013,
-				2:68 (doi: 10.3410/f1000research.2-68.v1)</li>
-			</ul>
-			
-            <h3>Software Availability</h3>
-            <p>All of the pipeline and webserver code is available through <a
-              href="https://github.com/mbergins/focal_adhesions">github</a>.		
-        </div>
-	</div>
+      <p>Need an image set for testing? Download a set <a
+                                                         href='sample/Paxillin_test_set.tif'>here</a>.</p>
+
+      <p>Want to see what the processed results are like? Download this <a
+                                                                          href='sample/FAAS_sample_results.zip'>file</a> and take a look
+                                                                        at the results interpretation <a
+                                                                                                        href="results_understanding">page</a>.</p>
+
+      <h3>How To Cite the FAAS</h3>
+      <p>The FAAS has been published in <a
+                                          href="http://dx.doi.org/10.3410/f1000research.2-68.v1">F1000
+                                          Research</a>.</p>
+      <ul>
+        <li>Berginski ME, Gomez SM. (2013) The Focal Adhesion Analysis
+          Server: a web tool for analyzing focal adhesion dynamics [v1;
+          ref status: indexed, http://f1000r.es/yc] F1000Research 2013,
+          2:68 (doi: 10.3410/f1000research.2-68.v1)</li>
+      </ul>
+
+      <h3>Software Availability</h3>
+      <p>All of the pipeline and webserver code is available through <a
+                                                                       href="https://github.com/mbergins/focal_adhesions">github</a>.		
+    </div>
+  </div>
 </div>
