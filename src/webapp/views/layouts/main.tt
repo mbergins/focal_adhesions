@@ -1,95 +1,98 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
-<head>
+  <head>
 
-<meta http-equiv="Content-type" content="text/html; charset=[% settings.charset %]" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="">
-<meta name="author" content="">
+    <meta http-equiv="Content-type" content="text/html; charset=[% settings.charset %]" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
 
-<title>[% settings.appname %]</title>
+    <title>[% settings.appname %]</title>
 
-<link rel="stylesheet" href="[% request.uri_base %]/bootstrap/css/bootstrap.css" >
-<link rel="stylesheet" href="[% request.uri_base %]/fontawesome/css/font-awesome.css" >
-<link rel="stylesheet" href="[% request.uri_base %]/css/style.css" >
 
-<script src="[% request.uri_base %]/javascripts/jquery-1.7.2.min.js"></script>
-<script src="[% request.uri_base %]/bootstrap/js/bootstrap.min.js"></script>
+    <!-- CSS only -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
 
-<!-- <script src="[% request.uri_base %]/javascripts/pace.js"></script> -->
-<!-- <link href="/pace/themes/pace-theme-barber-pole.css" rel="stylesheet" /> -->
+    <!-- JS, Popper.js, and jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
 
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
-<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
-<meta name="msapplication-TileColor" content="#da532c">
-<meta name="theme-color" content="#ffffff">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+    <link rel="stylesheet" href="[% request.uri_base %]/css/style.css" >
 
-</head>
-<body>
 
-[% IF session.user_id %]
-<div class="navbar">
-  <div class="navbar-inner">
-	  <div class="container">
-        <ul class="nav pull-right">
-          <li id="fat-menu" class="dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown">[% session.user_id | html %]<b class="caret"></b></a>
-            <ul class="dropdown-menu">
-              <li><a href="/">Return to Home Page</a></li>
-              <li><a href="/upload">Upload an Experiment</a></li>
-              <li><a href="/all_exp_status">Submitted Experiments</a></li>
-              <li><a href="/logout">Log Out</a></li>
-            </ul>
-          </li>
+    <!-- <script src="[% request.uri_base %]/javascripts/pace.js"></script> -->
+    <!-- <link href="/pace/themes/pace-theme-barber-pole.css" rel="stylesheet" /> -->
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-expand-md navbar-light bg-light mb-4">
+      <a class="navbar-brand" href="/">
+        <img src="FAAS Logo.svg" width="30" height="30" class="d-inline-block align-top" alt="">
+      </a>
+      <button class="navbar-toggler collapsed" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="navbar-collapse collapse" id="navbarCollapse" style="">
+        <ul class="navbar-nav mr-auto">
         </ul>
-    </div>
-  </div>
-</div>
-[% ELSE %]
-<div class="navbar">
-  <div class="navbar-inner">
-    <div class="container">
-        <ul class="nav pull-right">
-          <li id="fat-menu" class="dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown">Not Logged In<b class="caret"></b></a>
-            <ul class="dropdown-menu">
-              <li><a href="/">Return to Home Page</a></li>
-              <li><a href="/upload">Upload an Experiment</a></li>
-              <li><a href="/login">Login/Create Account</a></li>
-            </ul>
-          </li>
-        </ul>
-    </div>
-  </div>
-</div>
-[% END %]
+        [% IF session.user_id %]
+        <div class="btn-group">
+          <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Logged In
+          </button>
+          <div class="dropdown-menu dropdown-menu-right">
+            <button class="dropdown-item" type="button"><a href="/">Return to Home Page</a></button>
+            <button class="dropdown-item" type="button"><a href="/upload">Upload an Experiment</a></button>
+            <button class="dropdown-item" type="button"><a href="/login">Login/Create Account</a></button>
+            <button class="dropdown-item" type="button"><a href="/logout">Log Out</a></button>
+          </div>
+        </div>
+        [% ELSE %]
+        <div class="btn-group">
+          <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Not Logged In
+          </button>
+          <div class="dropdown-menu dropdown-menu-right">
+            <button class="dropdown-item" type="button"><a href="/upload">Upload an Experiment</a></button>
+            <button class="dropdown-item" type="button"><a href="/login">Login/Create Account</a></button>
+            <button class="dropdown-item" type="button"><a href="/">Return to Home Page</a></button>
+          </div>
+        </div>
+        [% END %]
+    </nav>
 
-[% content %]
+    [% content %]
 
-<footer class="footer">
-	<div class="container">
-	Return to the  <a href='/'>home page</a>
-	</div>
-</footer>
+    <nav class="navbar bottom navbar-expand-sm navbar-light bg-light">
+      <a class="navbar-brand" href="/">Return to Home Page</a>
+    </nav>
 
-<script type="text/javascript">
+    <script type="text/javascript">
 
-  var _gaq = _gaq || [];
-  _gaq.push(['_setAccount', 'UA-38268502-1']);
-  _gaq.push(['_trackPageview']);
+      var _gaq = _gaq || [];
+_gaq.push(['_setAccount', 'UA-38268502-1']);
+_gaq.push(['_trackPageview']);
 
-  (function() {
-    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-  })();
+(function() {
+  var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+})();
 
-</script>
+    </script>
 
-
-</body>
+  </body>
 </html>
