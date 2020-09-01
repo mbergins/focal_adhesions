@@ -1,5 +1,5 @@
 <!-- HEADER line -->
-<div class="container">
+<div role="main" class="container">
 	<div class="row pb-2 mt-4 mb-2 border-bottom">
 		<div class="col">
 			<h1>Focal Adhesion Analysis Server - Submitted Experiments</h1>
