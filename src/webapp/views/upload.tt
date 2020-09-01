@@ -17,12 +17,11 @@
 </script>
 
 <div role="main" class="container">
-  <div class="row">
+  <div class="row pb-2 mt-4 mb-2 border-bottom">
     <div class="col">
       <h1>Focal Adhesion Analysis Server - Experiment Upload</h1>
     </div>
   </div>
-  <hr>
   <form method="post" enctype="multipart/form-data">
 
     <p/>Full <a href="#instructions">instructions</a> available at the
