@@ -1,15 +1,13 @@
 <!-- HEADER line -->
-<div class="container">
-	<div class="page-header">
-		<div class="row">
-			<div class="span12">
-				<h1>Focal Adhesion Analysis Server - Server Status</h1>
-			</div>
+<div role="main" class="container">
+	<div class="row pb-2 mt-4 mb-2 border-bottom">
+		<div class="col">
+			<h1>Focal Adhesion Analysis Server - Server Status</h1>
 		</div>
 	</div>
 
 	<div class="row">
-		<div class="span12">
+		<div class="col">
 
 			<p><b>Experiments in queue:</b> [% queue_count %]</p>
 			<p><b>Experiments being processed:</b> [% run_count %]</p>
