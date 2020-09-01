@@ -1,17 +1,15 @@
 <!-- HEADER line -->
-<div class="container">
-	<div class="page-header">
-		<div class="row">
-			<div class="span12">
+<div role="main" class="container">
+  <div class="row pb-2 mt-4 mb-2 border-bottom">
+    <div class="col">
 				<h1>Focal Adhesion Analysis Server - Understanding Your Results</h1>
 			</div>
 		</div>
-	</div>
 
 	<div class="row">
-		<div class="span12">
+		<div class="col">
 
-			All of the results from the image processing steps are saved in the
+			</p>All of the results from the image processing steps are saved in the
 			zip file you downloaded. Several different types of analyses are
 			automatically done on each image set, below you will find a few
 			instructions on how to find a few of the most common properties
