@@ -1,66 +1,59 @@
 <!-- HEADER line -->
-<div class="container">
-	<div class="page-header">
-		<div class="row">
-			<div class="span12">
-				<h1>Focal Adhesion Analysis Server - Login/Create Account</h1>
-			</div>
+<div role="main" class="container">
+	<div class="row pb-2 mt-4 mb-2 border-bottom">
+		<div class="col">
+			<h1>Focal Adhesion Analysis Server - Login/Create Account</h1>
 		</div>
 	</div>
 
 	<div class="row">
 		<div class="span12">
 			[% IF bad_login %]
-			<div class="alert">
-				<button type="button" class="close" data-dismiss="alert">&times;</button>
+			<div class="alert alert-danger alert-dismissible fade show" role="alert">
 				Tried to login as [% user_id %], but the passwords didn't match. Please try again.
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
 			</div>
 			[% END %]
 			
 			[% IF login_success %]
 	
 			[% IF new_user %]
-			<div class="alert alert-info">
-				<button type="button" class="close" data-dismiss="alert">&times;</button>
+			<div class="alert alert-info alert-dismissible fade show" role="alert">
 				New user account [% user_id %] created.
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
 			</div>
 			[% END %]
 
-			<div class="alert alert-success">
-				<button type="button" class="close" data-dismiss="alert">&times;</button>
+			<div class="alert alert-success alert-dismissible fade show" role="alert">
 				Successful login as [% user_id %].
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
 			</div>
 
 			You should now be able to access your list of submitted experiments
 			using the menu in the upper right hand corner.
 			[% ELSE %]
-			<form class="form-horizontal" enctype="multipart/form-data" method="post">
-				<fieldset>
 
-					<div class="control-group">
-						<label class="control-label" for="email">Username</label>
-						<div class="controls">
-							<input type="text" class="input-xlarge" name="email" >
-							<span class="help-inline"></span> 
-						</div>
-					</div>
-
-					<div class="control-group">
-						<label class="control-label" for="password">Password</label>
-						<div class="controls">
-							<input type="password" class="input-xlarge" name="password" >
-							<span class="help-inline"></span> 
-						</div>
-					</div>
-
-					<!-- The Submit buttons -->
-					<div class="form-actions"> 
-						<button type="submit" class="btn btn-primary">Login/Create Account</button> 
-					</div> 
-				</fieldset>
+			<form enctype="multipart/form-data" method="post">
+				<div class="form-group">
+					<label for="email">Username</label>
+					<input type="text" class="form-control" id="email" name="email" aria-describedby="emailHelp">
+					<small id="emailHelp" class="form-text text-muted">Please enter your username, if this username doesn't exist it will be created with the provided password.</small>
+				</div>
+				<div class="form-group">
+					<label for="password">Password</label>
+					<input type="password" class="form-control" id="password" name="password">
+				</div>
+				<button type="submit" class="btn btn-primary">Submit</button>
 			</form>
+			<hr/>
 
-			If you are logged in when an experiment is submitted, you will be
+			<p/>If you are logged in when an experiment is submitted, you will be
 			able to access a list of your submitted experiments and their status
 			in the system. Experiments can still be submitted without logging
 			in.
