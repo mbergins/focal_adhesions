@@ -40,7 +40,7 @@
 
     <nav class="navbar navbar-expand-md navbar-light bg-light mb-4">
       <a class="navbar-brand" href="/">
-        <img src="FAAS Logo.svg" width="30" height="30" class="d-inline-block align-top" alt="">
+        <img src="/FAAS Logo.svg" width="30" height="30" class="d-inline-block align-top" alt="">
       </a>
       <button class="navbar-toggler collapsed" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
