@@ -1,33 +1,39 @@
 <!-- HEADER line -->
 <div class="container">
-	<div class="page-header">
-		<div class="row">
-			<div class="span12">
-				<h1>Focal Adhesion Threshold Testing</h1>
-			</div>
-		</div>
-	</div>
+  <div class="row pb-2 mt-4 mb-2 border-bottom">
+	  <div class="col">
+		  <h1>Focal Adhesion Threshold Testing</h1>
+	  </div>
+  </div>
 
 	<div class="row">
-		<div class="span12">
+		<div class="col">
 			<form class="form-horizontal" enctype="multipart/form-data" method="post">
+
 				<fieldset>
 
-					<div class="control-group">
-						<label class="control-label" for="input_image">FA Image</label>
-						<div class="controls">
-							<input type="file" name="input_image">
-							<span class="help-inline">TIFF formatted image of the focal adhesions</span> 
+					<div class="form-group row">
+						<label for="input_image" class="col-sm-2 col-form-label">FA Image</label>
+						<div class="col-sm-5">
+							<div class="custom-file">
+								<input type="file" class="custom-file-input" name="input_image" id="input_image">
+								<label class="custom-file-label" for="customFile">Choose file</label>
+							</div>
+						</div>
+						<div class="col-sm-4">
+							TIFF formatted image set of the focal adhesions
 						</div>
 					</div>
 
 					<!-- The Submit buttons -->
-					<div class="form-actions"> 
-						<button type="submit" class="btn btn-primary">Submit Image</button> 
-					</div> 
+					<div class="form-group row">
+						<button class="btn btn-primary" type="submit">Submit Image</button>
+					</div>
 
 				</fieldset>
 			</form>
+
+			<hr>
 
 			<p>
 			After submitting an image above, the server will immediatly process
