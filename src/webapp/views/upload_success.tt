@@ -10,9 +10,11 @@
 		<div class="col">
 
 			<p>Thanks for the file. You can monitor your experiment's status 
-			<a href=[% exp_status_link %]>here</a>. Please note that if you didn't
-			provide an email address, this link will be the only way for you to
-			download your experiment after it is done processing.
+			<a href=[% exp_status_link %]>here</a>. 
+			
+			<p>Please note that if you didn't provide an email address, this
+			link will be the only way for you to download your experiment after
+			it is done processing.
 			
 			[% IF gmail %]
 			<p><p>Also, it looks like you submitted a gmail email address for
