@@ -1,0 +1,179 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Focal Adhesion Analysis Server</title>
+
+
+    <!-- CSS only -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+
+    <!-- JS, Popper.js, and jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+    <link rel="stylesheet" href="http://localhost:5000/css/style.css" >
+
+
+    <!-- <script src="http://localhost:5000/javascripts/pace.js"></script> -->
+    <!-- <link href="/pace/themes/pace-theme-barber-pole.css" rel="stylesheet" /> -->
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-expand-md navbar-light bg-light mb-4">
+      <a class="navbar-brand" href="/">
+        <img src="/FAAS Logo.svg" width="30" height="30" class="d-inline-block align-top" alt="">
+      </a>
+      <button class="navbar-toggler collapsed" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="navbar-collapse collapse" id="navbarCollapse" style="">
+        <ul class="navbar-nav mr-auto">
+        </ul>
+        
+        <div class="btn-group">
+          <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Not Logged In
+          </button>
+          <div class="dropdown-menu dropdown-menu-right">
+            <button class="dropdown-item" type="button"><a href="/">Return to Home Page</a></button>
+            <button class="dropdown-item" type="button"><a href="/upload">Upload an Experiment</a></button>
+            <button class="dropdown-item" type="button"><a href="/login">Login/Create Account</a></button>
+          </div>
+        </div>
+        
+    </nav>
+
+    <div role="main" class="container">
+	<div class="row pb-2 mt-4 mb-2 border-bottom">
+		<div class="col">
+			<h1>Focal Adhesion Threshold Testing Results</h1>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col">
+			Your image was processed in 4 seconds.
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-6 mb-3">
+			<a href="input_norm.png" class="thumbnail">
+				<img src="thumbs/input_norm.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_1.png" class="thumbnail">
+				<img src="thumbs/input_1.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_1.5.png" class="thumbnail">
+				<img src="thumbs/input_1.5.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_1.5.png" class="thumbnail">
+				<img src="thumbs/input_1.5.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_2.png" class="thumbnail">
+				<img src="thumbs/input_2.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_2.5.png" class="thumbnail">
+				<img src="thumbs/input_2.5.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_3.png" class="thumbnail">
+				<img src="thumbs/input_3.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_3.5.png" class="thumbnail">
+				<img src="thumbs/input_3.5.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_4.png" class="thumbnail">
+				<img src="thumbs/input_4.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_4.5.png" class="thumbnail">
+				<img src="thumbs/input_4.5.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_5.png" class="thumbnail">
+				<img src="thumbs/input_5.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_5.5.png" class="thumbnail">
+				<img src="thumbs/input_5.5.jpg" alt="">
+			</a>
+		</div>
+
+		<div class="col-6 mb-3">
+			<a href="input_6.png" class="thumbnail">
+				<img src="thumbs/input_6.jpg" alt="">
+			</a>
+		</div>
+	</div>
+</div>
+
+
+    <nav class="navbar bottom navbar-expand-sm navbar-light bg-light">
+      <a class="navbar-brand" href="/">Return to Home Page</a>
+    </nav>
+
+    <script type="text/javascript">
+
+      var _gaq = _gaq || [];
+_gaq.push(['_setAccount', 'UA-38268502-1']);
+_gaq.push(['_trackPageview']);
+
+(function() {
+  var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+})();
+
+    </script>
+
+  </body>
+</html>
