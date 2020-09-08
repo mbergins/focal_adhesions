@@ -1,20 +1,3 @@
-<script>
-	var counter = 0;
-	function submit_activity() {
-		if ($("#upload_form").valid()) {
-			$("#upload_form_and_instructions").collapse('hide');
-			$("#upload_status").collapse('show');
-			$("#following_upload_instructions").collapse('show');
-
-			setInterval("count_up_working('upload_status','Uploading for ')", 1000); 
-		}
-	}
-
-	function count_up_working(id_name, status_text) {
-		document.getElementById(id_name).innerHTML = status_text + counter + " seconds.";
-		counter = counter + 1;
-	}
-</script>
 
 <div role="main" class="container">
   <div class="row pb-2 mt-4 mb-2 border-bottom">
@@ -374,3 +357,27 @@
     </ul>
   </div>
 </div>
+
+<script>
+	var counter = 0;
+	function submit_activity() {
+		if ($("#upload_form").valid()) {
+			$("#upload_form_and_instructions").collapse('hide');
+			$("#upload_status").collapse('show');
+			$("#following_upload_instructions").collapse('show');
+
+			setInterval("count_up_working('upload_status','Uploading for ')", 1000); 
+		}
+	}
+
+	function count_up_working(id_name, status_text) {
+		document.getElementById(id_name).innerHTML = status_text + counter + " seconds.";
+		counter = counter + 1;
+	}
+
+document.querySelector('.custom-file-input').addEventListener('change',function(e){
+	var fileName = document.getElementById("adhesion_file").files[0].name;
+	var nextSibling = e.target.nextElementSibling
+	nextSibling.innerText = fileName
+})
+</script>
