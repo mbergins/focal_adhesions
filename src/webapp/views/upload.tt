@@ -6,212 +6,226 @@
     </div>
   </div>
 
-  <form method="post" enctype="multipart/form-data">
+  <div class="row show" id="upload_form">
+	  <div class="col">
 
-    <p/>Full <a href="#instructions">instructions</a> available at the
-    bottom of the page.
+		  <form method="post" enctype="multipart/form-data">
 
-    <h3>Required File</h3>
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <label for="adhesion_file" class="col-sm-2 col-form-label">FA Image Set</label>
-      <div class="col-sm-5">
-        <div class="custom-file">
-          <input type="file" class="custom-file-input" name="adhesion_file" id="adhesion_file">
-          <label class="custom-file-label" for="customFile">Choose file</label>
-        </div>
-      </div>
-      <div class="col-sm-4">
-        TIFF formatted image set of the focal adhesions
-      </div>
-    </div>
+			  <p/>Full <a href="#instructions">instructions</a> available at the
+			  bottom of the page.
 
-    <h3>Experiment Configuration</h3>
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <label for="time_spacing" class="col-sm-2 col-form-label">Imaging Frequency (minutes)</label>
-      <div class="col-sm-5">
-        <input type="number" class="form-control" id="time_spacing" name="time_spacing" value="[% time_spacing %]" autocomplete="false">
-      </div>
-      <div class="col-sm-4">
-        Amount of time, in minutes, between the images
-      </div>
-    </div>
+			  <h3>Required File</h3>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <label for="adhesion_file" class="col-sm-2 col-form-label">FA Image Set</label>
+				  <div class="col-sm-5">
+					  <div class="custom-file">
+						  <input type="file" class="custom-file-input" name="adhesion_file" id="adhesion_file">
+						  <label class="custom-file-label" for="customFile">Choose file</label>
+					  </div>
+				  </div>
+				  <div class="col-sm-4">
+					  TIFF formatted image set of the focal adhesions
+				  </div>
+			  </div>
 
-    <h3>Segmentation Options</h3>
+			  <h3>Experiment Configuration</h3>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <label for="time_spacing" class="col-sm-2 col-form-label">Imaging Frequency (minutes)</label>
+				  <div class="col-sm-5">
+					  <input type="number" class="form-control" id="time_spacing" name="time_spacing" value="[% time_spacing %]" autocomplete="false">
+				  </div>
+				  <div class="col-sm-4">
+					  Amount of time, in minutes, between the images
+				  </div>
+			  </div>
 
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <div class="col-sm-2">Don't Split Adhesions</div>
-      <div class="col-sm-5">
-        <div class="form-check">
-          [% IF no_ad_splitting %]
-          <input class="form-check-input"  type="checkbox" checked name="no_ad_splitting" id="no_ad_splitting"/>
-          [% ELSE %]
-          <input class="form-check-input"  type="checkbox" name="no_ad_splitting" id="no_ad_splitting"/>
-          [% END %]
-          <label class="form-check-label" for="no_ad_splitting">
-            If selected, the watershed segmentation methods are deactivated
-          </label>
-        </div>
-      </div>
-    </div>
+			  <h3>Segmentation Options</h3>
 
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <div class="col-sm-2">Apply Median Filter</div>
-      <div class="col-sm-5">
-        <div class="form-check">
-          [% IF confocal_mode %]
-          <input class="form-check-input" type="checkbox" checked name="confocal_mode" id="confocal_mode" />
-          [% ELSE %]
-          <input class="form-check-input" type="checkbox" name="confocal_mode" id="confocal_mode" />
-          [% END %]
-          <label class="form-check-label" for="no_ad_splitting">
-            If selected, a median filter will be applied before segmentation
-          </label>
-        </div>
-      </div>
-    </div>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <div class="col-sm-2">Don't Split Adhesions</div>
+				  <div class="col-sm-5">
+					  <div class="form-check">
+						  [% IF no_ad_splitting %]
+						  <input class="form-check-input"  type="checkbox" checked name="no_ad_splitting" id="no_ad_splitting"/>
+						  [% ELSE %]
+						  <input class="form-check-input"  type="checkbox" name="no_ad_splitting" id="no_ad_splitting"/>
+						  [% END %]
+						  <label class="form-check-label" for="no_ad_splitting">
+							  If selected, the watershed segmentation methods are deactivated
+						  </label>
+					  </div>
+				  </div>
+			  </div>
 
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <label for="time_spacing" class="col-sm-2 col-form-label">Detection Threshold</label>
-      <div class="col-sm-5">
-        <input type="number" class="form-control" id="stdev_thresh" name="stdev_thresh" value="[% stdev_thresh %]" autocomplete="false">
-      </div>
-      <div class="col-sm-4">
-        Normally set to 2, see instructions below for more help
-      </div>
-    </div>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <div class="col-sm-2">Apply Median Filter</div>
+				  <div class="col-sm-5">
+					  <div class="form-check">
+						  [% IF confocal_mode %]
+						  <input class="form-check-input" type="checkbox" checked name="confocal_mode" id="confocal_mode" />
+						  [% ELSE %]
+						  <input class="form-check-input" type="checkbox" name="confocal_mode" id="confocal_mode" />
+						  [% END %]
+						  <label class="form-check-label" for="no_ad_splitting">
+							  If selected, a median filter will be applied before segmentation
+						  </label>
+					  </div>
+				  </div>
+			  </div>
 
-    <h4>Adhesion Size Options</h4>
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <label for="min_adhesion_size" class="col-sm-2 col-form-label">Min Adhesion Size (pixels)</label>
-      <div class="col-sm-5">
-        <input type="number" class="form-control" id="min_adhesion_size" name="min_adhesion_size" value="[% min_adhesion_size %]" autocomplete="false">
-      </div>
-      <div class="col-sm-4">
-        Leave blank to remove the minimum adhesion size limit
-      </div>
-    </div>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <label for="time_spacing" class="col-sm-2 col-form-label">Detection Threshold</label>
+				  <div class="col-sm-5">
+					  <input type="number" class="form-control" id="stdev_thresh" name="stdev_thresh" value="[% stdev_thresh %]" autocomplete="false">
+				  </div>
+				  <div class="col-sm-4">
+					  Normally set to 2, see instructions below for more help
+				  </div>
+			  </div>
 
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <label for="max_adhesion_size" class="col-sm-2 col-form-label">Max Adhesion Size (pixels)</label>
-      <div class="col-sm-5">
-        <input type="number" class="form-control" id="max_adhesion_size" name="max_adhesion_size" value="[% max_adhesion_size %]" autocomplete="false">
-      </div>
-      <div class="col-sm-4">
-        Leave blank to remove the maximum adhesion size limit
-      </div>
-    </div>
+			  <h4>Adhesion Size Options</h4>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <label for="min_adhesion_size" class="col-sm-2 col-form-label">Min Adhesion Size (pixels)</label>
+				  <div class="col-sm-5">
+					  <input type="number" class="form-control" id="min_adhesion_size" name="min_adhesion_size" value="[% min_adhesion_size %]" autocomplete="false">
+				  </div>
+				  <div class="col-sm-4">
+					  Leave blank to remove the minimum adhesion size limit
+				  </div>
+			  </div>
 
-    <h3>Analysis Options</h3>
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <label for="min_linear_model_length" class="col-sm-2 col-form-label">Min FA Phase Length (images)</label>
-      <div class="col-sm-5">
-        <input type="number" class="form-control" id="min_linear_model_length" name="min_linear_model_length" value="[% min_linear_model_length %]" autocomplete="false">
-      </div>
-      <div class="col-sm-4">
-        The minimum number of points in an assembly or disassembly phase
-      </div>
-    </div>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <label for="max_adhesion_size" class="col-sm-2 col-form-label">Max Adhesion Size (pixels)</label>
+				  <div class="col-sm-5">
+					  <input type="number" class="form-control" id="max_adhesion_size" name="max_adhesion_size" value="[% max_adhesion_size %]" autocomplete="false">
+				  </div>
+				  <div class="col-sm-4">
+					  Leave blank to remove the maximum adhesion size limit
+				  </div>
+			  </div>
 
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <div class="col-sm-2">Only Calculate Static Properties</div>
-      <div class="col-sm-5">
-        <div class="form-check">
-          [% IF static %]
-          <input class="form-check-input" type="checkbox" checked name="static" id="static" />
-          [% ELSE %]
-          <input class="form-check-input" type="checkbox" name="static" id="static" />
-          [% END %]
-          <label class="form-check-label" for="static">
-            If selected, the image set will be treated as independent fields of
-            view, with none of the FA tracking steps enabled
-          </label>
-        </div>
-      </div>
-    </div>
+			  <h3>Analysis Options</h3>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <label for="min_linear_model_length" class="col-sm-2 col-form-label">Min FA Phase Length (images)</label>
+				  <div class="col-sm-5">
+					  <input type="number" class="form-control" id="min_linear_model_length" name="min_linear_model_length" value="[% min_linear_model_length %]" autocomplete="false">
+				  </div>
+				  <div class="col-sm-4">
+					  The minimum number of points in an assembly or disassembly phase
+				  </div>
+			  </div>
 
-    <h4>FAAI Options</h4>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <div class="col-sm-2">Only Calculate Static Properties</div>
+				  <div class="col-sm-5">
+					  <div class="form-check">
+						  [% IF static %]
+						  <input class="form-check-input" type="checkbox" checked name="static" id="static" />
+						  [% ELSE %]
+						  <input class="form-check-input" type="checkbox" name="static" id="static" />
+						  [% END %]
+						  <label class="form-check-label" for="static">
+							  If selected, the image set will be treated as independent fields of
+							  view, with none of the FA tracking steps enabled
+						  </label>
+					  </div>
+				  </div>
+			  </div>
 
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <label for="FAAI_min_ratio" class="col-sm-2 col-form-label">Min FAAI Ratio</label>
-      <div class="col-sm-5">
-        <input type="number" class="form-control" id="FAAI_min_ratio" name="FAAI_min_ratio" value="[% FAAI_min_ratio %]" autocomplete="false">
-      </div>
-      <div class="col-sm-4">
-        The minimum value of the FA major/minor axis for inclusion in the FAAI
-      </div>
-    </div>
+			  <h4>FAAI Options</h4>
 
-    <h3>Optional Cell Mask Image Set</h3>
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <label for="cell_mask_file" class="col-sm-2 col-form-label">Cell Mask Image Set</label>
-      <div class="col-sm-5">
-        <div class="custom-file">
-          <input type="file" class="custom-file-input" name="cell_mask_file" id="cell_mask_file">
-          <label class="custom-file-label" for="customFile">Choose file</label>
-        </div>
-      </div>
-      <div class="col-sm-4">
-        TIFF formatted image set of the focal adhesions
-      </div>
-    </div>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <label for="FAAI_min_ratio" class="col-sm-2 col-form-label">Min FAAI Ratio</label>
+				  <div class="col-sm-5">
+					  <input type="number" class="form-control" id="FAAI_min_ratio" name="FAAI_min_ratio" value="[% FAAI_min_ratio %]" autocomplete="false">
+				  </div>
+				  <div class="col-sm-4">
+					  The minimum value of the FA major/minor axis for inclusion in the FAAI
+				  </div>
+			  </div>
 
-    <h3>Notification Options</h3>
+			  <h3>Optional Cell Mask Image Set</h3>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <label for="cell_mask_file" class="col-sm-2 col-form-label">Cell Mask Image Set</label>
+				  <div class="col-sm-5">
+					  <div class="custom-file">
+						  <input type="file" class="custom-file-input" name="cell_mask_file" id="cell_mask_file">
+						  <label class="custom-file-label" for="customFile">Choose file</label>
+					  </div>
+				  </div>
+				  <div class="col-sm-4">
+					  TIFF formatted image set of the focal adhesions
+				  </div>
+			  </div>
 
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <label for="email" class="col-sm-2 col-form-label">Email</label>
-      <div class="col-sm-5">
-        <input type="email" class="form-control" id="email" placeholder="Email" value="[% email %]" class="input-xlarge email" name="email">
-      </div>
-      <div class="col-sm-4">
-        Please input your email address if you would like to be notified when your experiment finishes
-      </div>
-    </div>
+			  <h3>Notification Options</h3>
 
-    <div class="form-group row">
-      <div class="col-sm-1">
-      </div>
-      <label for="exp_note" class="col-sm-2 col-form-label">Experiment Note</label>
-      <div class="col-sm-5">
-        <input type="text" class="form-control" id="exp_note" value="[% exp_note %]" class="input-xlarge email" name="exp_note">
-      </div>
-      <div class="col-sm-4">
-        Any text in this box will be returned with the results email
-      </div>
-    </div>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <label for="email" class="col-sm-2 col-form-label">Email</label>
+				  <div class="col-sm-5">
+					  <input type="email" class="form-control" id="email" placeholder="Email" value="[% email %]" class="input-xlarge email" name="email">
+				  </div>
+				  <div class="col-sm-4">
+					  Please input your email address if you would like to be notified when your experiment finishes
+				  </div>
+			  </div>
 
-    <div class="form-group row">
-      <button class="btn btn-primary" type="submit">Submit Experiment</button>
-    </div>
-  </form>
+			  <div class="form-group row">
+				  <div class="col-sm-1">
+				  </div>
+				  <label for="exp_note" class="col-sm-2 col-form-label">Experiment Note</label>
+				  <div class="col-sm-5">
+					  <input type="text" class="form-control" id="exp_note" value="[% exp_note %]" class="input-xlarge email" name="exp_note">
+				  </div>
+				  <div class="col-sm-4">
+					  Any text in this box will be returned with the results email
+				  </div>
+			  </div>
 
+			  <div class="form-group row">
+				  <button class="btn btn-primary" type="submit" onclick="submit_activity()">Submit Experiment</button>
+			  </div>
+		  </form>
+	  </div>
+  </div>
+  
+  <div id="upload_status" class="collapse">Starting Upload</div>
+  <div id="following_upload_instructions" class="collapse">
+    <p>
+    Monitoring your upload:
+    <ul>
+      <li>Google Chrome: In the lower left hand corner, you should see a percentage of how much of your upload has finished.</li>
+      <li>Firefox: In the tabs bar, there will be a rotating indicator and in the lower left hand corner a note about "Sending request to ..."</li>
+      <li>Internet Explorer: In the tabs bar, there will be a rotating indicator</li>
+    </ul>
+  </div>
 
-  <div class="row">
-    <div class="col-12">
-      <div id="instructions"></div>
+  <div class="row show" id="instructions">
+    <div class="col">
       <hr/>
       <h1>Instructions</h1>
       If you encounter any problems or find any of these instructions
@@ -346,28 +360,17 @@
     </div>
   </div>
 
-  <div id="upload_status" class="collapse">Starting Upload</div>
-  <div id="following_upload_instructions" class="collapse">
-    <p>
-    Monitoring your upload:
-    <ul>
-      <li>Google Chrome: In the lower left hand corner, you should see a percentage of how much of your upload has finished.</li>
-      <li>Firefox: In the tabs bar, there will be a rotating indicator and in the lower left hand corner a note about "Sending request to ..."</li>
-      <li>Internet Explorer: In the tabs bar, there will be a rotating indicator</li>
-    </ul>
-  </div>
 </div>
 
 <script>
 	var counter = 0;
 	function submit_activity() {
-		if ($("#upload_form").valid()) {
-			$("#upload_form_and_instructions").collapse('hide');
-			$("#upload_status").collapse('show');
-			$("#following_upload_instructions").collapse('show');
+		$("#upload_form").collapse('hide');
+		$("#instructions").collapse('hide');
+		$("#upload_status").collapse('show');
+		$("#following_upload_instructions").collapse('show');
 
-			setInterval("count_up_working('upload_status','Uploading for ')", 1000); 
-		}
+		setInterval("count_up_working('upload_status','Uploading for ')", 1000); 
 	}
 
 	function count_up_working(id_name, status_text) {
