@@ -37,7 +37,13 @@ for i_num = 1:size(image_dirs,1)
     image_limits(i_num,:) = quantile(temp_image(:),[1E-4,1-1E-4]);
 end
 
-fa_min_max = median(image_limits);
+%Take the median of all the image limits, unless there is only one image,
+%in which case pass the limits through
+if (size(image_limits,1) > 1)
+    fa_min_max = round(median(image_limits));
+else
+    fa_min_max = image_limits;
+end
 
 csvwrite_with_folder_creation(fullfile(base_dir,image_dirs(1).name,filenames.focal_image_min_max), ...
     fa_min_max);
