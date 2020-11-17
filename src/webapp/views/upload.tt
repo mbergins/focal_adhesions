@@ -6,10 +6,10 @@
     </div>
   </div>
 
-  <div class="row show" id="upload_form">
+  <div class="row show">
 	  <div class="col">
 
-		  <form method="post" enctype="multipart/form-data">
+		  <form method="post" enctype="multipart/form-data" id="upload_form">
 
 			  <p/>Full <a href="#instructions">instructions</a> available at the
 			  bottom of the page.
@@ -21,7 +21,7 @@
 				  <label for="adhesion_file" class="col-sm-2 col-form-label">FA Image Set</label>
 				  <div class="col-sm-5">
 					  <div class="custom-file">
-						  <input type="file" class="custom-file-input" name="adhesion_file" id="adhesion_file">
+						  <input type="file" class="custom-file-input" name="adhesion_file" id="adhesion_file" required>
 						  <label class="custom-file-label" for="customFile">Choose file</label>
 					  </div>
 				  </div>
@@ -36,7 +36,7 @@
 				  </div>
 				  <label for="time_spacing" class="col-sm-2 col-form-label">Imaging Frequency (minutes)</label>
 				  <div class="col-sm-5">
-					  <input type="number" class="form-control" id="time_spacing" name="time_spacing" value="[% time_spacing %]" autocomplete="false">
+					  <input type="number" class="form-control" id="time_spacing" name="time_spacing" value="[% time_spacing %]" autocomplete="false" step="any">
 				  </div>
 				  <div class="col-sm-4">
 					  Amount of time, in minutes, between the images
@@ -86,7 +86,7 @@
 				  </div>
 				  <label for="time_spacing" class="col-sm-2 col-form-label">Detection Threshold</label>
 				  <div class="col-sm-5">
-					  <input type="number" class="form-control" id="stdev_thresh" name="stdev_thresh" value="[% stdev_thresh %]" autocomplete="false">
+					  <input type="number" class="form-control" id="stdev_thresh" name="stdev_thresh" value="[% stdev_thresh %]" autocomplete="false" step="any">
 				  </div>
 				  <div class="col-sm-4">
 					  Normally set to 2, see instructions below for more help
@@ -363,24 +363,25 @@
 </div>
 
 <script>
-	var counter = 0;
-	function submit_activity() {
-		$("#upload_form").collapse('hide');
-		$("#instructions").collapse('hide');
-		$("#upload_status").collapse('show');
-		$("#following_upload_instructions").collapse('show');
+var counter = 0;
+function submit_activity() {
+	// $("#upload_form").collapse('hide');
+	// $("#instructions").collapse('hide');
+	// $("#upload_status").collapse('show');
+	// $("#following_upload_instructions").collapse('show');
 
-		setInterval("count_up_working('upload_status','Uploading for ')", 1000); 
-	}
+	// setInterval("count_up_working('upload_status','Uploading for ')", 1000); 
+}
 
-	function count_up_working(id_name, status_text) {
-		document.getElementById(id_name).innerHTML = status_text + counter + " seconds.";
-		counter = counter + 1;
-	}
+function count_up_working(id_name, status_text) {
+	document.getElementById(id_name).innerHTML = status_text + counter + " seconds.";
+	counter = counter + 1;
+}
 
 document.querySelector('.custom-file-input').addEventListener('change',function(e){
 	var fileName = document.getElementById("adhesion_file").files[0].name;
 	var nextSibling = e.target.nextElementSibling
 	nextSibling.innerText = fileName
 })
+
 </script>
