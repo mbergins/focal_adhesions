@@ -176,7 +176,7 @@
 					  </div>
 				  </div>
 				  <div class="col-sm-4">
-					  TIFF formatted image set of the focal adhesions
+					  TIFF formatted image set to use for finding the cell boundary
 				  </div>
 			  </div>
 
