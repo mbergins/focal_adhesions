@@ -45,6 +45,18 @@ CPAN:
 	-Storable
 	-Text::CSV::Simple
 
+These can be installed most easily using cpanm:
+
+```
+cpanm Statistics::Descriptive Statistics::Distributions Storable Math::Trig IO::File IO::Handle Benchmark Config::General Cwd Data::Dumper File::Basename File::Copy File::Find File::Find::Rule File::Path File::Spec::Functions File::Temp Getopt::Long Image::ExifTool Math::Matrix Math::Trig POSIX Statistics::Descriptive Statistics::Distributions Text::CSV::Simple
+```
+
+Math::Matlab::Local requires some hand holding during installation:
+
+```
+cpanm Math::Matlab::Local --verbose
+```
+
 
 Sample Experiment and Results:
 
