@@ -12,9 +12,6 @@ end
 
 focal_image = (focal_image - min(focal_image(:)))/range(focal_image(:));
 
-if (size(focal_image,1) > 1000)
-	focal_image = imresize(focal_image, 1000/size(focal_image,1));
-end
 focal_image_norm = (focal_image - min(focal_image(:)))/range(focal_image(:));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
