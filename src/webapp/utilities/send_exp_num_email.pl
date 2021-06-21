@@ -5,6 +5,7 @@ use Statistics::Descriptive;
 
 use Getopt::Long;
 use Geo::IP;
+use File::Find;
 
 my %opt;
 $opt{days} = 7;
@@ -15,8 +16,7 @@ GetOptions(\%opt, "days=s", "email=s") or die;
 # Main
 ###############################################################################
 
-my $find_results = `find ../../../data/FAAS_*/*.cfg`;
-my @all_cfgs = split("\n",$find_results);
+my @all_cfgs = <"../../../data/FAAS_*/*.cfg">;
 
 #I have periodically needed to clear old experimental data from the server and
 #we didn't transfer any data from the original hardware, but wanted to maintain
@@ -27,12 +27,22 @@ my @all_cfgs = split("\n",$find_results);
 #	Original Hardware: 19319 experiments
 my $all_cfg_count = scalar(@all_cfgs) + 19319;
 
-$find_results = `find ../../../data/FAAS_*/*.cfg -ctime -$opt{days}`;
-my @recent_cfgs = split("\n",$find_results);
+my @recent_cfgs;
+for (@all_cfgs) {
+  if (-M $_ <= $opt{days}) {
+    push @recent_cfgs, $_;
+  }
+}
+
 my $cfg_count = scalar(@recent_cfgs);
 
-my $image_count_line = `find ../../../data/ -iregex .*png.* | wc`;
-my @image_count = split(/\s+/,$image_count_line);
+my @images;
+find(\&is_png_file, "../../../data/");
+sub is_png_file {
+  if ($_ =~ /\.png$/) {
+    push @images, $_;
+  }
+}
 
 #All of the image data has been cleaned periodically as well, here are the
 #counts:
@@ -42,15 +52,14 @@ my @image_count = split(/\s+/,$image_count_line);
 # 2017: 264893
 # 2018: 361919
 # 2019: 231903
-# 2019: 231903
 # 2020: 249001
 
-my $total_images = $image_count[1] + 614705 + 318392 + 264893 + 361919 + 231903 + 249001;
+my $total_images = scalar(@images) + 614705 + 318392 + 264893 + 361919 + 231903 + 249001;
+ 
+my %ip_addresses = &get_ip_address_hit_counts(@all_cfgs);
 
-my $IP_count_line  = `grep -h ip ../../../data/*/*.cfg | sort | uniq | wc`;
-my @IP_count = split(/\s+/,$IP_count_line);
-my $total_IPs = $IP_count[1];
-
+my $total_IPs = scalar(keys %ip_addresses);
+ 
 %emails = &get_email_addresses_and_counts(@recent_cfgs);
 my @count_sort = sort {$emails{$b}{count} <=> $emails{$a}{count}} keys %emails;
 
@@ -107,4 +116,18 @@ sub get_email_addresses_and_counts {
 	}
 
 	return %emails;
+}
+
+sub get_ip_address_hit_counts {
+	my @cfgs = @_;
+	my %ip_addresses;
+	foreach (@cfgs) {
+		my %config = ParseConfig(-ConfigFile => $_, -IncludeRelative => 1);
+		
+		if (defined $config{submitter_ip}) {
+			$ip_addresses{$config{submitter_ip}}++;
+		}
+	}
+
+	return %ip_addresses;
 }
