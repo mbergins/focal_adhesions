@@ -23,7 +23,7 @@
       University of North Carolina at Chapel Hill. This website implements a
       set of computer vision algorithms designed to automatically process
       time-lapse images of fluorescently labeled focal adhesion proteins in
-      motile cells. The methods associated with the processing have been
+      motile cells. The methods associated with the processing pipeline have been
       published in <a
                      href="http://dx.doi.org/10.1371/journal.pone.0022025">PLOS One</a>
       and <a
