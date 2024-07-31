@@ -61,7 +61,7 @@ cpanm Math::Matlab::Local --verbose
 Sample Experiment and Results:
 
 There is a master control script that should be used to process your images,
-located at 'src/scripts/build_all_images.pl'. It expects a single command line
+located at 'src/scripts/build_all_results.pl'. It expects a single command line
 parameter, a config file. In order to get started a sample data set has been
 provided. This zip file should be unzipped into the data directory.  Working
 from the 'src/scripts' directory, exclude the command:
