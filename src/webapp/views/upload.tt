@@ -22,7 +22,7 @@
 				  <div class="col-sm-5">
 					  <div class="custom-file">
 						  <input type="file" class="custom-file-input" name="adhesion_file" id="adhesion_file" required>
-						  <label class="custom-file-label" for="customFile">Choose file</label>
+						  <label class="custom-file-label" for="adhesion_file">Choose file</label>
 					  </div>
 				  </div>
 				  <div class="col-sm-4">
@@ -172,7 +172,7 @@
 				  <div class="col-sm-5">
 					  <div class="custom-file">
 						  <input type="file" class="custom-file-input" name="cell_mask_file" id="cell_mask_file">
-						  <label class="custom-file-label" for="customFile">Choose file</label>
+						  <label id='cell_mask_file' class="custom-file-label" for="cell_mask_file">Choose file</label>
 					  </div>
 				  </div>
 				  <div class="col-sm-4">
@@ -378,8 +378,14 @@ function count_up_working(id_name, status_text) {
 	counter = counter + 1;
 }
 
-document.querySelector('.custom-file-input').addEventListener('change',function(e){
+document.querySelector('#adhesion_file').addEventListener('change',function(e){
 	var fileName = document.getElementById("adhesion_file").files[0].name;
+	var nextSibling = e.target.nextElementSibling
+	nextSibling.innerText = fileName
+})
+
+document.querySelector('#cell_mask_file').addEventListener('change',function(e){
+	var fileName = document.getElementById("cell_mask_file").files[0].name;
 	var nextSibling = e.target.nextElementSibling
 	nextSibling.innerText = fileName
 })
