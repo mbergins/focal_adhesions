@@ -55,8 +55,9 @@ sub is_png_file {
 # 2020: 249001
 # 2021-2023: 469704
 # 2024: 258308
+# 2025: 382636
 
-my $total_images = scalar(@images) + 614705 + 318392 + 264893 + 361919 + 231903 + 249001 + 469704 + 258308;
+my $total_images = scalar(@images) + 614705 + 318392 + 264893 + 361919 + 231903 + 249001 + 469704 + 258308 + 382636;
  
 my %ip_addresses = &get_ip_address_hit_counts(@all_cfgs);
 
